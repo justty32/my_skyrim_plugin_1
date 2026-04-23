@@ -1,9 +1,10 @@
 #include "log.h"
+#include "shouts/power_shout.h"
 
 
 void OnDataLoaded()
 {
-
+	PowerShout::Initialize();
 }
 
 void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
@@ -18,6 +19,7 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 		break;
 	case SKSE::MessagingInterface::kNewGame:
 		SKSE::log::info("kNewGame: new game started");
+		PowerShout::EnsureGrantedToPlayer();
 		break;
 	case SKSE::MessagingInterface::kPreLoadGame:
 		SKSE::log::info("kPreLoadGame: save load starting");
@@ -27,6 +29,9 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 		SKSE::log::info("kPostLoadGame: save loaded (success={})", success);
 		if (auto* player = RE::PlayerCharacter::GetSingleton()) {
 			SKSE::log::info("  Player: {}", player->GetName());
+		}
+		if (success) {
+			PowerShout::EnsureGrantedToPlayer();
 		}
 	} break;
 	}

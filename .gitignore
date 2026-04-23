@@ -21,3 +21,6 @@ dist/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Local reference / tutorial notes (not part of the plugin)
+skyrim_mod/

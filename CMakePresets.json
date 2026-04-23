@@ -1,5 +1,5 @@
 {
-    "version": 2,
+    "version": 3,
     "cmakeMinimumRequired": {
         "major": 3,
         "minor": 21,
@@ -105,6 +105,57 @@
                     "value": "Release"
                 }
             }
+        },
+        {
+            "name": "vcpkg-clang-linux",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_TARGET_TRIPLET": "x64-windows-skse-clang",
+                "VCPKG_HOST_TRIPLET": "x64-windows-skse-clang",
+                "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake",
+                "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports",
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchain-clang-cl-xwin.cmake",
+                "VCPKG_INSTALL_OPTIONS": "--allow-unsupported",
+                "VCPKG_APPLOCAL_DEPS": "OFF",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "clang-cl-linux",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_LINKER_TYPE": "LLD"
+            },
+            "environment": {
+                "COMMONLIBSSE_COMPILER": "/permissive- /Zc:preprocessor /EHsc /MP",
+                "COMMONLIBSSE_TEXT": "-DUNICODE -D_UNICODE"
+            }
+        },
+        {
+            "name": "build-release-clang-cl-linux",
+            "inherits": [
+                "base",
+                "vcpkg-clang-linux",
+                "win32-unicode",
+                "x64",
+                "clang-cl-linux"
+            ],
+            "displayName": "Release (clang-cl, Linux host)",
+            "description": "Cross-compile on Linux to Windows x64 via clang-cl + lld-link + xwin. Compile-verification only; shipping DLLs still go through Windows CI.",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/release-clang-cl-linux",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
         }
     ],
     "buildPresets": [
@@ -119,6 +170,12 @@
             "displayName": "Debug (MSVC)",
             "configurePreset": "build-debug-msvc",
             "description": "Debug build for testing."
+        },
+        {
+            "name": "release-clang-cl-linux",
+            "displayName": "Release (clang-cl, Linux host)",
+            "configurePreset": "build-release-clang-cl-linux",
+            "description": "Cross-compile verification on Linux."
         }
     ],
     "testPresets": [

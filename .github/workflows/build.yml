@@ -1,0 +1,77 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    env:
+      # Cache directory for vcpkg binary cache (port build outputs).
+      VCPKG_BINARY_CACHE_DIR: ${{ github.workspace }}/.vcpkg-bincache
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sets INCLUDE / LIB / PATH so cl.exe and link.exe resolve STL headers
+      # and Windows SDK libs (same thing "Developer PowerShell for VS 2022" does).
+      - name: Set up MSVC dev environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v4
+
+      # windows-latest pre-installs vcpkg at $env:VCPKG_INSTALLATION_ROOT.
+      # Our CMakePresets.json reads $env{VCPKG_ROOT}, so alias it.
+      - name: Align VCPKG_ROOT
+        run: |
+          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
+          echo "VCPKG_BINARY_SOURCES=clear;files,$env:VCPKG_BINARY_CACHE_DIR,readwrite" >> $env:GITHUB_ENV
+          New-Item -ItemType Directory -Path $env:VCPKG_BINARY_CACHE_DIR -Force | Out-Null
+
+      # Cache vcpkg port build outputs. Key invalidates when any input that
+      # affects dep builds changes: manifest, registry baseline, triplet overlay.
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_BINARY_CACHE_DIR }}
+          key: vcpkg-bincache-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'cmake/x64-windows-skse.cmake') }}
+          restore-keys: vcpkg-bincache-${{ runner.os }}-
+
+      - name: Configure
+        run: cmake --preset build-release-msvc
+
+      - name: Build
+        run: cmake --build build/release-msvc
+
+      - name: Verify static CRT (no MSVC runtime deps)
+        run: |
+          $deps = & dumpbin /dependents build\release-msvc\TemplatePlugin.dll
+          Write-Host ($deps | Out-String)
+          if ($deps -match '(MSVCP|VCRUNTIME)\d+(D)?\.dll') {
+              throw "DLL still depends on MSVC runtime; static CRT link failed. Match: $($Matches[0])"
+          }
+          Write-Host "OK: no MSVC runtime dependency."
+
+      - name: Package MO2 zip
+        run: scripts/pack.ps1
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: TemplatePlugin-dll
+          path: build/release-msvc/TemplatePlugin.dll
+          if-no-files-found: error
+
+      - name: Upload MO2-installable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: TemplatePlugin-mo2-zip
+          path: dist/*.zip
+          if-no-files-found: error

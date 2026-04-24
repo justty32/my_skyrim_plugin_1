@@ -17,4 +17,5 @@ namespace NpcGenerator
 
     // Initialize all dynamic magic
     void InitializeMagic();
+    void GiveSpellsToPlayer();
 }

@@ -18,6 +18,7 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 		break;
 	case SKSE::MessagingInterface::kNewGame:
 		SKSE::log::info("kNewGame: new game started");
+		NpcGenerator::GiveSpellsToPlayer();
 		break;
 	case SKSE::MessagingInterface::kPreLoadGame:
 		SKSE::log::info("kPreLoadGame: save load starting");
@@ -25,6 +26,9 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 	case SKSE::MessagingInterface::kPostLoadGame: {
 		const bool success = a_msg->data != nullptr;
 		SKSE::log::info("kPostLoadGame: save loaded (success={})", success);
+		if (success) {
+			NpcGenerator::GiveSpellsToPlayer();
+		}
 		if (auto* player = RE::PlayerCharacter::GetSingleton()) {
 			SKSE::log::info("  Player: {}", player->GetName());
 		}

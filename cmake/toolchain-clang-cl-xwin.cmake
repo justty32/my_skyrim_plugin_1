@@ -83,6 +83,10 @@ set(_XWIN_LIB
 )
 string(JOIN " " _XWIN_LIB_STR ${_XWIN_LIB})
 
+# Ensure the linker finds the libraries even during early CMake compiler checks
+# by setting the LIB environment variable (which lld-link/MSVC linker respects).
+set(ENV{LIB} "${_XWIN}/crt/lib/x86_64;${_XWIN}/sdk/lib/ucrt/x86_64;${_XWIN}/sdk/lib/um/x86_64")
+
 # -fdelayed-template-parsing: clang-cl's MSVC-compat behavior that defers
 # template body parsing until instantiation. MSVC does this by default (which
 # is why CommonLibSSE-NG compiles with cl.exe); Clang 16+ turned this OFF by

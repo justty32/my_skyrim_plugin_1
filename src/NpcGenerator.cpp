@@ -150,7 +150,11 @@ namespace NpcGenerator
 
         auto CreateSpell = [&](RE::SpellItem*& a_ptr, const char* a_name) {
             a_ptr = factory->Create()->As<RE::SpellItem>();
-            if (a_ptr) a_ptr->fullName = a_name;
+            if (a_ptr) {
+                a_ptr->fullName = a_name;
+                // Set as a Lesser Power so it's easy to use
+                a_ptr->data.spellType = RE::MagicSystem::SpellType::kLesserPower;
+            }
         };
 
         CreateSpell(g_spawnSpell, "C++: Spawn NPC");
@@ -163,6 +167,25 @@ namespace NpcGenerator
         if (source) source->AddEventSink(SpellCastHandler::GetSingleton());
 
         SKSE::log::info("All dynamic spells initialized.");
+    }
+
+    void GiveSpellsToPlayer()
+    {
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        if (!player) return;
+
+        auto AddSpell = [&](RE::SpellItem* a_spell) {
+            if (a_spell) {
+                player->AddSpell(a_spell);
+                SKSE::log::info("Added spell '{}' to player", a_spell->fullName);
+            }
+        };
+
+        AddSpell(g_spawnSpell);
+        AddSpell(g_customizeSpell);
+        AddSpell(g_raiseSpell);
+        AddSpell(g_lowerSpell);
+        AddSpell(g_treeSpell);
     }
 
     void SpawnNpcEffect::OnAdd(RE::MagicTarget*) {}

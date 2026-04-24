@@ -21,9 +21,9 @@ CONFIG_FOLDER_NAME="Template_Plugin"
 
 # 幫助訊息功能
 usage() {
-  echo "用法: $0 [--config <release-msvc|debug-msvc>] [--output-dir <路徑>]"
+  echo "用法: $0 [--config <release-clang-cl-linux|release-msvc|debug-msvc>] [--output-dir <路徑>]"
   echo "說明:"
-  echo "  --config      指定要打包的編譯資料夾 (預設: release-msvc)"
+  echo "  --config      指定要打包的編譯資料夾 (預設: $CONFIG)"
   echo "  --output-dir  指定 ZIP 輸出的目的地 (預設: $OUTPUT_DIR)"
   exit 1
 }
@@ -104,8 +104,9 @@ if [[ -d "$CONFIG_SRC" ]]; then
   echo "已包含設定檔: config/ -> Data/SKSE/Plugins/$CONFIG_FOLDER_NAME/"
 fi
 
-# 建立輸出目錄
+# 建立輸出目錄並取得其絕對路徑
 mkdir -p "$OUTPUT_DIR"
+ABS_OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
 
 # 決定 ZIP 檔名 (如果是 Debug 版會加上 -Debug 後綴)
 BUILD_TAG=""
@@ -113,7 +114,7 @@ if [[ "$CONFIG" == "debug-msvc" ]]; then
   BUILD_TAG="-Debug"
 fi
 ZIP_NAME="$PLUGIN_NAME-$PLUGIN_VERSION$BUILD_TAG.zip"
-ZIP_PATH="$OUTPUT_DIR/$ZIP_NAME"
+ZIP_PATH="$ABS_OUTPUT_DIR/$ZIP_NAME"
 
 # 檢查環境中是否有 zip 指令
 if ! command -v zip &>/dev/null; then
@@ -124,7 +125,7 @@ fi
 # 執行壓縮
 rm -f "$ZIP_PATH"
 echo "正在壓縮檔案至 $ZIP_PATH..."
-(cd "$PACK_DIR" && zip -r "../../$ZIP_PATH" .) >/dev/null
+(cd "$PACK_DIR" && zip -r "$ZIP_PATH" .) >/dev/null
 
 echo ""
 echo "打包成功: $ZIP_PATH"

@@ -15,6 +15,11 @@ To compile the Windows DLL on Linux, use the `release-clang-cl-linux` preset:
 cmake --build build/release-clang-cl-linux -j$(nproc)
 ```
 
+**Troubleshooting:** If the build command fails, it may be due to a stale cache or configuration mismatch. Re-run the configure preset before attempting to build again:
+```bash
+cmake --preset build-release-clang-cl-linux
+```
+
 ## 2. Packaging Process
 After a successful build, use the environment-aware packaging script. This will generate a ZIP file (usually in the `dist/` folder or your mod manager's directory if configured):
 

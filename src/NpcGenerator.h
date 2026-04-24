@@ -2,21 +2,19 @@
 
 namespace NpcGenerator
 {
-    // 繼承自 ScriptEffect，這是純 C++ 邏輯最常用的基類
-    class SpawnNpcEffect : public RE::ScriptEffect
-    {
-    public:
-        // 我們要在 C++ 裡手動給它一個標識，或者直接在創建時替換 VTable
-        void Update(float a_delta) override;
-        void OnAdd(RE::MagicTarget* a_target) override;
-    };
+    // NPC Logic
+    void SpawnNpc(RE::TESObjectREFR* a_anchor);
+    void CustomizeNpc(RE::Actor* a_target);
 
-    class CustomizeNpcEffect : public RE::ScriptEffect
-    {
-    public:
-        void OnAdd(RE::MagicTarget* a_target) override;
-    };
+    // World Logic
+    void RaiseTerrain(RE::TESObjectREFR* a_anchor);
+    void LowerTerrain(RE::TESObjectREFR* a_anchor);
+    void PlaceTree(RE::TESObjectREFR* a_anchor);
 
-    // 初始化函式：在 DataLoaded 時呼叫
+    // Dynamic Spells
+    class SpawnNpcEffect : public RE::ActiveEffect { public: void OnAdd(RE::MagicTarget*) override; };
+    class CustomizeNpcEffect : public RE::ActiveEffect { public: void OnAdd(RE::MagicTarget*) override; };
+
+    // Initialize all dynamic magic
     void InitializeMagic();
 }

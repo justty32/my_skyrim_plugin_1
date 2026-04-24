@@ -414,7 +414,7 @@ namespace FormUtil
             if (!modname.length() || !formid)
                 return nullptr;
             RE::TESDataHandler *dh = RE::TESDataHandler::GetSingleton();
-            return dh->LookupForm(formid, modname); 
+            return dh ? dh->LookupForm(formid, modname) : nullptr; 
 
             }
 

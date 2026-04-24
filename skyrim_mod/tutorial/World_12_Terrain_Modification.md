@@ -1,60 +1,59 @@
-# 12. 技術實戰：環境生成與地形調整
+# Terrain and Object Manipulation (SKSE C++)
 
-本教學教您如何在準星指向的地表生成自然景觀（山石、樹木），並討論動態地形修改的技術邊界。
+## Overview
+This guide focuses on two methods for world modification: shifting existing object heights and spawning new static resources (Trees/Rocks) at runtime.
 
-## 1. 生成自然景觀 (山石與樹木)
-
-在 C++ 中生成樹木或石頭與生成床鋪邏輯一致，但需要注意「碰撞」與「地面貼合」。
+## 1. Modifying Existing Object Z-Height
+To raise or lower an object under the crosshair, you must find the reference and update its 3D position.
 
 ```cpp
-void SpawnEnvironmentDecor() {
-    auto player = RE::PlayerCharacter::GetSingleton();
-    
-    // 1. 獲取準星位置
-    auto crosshairRef = SKSE::GetCrosshairRef();
-    RE::NiPoint3 spawnPos;
-    if (crosshairRef) {
-        spawnPos = crosshairRef->GetPosition();
-    } else {
-        return;
-    }
+auto* target = GetCrosshairTarget();
+if (target) {
+    auto pos = target->GetPosition();
+    pos.z += 50.0f; // Raise by 50 units
+    target->SetPosition(pos);
+}
+```
+*Note: This modification affects the specific reference in the current cell. For persistent changes, the cell's modified state will be stored in the save file.*
 
-    // 2. 選擇對象 (PlaceHolder ID)
-    // 0x00038432 - 某種松樹 (Static Tree)
-    // 0x0001B983 - 某種大山石 (Static Rock)
-    auto rockBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0x0001B983);
-    
-    if (rockBase) {
-        // 3. 生成對象
-        auto newRock = player->PlaceAtMe(rockBase, 1, false, false);
-        if (newRock) {
-            newRock->SetPosition(spawnPos);
-            // 隨機旋轉讓景觀更自然
-            float randomRot = static_cast<float>(rand() % 360);
-            newRock->SetAngle(0.0f, 0.0f, randomRot);
-        }
-    }
+## 2. Spawning Static World Resources (Trees, Rocks)
+Spawning static objects like `TreeFloraJuniper01` or `RockPileM01` requires robust resource lookup and correct engine-level initialization.
+
+### Robust Lookup by EditorID
+Avoid FormIDs (e.g., `0x38432`) as they may differ in some setups. EditorID lookup is extremely stable.
+
+```cpp
+auto* treeBase = RE::TESForm::LookupByEditorID<RE::TESBoundObject>("TreeFloraJuniper01");
+if (!treeBase) {
+    // Fallback logic
+    treeBase = RE::TESForm::LookupByEditorID<RE::TESBoundObject>("RockPileM01");
 }
 ```
 
-## 2. 關於「調整地形」 (Terrain Sculpting)
+### Positioning Logic (The Offset Pattern)
+To ensure the spawned object doesn't collide with the player, calculate a forward offset vector.
 
-**警告**：Skyrim 的地形（Heightmap）是由預生成的 `.btr` / `.bnd` 數據文件定義的，這與物體（Static Objects）不同。
+```cpp
+float angleZ = player->data.angle.z; 
+RE::NiPoint3 forward(std::sin(angleZ), std::cos(angleZ), 0.0f);
 
-### A. 在純插件中修改地形的困難點：
--   **靜態性**: 引擎在加載 Cell 時會將高度圖讀入物理內存，即時修改高度圖需要極深層次的內核 Hook。
--   **Navmesh 崩潰**: 修改地形後，導航網格（NPC 走路的路徑）不會更新，會導致 NPC 懸空或穿地。
+// Spawn 200 units in front of player
+RE::NiPoint3 spawnPos = player->GetPosition() + (forward * 200.0f);
 
-### B. 常見的替代方案：
-1.  **生成「地形補丁」**:
-    如果你想讓地面隆起，不要去改高度圖，而是生成一個巨大的「地表紋理山石（Landscape Static）」。這就是大多數「築牆術」模組的做法。
-2.  **使用 Decals (貼花)**:
-    如果你只是想改變地面的視覺外觀（如燒焦、結冰），應使用 `RE::BGSDecalManager`。
+auto spawned = player->PlaceObjectAtMe(treeBase, false);
+if (spawned) {
+    spawned->SetPosition(spawnPos);
+    spawned->SetAngle(player->data.angle);
+}
+```
 
-## 3. 關鍵 API 標註
--   **`TESObjectREFR::PlaceAtMe`**: 生成實體。`include/RE/T/TESObjectREFR.h`
--   **`TESObjectTREE`**: 專門處理具備風吹動畫的樹木類別。`include/RE/T/TESObjectTREE.h`
--   **`RE::NiPoint3`**: 用於計算生成位置。`include/RE/N/NiPoint3.h`
+## Key Engine API: `PlaceObjectAtMe`
+Always use `PlaceObjectAtMe` for spawning world objects. This method ensures:
+- The reference is correctly linked to the parent cell.
+- The 3D model (NIF) is loaded and attached to the scene graph.
+- Physics and collision data are initialized.
 
-## 4. 總結
-在 Skyrim 中，「造山」和「種樹」其實都是在正確的位置 `PlaceAtMe` 生成對應的靜態模型（Statics）。除非你是製作引擎級的編輯器，否則請避免直接嘗試修改引擎的高度圖數據。
+## Best Practices
+- **Z-Axis Ground Alignment**: After moving an object, it might be floating. Consider raycasting to find the exact ground height.
+- **Reference Handles**: Use `RE::ObjectRefHandle` for tracking spawned objects safely across frames.
+- **Persistence**: Dynamically spawned objects in the `0xFF` range will be cleaned up by the engine if they aren't properly flagged as persistent or if the cell is reloaded without being in a save file.

@@ -1,52 +1,45 @@
-# 18. 技術實戰：透過 NPC 模板生成實體
+# NPC Generation from Template (SKSE C++)
 
-在製作召喚類、同伴類或動態世界模組時，你經常需要從一個現有的數據藍圖（`TESNPC`）生成一個實體（`Actor`）。
+## Overview
+This guide covers how to dynamically create a new NPC at runtime by copying an existing template (like `Player (0x7)`) and spawning them into the world correctly.
 
-## 1. 核心概念：`TESNPC` vs `Actor`
--   **`RE::TESNPC`**: 這是靜態數據（模板），定義了對象的臉、預設屬性、種族和技能。
--   **`RE::Actor`**: 這是世界中的實體，是基於模板生成的具體對象。
+## Core Logic: The "Stable Spawning" Pattern
 
-## 2. 代碼實現：召喚一個自定義衛兵
+To spawn a functional NPC that doesn't cause CTDs or save-game corruption, follow this multi-step process:
 
+### 1. Identify the Template
+Instead of hardcoding every attribute, find a base NPC (e.g., `Player` or `EncCitizen01`) to copy from.
 ```cpp
-#include <RE/Skyrim.h>
-#include <SKSE/SKSE.h>
-
-void SpawnNPCAtPlayer() {
-    auto player = RE::PlayerCharacter::GetSingleton();
-    if (!player) return;
-
-    // 1. 獲取 NPC 模板 (PlaceHolder ID: 0x00012E46 - 雪漫城衛兵)
-    auto npcBase = RE::TESForm::LookupByID<RE::TESNPC>(0x00012E46);
-    
-    if (npcBase) {
-        // 2. 在玩家位置生成實體
-        // 參數：模板, 數量, 是否持久化, 是否禁用
-        auto spawnedRef = player->PlaceAtMe(npcBase, 1, false, false);
-        
-        if (spawnedRef) {
-            // 3. 轉換為 Actor 以執行進階邏輯
-            auto newActor = spawnedRef->As<RE::Actor>();
-            if (newActor) {
-                // 讓他在一分鐘後自動消失
-                // (參考高級教學 13：回收機制)
-                
-                // 讓他立刻變成玩家的盟友
-                newActor->SetPlayerTeammate(true, false);
-                
-                RE::DebugNotification(fmt::format("已召喚: {}", newActor->GetName()).c_str());
-            }
-        }
-    }
-}
+auto* templateNPC = RE::TESForm::LookupByID<RE::TESNPC>(0x00000007); // Player
+auto* factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESNPC>();
 ```
 
-## 3. 關鍵 API 標註
--   **`RE::TESNPC`**: NPC 的基礎數據類別。`include/RE/T/TESNPC.h`
--   **`PlaceAtMe()`**: 最核心的生成函數。`include/RE/T/TESObjectREFR.h`
--   **`SetPlayerTeammate()`**: 將 NPC 設為隊友狀態。`include/RE/A/Actor.h`
+### 2. Create and Copy the Base
+Create a new dynamic `TESNPC` instance and copy the template's data.
+```cpp
+auto* newNpcBase = factory->Create()->As<RE::TESNPC>();
+newNpcBase->Copy(templateNPC);
+newNpcBase->fullName = "Generated Citizen";
+```
 
-## 4. 實戰建議
--   **位置偏移**: 建議使用 `newActor->SetPosition()` 稍微調整位置，防止 NPC 與玩家重疊。
--   **等級同步**: 動態生成的 NPC 默認會根據模板的等級規則自動縮放（Scaling）。
--   **回收**: 對於動態生成的 NPC，務必使用 `SetDelete(true)` 進行清理，避免存檔中累積過多“死掉的衛兵”。
+### 3. Spawning with `PlaceObjectAtMe`
+Use the internal engine API `PlaceObjectAtMe` to handle 3D initialization and cell attachment. Do **not** use `CreateReferenceAtLocation` for dynamic NPCs if you want maximum stability.
+```cpp
+auto spawned = caster->PlaceObjectAtMe(newNpcBase, false);
+```
+
+### 4. Position & Rotation Fix
+Spawned objects often overlap with the caster. Use trigonometry to move the NPC in front of the caster.
+```cpp
+float angleZ = caster->data.angle.z; 
+RE::NiPoint3 forward(std::sin(angleZ), std::cos(angleZ), 0.0f);
+
+RE::NiPoint3 newPos = caster->GetPosition() + (forward * 150.0f);
+spawned->SetPosition(newPos);
+spawned->SetAngle(caster->data.angle);
+```
+
+## Best Practices
+- **Null Checks**: Always verify that `factory`, `template`, and `spawned` are not null.
+- **Form Persistence**: Remember that forms in the `0xFF` range (dynamic) may shift IDs after a save/load cycle.
+- **AI Initialization**: The NPC will start with the template's AI packages. Use `spawned->As<RE::Actor>()->EvaluatePackage()` to refresh their behavior.

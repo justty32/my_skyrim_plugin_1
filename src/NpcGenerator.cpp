@@ -36,11 +36,26 @@ namespace NpcGenerator
     void CustomizeNpc(RE::Actor* a_target)
     {
         if (!a_target) return;
-        
+        SKSE::log::info("CustomizeNpc: Targeting {}", a_target->GetName());
+
+        // 做法 A: 直接調整體重 (BodySlide 的核心)
+        auto* npcBase = a_target->GetActorBase();
+        if (npcBase) {
+            float currentWeight = npcBase->weight;
+            float newWeight = currentWeight + 20.0f;
+            if (newWeight > 100.0f) newWeight = 0.0f;
+
+            npcBase->weight = newWeight;
+            
+            // 使用 DoReset3D 來刷新體重
+            a_target->DoReset3D(true);
+            SKSE::log::info("CustomizeNpc: Reset 3D with weight {}", newWeight);
+        }
+
+        // 做法 B: 開啟捏人介面
         auto* uiQueue = RE::UIMessageQueue::GetSingleton();
         if (uiQueue) {
             uiQueue->AddMessage(RE::RaceSexMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kShow, nullptr);
-            SKSE::log::info("RaceSexMenu opened via UIMessageQueue");
         }
     }
 
@@ -65,19 +80,12 @@ namespace NpcGenerator
                     
                     auto* crosshair = RE::CrosshairPickData::GetSingleton();
                     if (crosshair) {
-                        // In CommonLibSSE-NG (NG version), targetActor is an array for VR support.
-                        // For Flat Skyrim, we use index 0.
                         auto targetRef = crosshair->targetActor[0].get();
-                        
                         if (targetRef) {
                             auto* targetActor = targetRef->As<RE::Actor>();
                             if (targetActor) {
                                 CustomizeNpc(targetActor);
-                            } else {
-                                SKSE::log::warn("C++: Target is not an actor");
                             }
-                        } else {
-                            SKSE::log::warn("C++: No crosshair target actor found");
                         }
                     }
                 }

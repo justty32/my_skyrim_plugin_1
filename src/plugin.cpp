@@ -1,9 +1,9 @@
 #include "log.h"
-
+#include "NpcGenerator.h"
 
 void OnDataLoaded()
 {
-
+    NpcGenerator::InitializeMagic();
 }
 
 void MessageHandler(SKSE::MessagingInterface::Message* a_msg)

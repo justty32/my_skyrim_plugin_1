@@ -137,6 +137,30 @@ namespace MagicToolkit
     void MassParalyze(RE::Actor* a_caster);
     void SpawnWolfPack(RE::Actor* a_caster);
 
+    // --- Wave 21 ---
+    void AnchorTarget(RE::TESObjectREFR* a_target);
+    void ShrinkTarget(RE::TESObjectREFR* a_target);
+    void ToggleNightEye(RE::Actor* a_player);
+    void MassSilence(RE::Actor* a_caster);
+
+    // --- Wave 22 ---
+    void SpawnHorse(RE::Actor* a_caster);
+    void PickpocketAll(RE::Actor* a_player);
+    void MassSlow(RE::Actor* a_caster);
+    void SpawnChest(RE::Actor* a_caster);
+
+    // --- Wave 23 ---
+    void BerserkMode(RE::Actor* a_player);
+    void SpawnDwarvenSphere(RE::Actor* a_caster);
+    void Tornado(RE::Actor* a_caster);
+    void PetrifyTarget(RE::TESObjectREFR* a_target);
+
+    // --- Wave 24 ---
+    void Apocalypse(RE::Actor* a_caster);
+    void MassDisarm(RE::Actor* a_caster);
+    void DragonShout(RE::Actor* a_caster);
+    void EssenceAbsorb(RE::Actor* a_target, RE::Actor* a_player);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

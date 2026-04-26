@@ -1,8 +1,8 @@
 set(headers ${headers}
-	src/PCH.h 
+	src/PCH.h
     src/log.h
     src/util.h
-    src/hook.h 
+    src/hook.h
     src/settings.h
-    src/NpcGenerator.h
+    src/MagicToolkit.h
 )

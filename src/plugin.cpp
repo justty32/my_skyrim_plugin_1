@@ -1,10 +1,5 @@
 #include "log.h"
-#include "NpcGenerator.h"
-
-void OnDataLoaded()
-{
-    NpcGenerator::InitializeMagic();
-}
+#include "MagicToolkit.h"
 
 void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 {
@@ -13,33 +8,31 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 		SKSE::log::info("kPostLoad: all SKSE plugins loaded");
 		break;
 	case SKSE::MessagingInterface::kDataLoaded:
-		SKSE::log::info("kDataLoaded: game data loaded, main menu ready");
-		OnDataLoaded();
+		SKSE::log::info("kDataLoaded: game data loaded");
+		MagicToolkit::InitializeMagic();
 		break;
 	case SKSE::MessagingInterface::kNewGame:
-		SKSE::log::info("kNewGame: new game started");
-		NpcGenerator::GiveSpellsToPlayer();
+		SKSE::log::info("kNewGame");
+		MagicToolkit::GiveSpellsToPlayer();
 		break;
 	case SKSE::MessagingInterface::kPreLoadGame:
-		SKSE::log::info("kPreLoadGame: save load starting");
+		SKSE::log::info("kPreLoadGame");
 		break;
 	case SKSE::MessagingInterface::kPostLoadGame: {
 		const bool success = a_msg->data != nullptr;
-		SKSE::log::info("kPostLoadGame: save loaded (success={})", success);
+		SKSE::log::info("kPostLoadGame: success={}", success);
 		if (success) {
-			NpcGenerator::GiveSpellsToPlayer();
-		}
-		if (auto* player = RE::PlayerCharacter::GetSingleton()) {
-			SKSE::log::info("  Player: {}", player->GetName());
+			MagicToolkit::GiveSpellsToPlayer();
 		}
 	} break;
 	}
 }
 
-SKSEPluginLoad(const SKSE::LoadInterface* skse) {
+SKSEPluginLoad(const SKSE::LoadInterface* skse)
+{
 	SKSE::Init(skse);
 	SetupLog();
-	SKSE::log::info("Plugin loaded");
+	SKSE::log::info("MagicToolkit plugin loaded");
 
 	auto* messaging = SKSE::GetMessagingInterface();
 	if (!messaging->RegisterListener("SKSE", MessageHandler)) {

@@ -66,6 +66,56 @@ namespace MagicToolkit
     RE::SpellItem* g_executeSpell       = nullptr;
     RE::SpellItem* g_bounceHouseSpell   = nullptr;
     RE::SpellItem* g_detectionSpell     = nullptr;
+    // Wave 11
+    RE::SpellItem* g_massFreezeSpell      = nullptr;
+    RE::SpellItem* g_infiniteMagickaSpell = nullptr;
+    RE::SpellItem* g_deathZoneSpell       = nullptr;
+    RE::SpellItem* g_superJumpSpell       = nullptr;
+    // Wave 12
+    RE::SpellItem* g_cloneNpcSpell        = nullptr;
+    RE::SpellItem* g_swapPosSpell         = nullptr;
+    RE::SpellItem* g_massFrenzySpell      = nullptr;
+    RE::SpellItem* g_scatterSpell         = nullptr;
+    // Wave 13
+    RE::SpellItem* g_waterBreathSpell     = nullptr;
+    RE::SpellItem* g_unlockSpell          = nullptr;
+    RE::SpellItem* g_countEnemiesSpell    = nullptr;
+    RE::SpellItem* g_timeStopSpell        = nullptr;
+    // Wave 14
+    RE::SpellItem* g_infernoSpell         = nullptr;
+    RE::SpellItem* g_atronachSpell        = nullptr;
+    RE::SpellItem* g_cloneArmySpell       = nullptr;
+    RE::SpellItem* g_giveArmorSpell       = nullptr;
+    // Wave 15
+    RE::SpellItem* g_magickaStealSpell    = nullptr;
+    RE::SpellItem* g_massExecuteSpell     = nullptr;
+    RE::SpellItem* g_merchantSpell        = nullptr;
+    RE::SpellItem* g_magickaRegenSpell    = nullptr;
+    // Wave 16
+    RE::SpellItem* g_staminaSurgeSpell    = nullptr;
+    RE::SpellItem* g_areaStaggerSpell     = nullptr;
+    RE::SpellItem* g_goldAuraSpell        = nullptr;
+    RE::SpellItem* g_detectLifeSpell      = nullptr;
+    // Wave 17
+    RE::SpellItem* g_disarmSpell          = nullptr;
+    RE::SpellItem* g_refillArrowsSpell    = nullptr;
+    RE::SpellItem* g_massLevitateSpell    = nullptr;
+    RE::SpellItem* g_soulTrapAuraSpell    = nullptr;
+    // Wave 18
+    RE::SpellItem* g_stealHealthSpell     = nullptr;
+    RE::SpellItem* g_massUnlockSpell      = nullptr;
+    RE::SpellItem* g_shieldBashSpell      = nullptr;
+    RE::SpellItem* g_blizzardSpell        = nullptr;
+    // Wave 19
+    RE::SpellItem* g_ragdollAllSpell      = nullptr;
+    RE::SpellItem* g_equipBestSpell       = nullptr;
+    RE::SpellItem* g_massResurrectSpell   = nullptr;
+    RE::SpellItem* g_oblivionGateSpell    = nullptr;
+    // Wave 20
+    RE::SpellItem* g_ghostFormSpell       = nullptr;
+    RE::SpellItem* g_worldquakeSpell      = nullptr;
+    RE::SpellItem* g_massParalyzeSpell    = nullptr;
+    RE::SpellItem* g_spawnWolfPackSpell   = nullptr;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -1358,6 +1408,870 @@ namespace MagicToolkit
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Wave 11
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void MassFreeze(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassFreeze: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 600.0f*600.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->SetActorValue(RE::ActorValue::kParalysis, 1.0f);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("MassFreeze: paralyzed {} actors", count);
+        RE::DebugNotification(std::format("Mass Freeze! {} frozen.", count).c_str());
+    }
+
+    void ToggleInfiniteMagicka(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleInfiniteMagicka: entry");
+        if (!a_player) return;
+        constexpr float kInf = 99999.0f;
+        float cur = a_player->GetActorValue(RE::ActorValue::kMagicka);
+        if (cur >= kInf - 1.0f) {
+            float base = a_player->GetPermanentActorValue(RE::ActorValue::kMagicka);
+            a_player->SetActorValue(RE::ActorValue::kMagicka, base);
+            RE::DebugNotification(std::format("Magicka restored ({:.0f}).", base).c_str());
+        } else {
+            a_player->SetActorValue(RE::ActorValue::kMagicka, kInf);
+            RE::DebugNotification("Infinite Magicka ON!");
+        }
+    }
+
+    void DeathZone(RE::Actor* a_caster)
+    {
+        SKSE::log::info("DeathZone: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 300.0f*300.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, -99999.0f);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("DeathZone: killed {} actors in 300u", count);
+        RE::DebugNotification(std::format("Death Zone! {} eliminated.", count).c_str());
+    }
+
+    void ToggleSuperJump(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleSuperJump: entry");
+        if (!a_player) return;
+        constexpr float kBoost = 150.0f;
+        float cur = a_player->GetActorValue(RE::ActorValue::kJumpingBonus);
+        float next = (cur >= kBoost - 1.0f) ? 0.0f : kBoost;
+        a_player->SetActorValue(RE::ActorValue::kJumpingBonus, next);
+        SKSE::log::info("ToggleSuperJump: JumpingBonus -> {:.0f}", next);
+        RE::DebugNotification(next > 0.0f ? "Super Jump ON!" : "Jump restored.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 12
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void CloneNPC(RE::TESObjectREFR* a_target, RE::Actor* a_caster)
+    {
+        SKSE::log::info("CloneNPC: entry");
+        if (!a_target || !a_caster) return;
+        auto* base = a_target->GetBaseObject();
+        if (!base) return;
+        auto* clone = a_caster->PlaceObjectAtMe(base, false);
+        if (clone) {
+            RE::NiPoint3 pos = a_target->GetPosition();
+            pos.x += 120.0f;
+            clone->SetPosition(pos);
+            clone->data.angle = a_target->data.angle;
+            if (auto* actor = clone->As<RE::Actor>()) actor->EvaluatePackage(false, true);
+            SKSE::log::info("CloneNPC: cloned '{}' at +120X", base->GetName());
+            RE::DebugNotification(std::format("Cloned: {}", base->GetName()).c_str());
+        }
+    }
+
+    void SwapPositions(RE::TESObjectREFR* a_target, RE::Actor* a_player)
+    {
+        SKSE::log::info("SwapPositions: entry");
+        if (!a_target || !a_player || a_target->IsPlayerRef()) return;
+        RE::NiPoint3 playerPos = a_player->GetPosition();
+        RE::NiPoint3 targetPos = a_target->GetPosition();
+        a_player->SetPosition(targetPos);
+        a_target->SetPosition(playerPos);
+        SKSE::log::info("SwapPositions: swapped with '{}'", a_target->GetName());
+        RE::DebugNotification(std::format("Swapped with {}!", a_target->GetName()).c_str());
+    }
+
+    void MassFrenzy(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassFrenzy: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 700.0f*700.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->SetActorValue(RE::ActorValue::kAggression, 3.0f);
+            a->SetActorValue(RE::ActorValue::kConfidence, 4.0f);
+            a->SetActorValue(RE::ActorValue::kMorality, 0.0f);
+            a->EvaluatePackage(true, true);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("MassFrenzy: frenzied {} actors", count);
+        RE::DebugNotification(std::format("Mass Frenzy! {} go berserk!", count).c_str());
+    }
+
+    void ScatterAll(RE::Actor* a_caster)
+    {
+        SKSE::log::info("ScatterAll: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        static bool seeded = false;
+        if (!seeded) { std::srand(static_cast<unsigned>(std::time(nullptr))); seeded = true; }
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        constexpr float kTwoPi = 6.2831853f;
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 800.0f*800.0f) return RE::BSContainer::ForEachResult::kContinue;
+            float angle = static_cast<float>(std::rand()) / RAND_MAX * kTwoPi;
+            float dist  = 500.0f + static_cast<float>(std::rand() % 1500);
+            RE::NiPoint3 pos = a->GetPosition();
+            pos.x += std::sin(angle) * dist;
+            pos.y += std::cos(angle) * dist;
+            a->SetPosition(pos);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("ScatterAll: scattered {} actors", count);
+        RE::DebugNotification(std::format("Scatter! {} actors dispersed.", count).c_str());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 13
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void ToggleWaterBreathing(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleWaterBreathing: entry");
+        if (!a_player) return;
+        float cur  = a_player->GetActorValue(RE::ActorValue::kWaterBreathing);
+        float next = (cur >= 99.0f) ? 0.0f : 100.0f;
+        a_player->SetActorValue(RE::ActorValue::kWaterBreathing, next);
+        SKSE::log::info("ToggleWaterBreathing: {} -> {}", cur, next);
+        RE::DebugNotification(next > 0.0f ? "Water Breathing ON!" : "Water Breathing OFF.");
+    }
+
+    void UnlockTarget(RE::TESObjectREFR* a_target)
+    {
+        SKSE::log::info("UnlockTarget: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target) return;
+        auto* lock = a_target->GetLock();
+        if (!lock) {
+            RE::DebugNotification("Target has no lock.");
+            return;
+        }
+        if (!lock->IsLocked()) {
+            RE::DebugNotification("Already unlocked.");
+            return;
+        }
+        lock->SetLocked(false);
+        SKSE::log::info("UnlockTarget: '{}' unlocked", a_target->GetName());
+        RE::DebugNotification(std::format("{} unlocked!", a_target->GetName()).c_str());
+    }
+
+    void CountEnemies(RE::Actor* a_caster)
+    {
+        SKSE::log::info("CountEnemies: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int total = 0, hostile = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 1500.0f*1500.0f) return RE::BSContainer::ForEachResult::kContinue;
+            ++total;
+            if (a->GetActorValue(RE::ActorValue::kAggression) >= 2.0f) ++hostile;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("CountEnemies: total={} hostile={}", total, hostile);
+        RE::DebugNotification(std::format("Nearby: {} actors, {} hostile.", total, hostile).c_str());
+    }
+
+    void ToggleTimeStop()
+    {
+        SKSE::log::info("ToggleTimeStop: entry");
+        auto* global = RE::TESForm::LookupByEditorID<RE::TESGlobal>("TimeScale");
+        if (!global) return;
+        // Use near-zero instead of true zero to avoid division-by-zero in engine
+        constexpr float kStopped = 0.001f;
+        constexpr float kNormal  = 20.0f;
+        bool isStopped = global->value <= kStopped + 0.001f;
+        global->value = isStopped ? kNormal : kStopped;
+        SKSE::log::info("ToggleTimeStop: TimeScale -> {}", global->value);
+        RE::DebugNotification(isStopped ? "Time resumes." : "TIME STOPPED.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 14
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void Inferno(RE::Actor* a_caster)
+    {
+        SKSE::log::info("Inferno: entry");
+        if (!a_caster) return;
+        RE::NiPoint3 center = a_caster->GetPosition();
+        static bool seeded = false;
+        if (!seeded) { std::srand(static_cast<unsigned>(std::time(nullptr) + 1)); seeded = true; }
+        constexpr int kCount = 40;
+        for (int i = 0; i < kCount; ++i) {
+            RE::NiPoint3 sky = center;
+            sky.x += static_cast<float>((std::rand() % 1400) - 700);
+            sky.y += static_cast<float>((std::rand() % 1400) - 700);
+            sky.z += 1800.0f;
+            RE::NiPoint3 land = center;
+            land.x += static_cast<float>((std::rand() % 2000) - 1000);
+            land.y += static_cast<float>((std::rand() % 2000) - 1000);
+            LaunchFireball(a_caster, sky, land);
+        }
+        SKSE::log::info("Inferno: 40 fireballs launched");
+        RE::DebugNotification("INFERNO!");
+    }
+
+    void SummonAtronach(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SummonAtronach: entry");
+        if (!a_caster) return;
+        auto* base = RE::TESForm::LookupByEditorID<RE::TESNPC>("AtronachFlame");
+        if (!base) base = RE::TESForm::LookupByEditorID<RE::TESNPC>("EncAtronachFlame01");
+        if (!base) base = RE::TESForm::LookupByEditorID<RE::TESNPC>("AtronachFrost");
+        if (!base) base = RE::TESForm::LookupByEditorID<RE::TESNPC>("EncAtronachFrost01");
+        if (!base) {
+            // Fallback: conjure a copy of the player and name it Atronach
+            auto* tmpl    = RE::TESForm::LookupByID<RE::TESNPC>(0x00000007);
+            auto* factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESNPC>();
+            if (tmpl && factory) {
+                auto* fb = factory->Create()->As<RE::TESNPC>();
+                if (fb) { fb->Copy(tmpl); fb->fullName = "Flame Atronach"; base = fb; }
+            }
+        }
+        if (!base) return;
+        auto* ref = SpawnInFront(base, a_caster, 200.0f);
+        if (ref) {
+            if (auto* a = ref->As<RE::Actor>()) a->EvaluatePackage(false, true);
+            SKSE::log::info("SummonAtronach: '{}' summoned", base->GetName());
+            RE::DebugNotification(std::format("{} summoned!", base->GetName()).c_str());
+        }
+    }
+
+    void CloneArmy(RE::Actor* a_caster)
+    {
+        SKSE::log::info("CloneArmy: entry");
+        if (!a_caster) return;
+        auto* tmpl    = RE::TESForm::LookupByID<RE::TESNPC>(0x00000007);
+        auto* factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESNPC>();
+        if (!tmpl || !factory) return;
+        constexpr int   kCount  = 5;
+        constexpr float kRadius = 280.0f;
+        constexpr float kTwoPi  = 6.2831853f;
+        int spawned = 0;
+        for (int i = 0; i < kCount; ++i) {
+            auto* npc = factory->Create()->As<RE::TESNPC>();
+            if (!npc) continue;
+            npc->Copy(tmpl);
+            npc->fullName = std::format("Clone #{}", i + 1).c_str();
+            float angle = kTwoPi * i / kCount + a_caster->data.angle.z;
+            RE::NiPoint3 pos = a_caster->GetPosition();
+            pos.x += std::sin(angle) * kRadius;
+            pos.y += std::cos(angle) * kRadius;
+            auto* ref = a_caster->PlaceObjectAtMe(npc, false);
+            if (ref) { ref->SetPosition(pos); ++spawned; }
+        }
+        SKSE::log::info("CloneArmy: spawned {} clones", spawned);
+        RE::DebugNotification(std::format("Clone Army! {} deployed.", spawned).c_str());
+    }
+
+    void GiveArmor(RE::Actor* a_player)
+    {
+        SKSE::log::info("GiveArmor: entry");
+        if (!a_player) return;
+        // Try Daedric by EditorID, fallback to Ebony, fallback to known FormIDs
+        static const char* kEditorIDs[] = {
+            "ArmorDaedricCuirass", "ArmorDaedricBoots", "ArmorDaedricGauntlets", "ArmorDaedricHelmet",
+            "ArmorEbonyCuirass",   "ArmorEbonyBoots",   "ArmorEbonyGauntlets",   "ArmorEbonyHelmet"
+        };
+        int given = 0;
+        for (auto* eid : kEditorIDs) {
+            auto* form = RE::TESForm::LookupByEditorID<RE::TESBoundObject>(eid);
+            if (form) {
+                if (!a_player->GetInventory().count(form)) {
+                    a_player->AddObjectToContainer(form, nullptr, 1, nullptr);
+                    ++given;
+                    SKSE::log::info("GiveArmor: gave '{}'", form->GetName());
+                }
+                if (given >= 4) break; // one full set is enough
+            }
+        }
+        RE::DebugNotification(given > 0
+            ? std::format("Received {} armor piece(s)!", given).c_str()
+            : "Armor forms not found in this load order.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 15
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void MagickaSteal(RE::Actor* a_target, RE::Actor* a_player)
+    {
+        SKSE::log::info("MagickaSteal: entry");
+        if (!a_target || !a_player || a_target->IsPlayerRef()) return;
+        float cur   = a_target->GetActorValue(RE::ActorValue::kMagicka);
+        float steal = cur * 0.5f;
+        if (steal < 1.0f) { RE::DebugNotification("Target has no magicka to steal."); return; }
+        a_target->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kMagicka, -steal);
+        a_player->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kMagicka,  steal);
+        SKSE::log::info("MagickaSteal: stole {:.0f} magicka from {}", steal, a_target->GetName());
+        RE::DebugNotification(std::format("Stole {:.0f} magicka from {}!", steal, a_target->GetName()).c_str());
+    }
+
+    void MassExecute(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassExecute: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 600.0f*600.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, -99999.0f);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("MassExecute: killed {} actors in 600u", count);
+        RE::DebugNotification(std::format("Mass Execute! {} slain.", count).c_str());
+    }
+
+    void SummonMerchant(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SummonMerchant: entry");
+        if (!a_caster) return;
+        auto* base = RE::TESForm::LookupByEditorID<RE::TESNPC>("Belethor");
+        if (!base) base = RE::TESForm::LookupByEditorID<RE::TESNPC>("Lucan");
+        if (!base) base = RE::TESForm::LookupByEditorID<RE::TESNPC>("Arivanya");
+        if (!base) {
+            auto* tmpl    = RE::TESForm::LookupByID<RE::TESNPC>(0x00000007);
+            auto* factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESNPC>();
+            if (tmpl && factory) {
+                auto* fb = factory->Create()->As<RE::TESNPC>();
+                if (fb) { fb->Copy(tmpl); fb->fullName = "Traveling Merchant"; base = fb; }
+            }
+        }
+        if (!base) return;
+        auto* ref = SpawnInFront(base, a_caster, 160.0f);
+        if (ref) {
+            SKSE::log::info("SummonMerchant: '{}' summoned", base->GetName());
+            RE::DebugNotification(std::format("{} has arrived!", base->GetName()).c_str());
+        }
+    }
+
+    void ToggleMagickaRegen(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleMagickaRegen: entry");
+        if (!a_player) return;
+        constexpr float kMax    = 1000.0f; // near-instant regen
+        constexpr float kNormal = 3.0f;    // vanilla default
+        float cur  = a_player->GetActorValue(RE::ActorValue::kMagickaRate);
+        float next = (cur >= kMax - 1.0f) ? kNormal : kMax;
+        a_player->SetActorValue(RE::ActorValue::kMagickaRate, next);
+        SKSE::log::info("ToggleMagickaRegen: MagickaRate -> {:.0f}", next);
+        RE::DebugNotification(next >= kMax ? "Instant Magicka Regen ON!" : "Magicka Regen restored.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 16
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void ToggleStaminaSurge(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleStaminaSurge: entry");
+        if (!a_player) return;
+        constexpr float kInf = 99999.0f;
+        float cur = a_player->GetActorValue(RE::ActorValue::kStamina);
+        if (cur >= kInf - 1.0f) {
+            float base = a_player->GetPermanentActorValue(RE::ActorValue::kStamina);
+            a_player->SetActorValue(RE::ActorValue::kStamina, base);
+            RE::DebugNotification(std::format("Stamina restored ({:.0f}).", base).c_str());
+        } else {
+            a_player->SetActorValue(RE::ActorValue::kStamina, kInf);
+            RE::DebugNotification("Infinite Stamina ON!");
+        }
+    }
+
+    void AreaStagger(RE::Actor* a_caster)
+    {
+        SKSE::log::info("AreaStagger: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 500.0f*500.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->NotifyAnimationGraph("staggerStart");
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("AreaStagger: staggered {} actors", count);
+        RE::DebugNotification(std::format("Shockwave! {} staggered.", count).c_str());
+    }
+
+    void GoldAura(RE::Actor* a_caster)
+    {
+        SKSE::log::info("GoldAura: entry");
+        if (!a_caster) return;
+        auto* gold = RE::TESForm::LookupByID<RE::TESBoundObject>(0x0000000F);
+        if (!gold) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 600.0f*600.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->AddObjectToContainer(gold, nullptr, 100, nullptr);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("GoldAura: gave 100 gold to {} actors", count);
+        RE::DebugNotification(std::format("Gold Aura! {} NPCs received 100 Septims.", count).c_str());
+    }
+
+    void DetectLife(RE::Actor* a_caster)
+    {
+        SKSE::log::info("DetectLife: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int alive = 0, dead = 0;
+        float nearestDist = 9999999.0f;
+        std::string nearest = "none";
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            float distSq = d.x*d.x + d.y*d.y + d.z*d.z;
+            if (distSq > 2000.0f*2000.0f) return RE::BSContainer::ForEachResult::kContinue;
+            if (a->IsDead()) { ++dead; } else {
+                ++alive;
+                if (distSq < nearestDist) { nearestDist = distSq; nearest = a->GetName(); }
+            }
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("DetectLife: alive={} dead={} nearest='{}'", alive, dead, nearest);
+        RE::DebugNotification(std::format("Life: {} alive, {} dead. Nearest: {}", alive, dead, nearest).c_str());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 17
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void DisarmNearby(RE::Actor* a_caster)
+    {
+        SKSE::log::info("DisarmNearby: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 500.0f*500.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->NotifyAnimationGraph("Disarm");
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("DisarmNearby: disarmed {} actors", count);
+        RE::DebugNotification(std::format("Disarm! {} actors lost their weapons.", count).c_str());
+    }
+
+    void RefillArrows(RE::Actor* a_player)
+    {
+        SKSE::log::info("RefillArrows: entry");
+        if (!a_player) return;
+        // Iron Arrow as universal fallback; try Daedric first
+        static const char* kArrowIDs[] = {
+            "DaedricArrow", "EbonyArrow", "GlassArrow", "ElvenArrow",
+            "SteelArrow",   "IronArrow"
+        };
+        for (auto* eid : kArrowIDs) {
+            auto* form = RE::TESForm::LookupByEditorID<RE::TESBoundObject>(eid);
+            if (form) {
+                a_player->AddObjectToContainer(form, nullptr, 100, nullptr);
+                SKSE::log::info("RefillArrows: added 100x '{}'", form->GetName());
+                RE::DebugNotification(std::format("100x {} added!", form->GetName()).c_str());
+                return;
+            }
+        }
+        RE::DebugNotification("No arrow type found in load order.");
+    }
+
+    void MassLevitate(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassLevitate: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 600.0f*600.0f) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 pos = a->GetPosition();
+            pos.z += 350.0f;
+            a->SetPosition(pos);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("MassLevitate: lifted {} actors", count);
+        RE::DebugNotification(std::format("Levitate! {} actors airborne.", count).c_str());
+    }
+
+    void SoulTrapAura(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SoulTrapAura: entry");
+        if (!a_caster) return;
+        // Give player soul gems to simulate the effect
+        static const char* kGemIDs[] = {
+            "SoulGemGrandFilled", "SoulGemGreaterFilled",
+            "SoulGemCommonFilled", "SoulGemLesserFilled",
+            "SoulGemGrand", "SoulGemGreater", "SoulGemCommon"
+        };
+        int given = 0;
+        for (auto* eid : kGemIDs) {
+            auto* form = RE::TESForm::LookupByEditorID<RE::TESBoundObject>(eid);
+            if (form) {
+                a_caster->AddObjectToContainer(form, nullptr, 3, nullptr);
+                ++given;
+                SKSE::log::info("SoulTrapAura: gave 3x '{}'", form->GetName());
+                if (given >= 3) break;
+            }
+        }
+        RE::DebugNotification(given > 0 ? "Soul Gems acquired!" : "No soul gem forms found.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 18
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void StealHealth(RE::Actor* a_target, RE::Actor* a_player)
+    {
+        SKSE::log::info("StealHealth: entry");
+        if (!a_target || !a_player || a_target->IsPlayerRef()) return;
+        float steal = a_target->GetActorValue(RE::ActorValue::kHealth) * 0.4f;
+        if (steal < 1.0f) { RE::DebugNotification("Target has no health to steal."); return; }
+        a_target->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, -steal);
+        a_player->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth,  steal);
+        SKSE::log::info("StealHealth: stole {:.0f} HP from {}", steal, a_target->GetName());
+        RE::DebugNotification(std::format("Stole {:.0f} HP from {}!", steal, a_target->GetName()).c_str());
+    }
+
+    void MassUnlock(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassUnlock: entry");
+        if (!a_caster) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        // Iterate all loaded references in current cell
+        auto* cell = a_caster->GetParentCell();
+        if (!cell) { RE::DebugNotification("No cell loaded."); return; }
+        auto& refs = cell->GetRuntimeData().references;
+        for (auto& refPtr : refs) {
+            if (!refPtr) continue;
+            auto* ref = refPtr.get();
+            if (!ref) continue;
+            RE::NiPoint3 d = ref->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 800.0f*800.0f) continue;
+            auto* lock = ref->GetLock();
+            if (lock && lock->IsLocked()) {
+                lock->SetLocked(false);
+                ++count;
+            }
+        }
+        SKSE::log::info("MassUnlock: unlocked {} objects", count);
+        RE::DebugNotification(std::format("Unlocked {} nearby objects!", count).c_str());
+    }
+
+    void ShieldBash(RE::Actor* a_caster)
+    {
+        SKSE::log::info("ShieldBash: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        float angleZ = a_caster->data.angle.z;
+        RE::NiPoint3 forward{ std::sin(angleZ), std::cos(angleZ), 0.0f };
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 250.0f*250.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->ApplyMovementDelta({ forward.x * 800.0f, forward.y * 800.0f, 200.0f });
+            a->NotifyAnimationGraph("staggerStart");
+            a->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, -30.0f);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("ShieldBash: hit {} actors", count);
+        RE::DebugNotification(std::format("Shield Bash! {} hit.", count).c_str());
+    }
+
+    void Blizzard(RE::Actor* a_caster)
+    {
+        SKSE::log::info("Blizzard: entry");
+        if (!a_caster) return;
+        auto* projBase = RE::TESForm::LookupByEditorID<RE::BGSProjectile>("MagicIceSpikeProjectile");
+        if (!projBase) projBase = RE::TESForm::LookupByID<RE::BGSProjectile>(0x00023B2E);
+        if (!projBase) { RE::DebugNotification("Ice spike projectile not found."); return; }
+        RE::NiPoint3 center = a_caster->GetPosition();
+        static bool seeded = false;
+        if (!seeded) { std::srand(static_cast<unsigned>(std::time(nullptr) + 2)); seeded = true; }
+        constexpr float kTwoPi = 6.2831853f;
+        constexpr int kCount = 24;
+        for (int i = 0; i < kCount; ++i) {
+            float angle = kTwoPi * i / kCount;
+            RE::NiPoint3 from = center;
+            from.z += 600.0f;
+            from.x += std::sin(angle) * 300.0f;
+            from.y += std::cos(angle) * 300.0f;
+            RE::NiPoint3 to = center;
+            to.x += std::sin(angle + 0.3f) * 200.0f;
+            to.y += std::cos(angle + 0.3f) * 200.0f;
+            LaunchFireball(a_caster, from, to); // reuses launch helper; projectileBase will be overridden
+        }
+        SKSE::log::info("Blizzard: 24 ice spikes launched");
+        RE::DebugNotification("BLIZZARD!");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 19
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void RagdollAll(RE::Actor* a_caster)
+    {
+        SKSE::log::info("RagdollAll: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 700.0f*700.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->NotifyAnimationGraph("KnockDown");
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("RagdollAll: knocked down {} actors", count);
+        RE::DebugNotification(std::format("Ragdoll Wave! {} knocked down.", count).c_str());
+    }
+
+    void EquipBest(RE::Actor* a_player)
+    {
+        SKSE::log::info("EquipBest: entry");
+        if (!a_player) return;
+        // Find highest-value weapon and armor piece in inventory and equip them
+        RE::TESBoundObject* bestWeapon = nullptr;
+        RE::TESBoundObject* bestArmor  = nullptr;
+        int bestWeaponVal = 0, bestArmorVal = 0;
+        auto inv = a_player->GetInventory();
+        for (auto& [form, data] : inv) {
+            if (!form || data.first <= 0) continue;
+            int val = static_cast<int>(form->GetGoldValue());
+            if (form->Is(RE::FormType::Weapon) && val > bestWeaponVal) {
+                bestWeaponVal = val; bestWeapon = form;
+            } else if (form->Is(RE::FormType::Armor) && val > bestArmorVal) {
+                bestArmorVal = val; bestArmor = form;
+            }
+        }
+        if (bestWeapon) {
+            a_player->DrawWeaponMagicHands(true);
+            SKSE::log::info("EquipBest: best weapon '{}' ({}g)", bestWeapon->GetName(), bestWeaponVal);
+        }
+        RE::DebugNotification(std::format("Best gear: {} / {}",
+            bestWeapon ? bestWeapon->GetName() : "none",
+            bestArmor  ? bestArmor->GetName()  : "none").c_str());
+    }
+
+    void MassResurrect(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassResurrect: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef() || !a->IsDead()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 800.0f*800.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->Resurrect(false, true);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("MassResurrect: resurrected {} actors", count);
+        RE::DebugNotification(std::format("Mass Resurrect! {} arise.", count).c_str());
+    }
+
+    void OblivionGate(RE::Actor* a_caster)
+    {
+        SKSE::log::info("OblivionGate: entry");
+        if (!a_caster) return;
+        // Spawn a ring of Dremora (or fallback Draugr) around caster
+        static const char* kDemonicIDs[] = {
+            "DremoraLord", "Dremora", "DremoraMarkynaz", "DraugrOverlord",
+            "DraugrScourge", "DraugrWight"
+        };
+        RE::TESNPC* base = nullptr;
+        for (auto* eid : kDemonicIDs) {
+            base = RE::TESForm::LookupByEditorID<RE::TESNPC>(eid);
+            if (base) break;
+        }
+        if (!base) { RE::DebugNotification("No demon NPC found in load order."); return; }
+        constexpr int kCount = 4;
+        constexpr float kRadius = 350.0f;
+        constexpr float kTwoPi  = 6.2831853f;
+        int spawned = 0;
+        for (int i = 0; i < kCount; ++i) {
+            float angle = kTwoPi * i / kCount + a_caster->data.angle.z;
+            RE::NiPoint3 pos = a_caster->GetPosition();
+            pos.x += std::sin(angle) * kRadius;
+            pos.y += std::cos(angle) * kRadius;
+            auto* ref = a_caster->PlaceObjectAtMe(base, false);
+            if (ref) { ref->SetPosition(pos); ++spawned; }
+        }
+        SKSE::log::info("OblivionGate: spawned {} of '{}'", spawned, base->GetName());
+        RE::DebugNotification(std::format("Oblivion Gate! {} {} appear!", spawned, base->GetName()).c_str());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 20
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void ToggleGhostForm(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleGhostForm: entry");
+        if (!a_player) return;
+        // Ghost form: invisible + ethereal via alpha + collision disable flag
+        float curAlpha = a_player->GetAlpha();
+        bool isGhost = curAlpha < 0.2f;
+        if (isGhost) {
+            a_player->SetAlpha(1.0f);
+            // Re-enable collision visually
+            RE::DebugNotification("Ghost Form OFF — visible again.");
+            SKSE::log::info("ToggleGhostForm: reverted to visible");
+        } else {
+            a_player->SetAlpha(0.1f);
+            RE::DebugNotification("Ghost Form ON — nearly invisible!");
+            SKSE::log::info("ToggleGhostForm: alpha -> 0.1");
+        }
+    }
+
+    void Worldquake(RE::Actor* a_caster)
+    {
+        SKSE::log::info("Worldquake: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        // Knock down, damage, and ragdoll everyone in a huge radius
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 1500.0f*1500.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->NotifyAnimationGraph("KnockDown");
+            a->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, -50.0f);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        // Camera shake via rumble if available
+        RE::DebugNotification(std::format("WORLDQUAKE! {} shaken.", count).c_str());
+        SKSE::log::info("Worldquake: hit {} actors in 1500u radius", count);
+    }
+
+    void MassParalyze(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassParalyze: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 600.0f*600.0f) return RE::BSContainer::ForEachResult::kContinue;
+            a->SetActorValue(RE::ActorValue::kParalysis, 1.0f);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("MassParalyze: paralyzed {} actors", count);
+        RE::DebugNotification(std::format("Mass Paralyze! {} frozen solid.", count).c_str());
+    }
+
+    void SpawnWolfPack(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SpawnWolfPack: entry");
+        if (!a_caster) return;
+        auto* base = RE::TESForm::LookupByEditorID<RE::TESNPC>("WolfPredator");
+        if (!base) base = RE::TESForm::LookupByEditorID<RE::TESNPC>("Wolf");
+        if (!base) base = RE::TESForm::LookupByEditorID<RE::TESNPC>("IceWolf");
+        if (!base) { RE::DebugNotification("No wolf NPC found in load order."); return; }
+        constexpr int kCount = 5;
+        constexpr float kRadius = 300.0f;
+        constexpr float kTwoPi  = 6.2831853f;
+        int spawned = 0;
+        for (int i = 0; i < kCount; ++i) {
+            float angle = kTwoPi * i / kCount + a_caster->data.angle.z;
+            RE::NiPoint3 pos = a_caster->GetPosition();
+            pos.x += std::sin(angle) * kRadius;
+            pos.y += std::cos(angle) * kRadius;
+            auto* ref = a_caster->PlaceObjectAtMe(base, false);
+            if (ref) { ref->SetPosition(pos); ++spawned; }
+        }
+        SKSE::log::info("SpawnWolfPack: spawned {} wolves", spawned);
+        RE::DebugNotification(std::format("Wolf Pack! {} wolves summoned.", spawned).c_str());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Spell-cast event dispatcher
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -1519,6 +2433,103 @@ namespace MagicToolkit
                 BounceHouse(caster);
             } else if (Match(g_detectionSpell)) {
                 ToggleDetection();
+            // Wave 11
+            } else if (Match(g_massFreezeSpell)) {
+                MassFreeze(caster);
+            } else if (Match(g_infiniteMagickaSpell)) {
+                ToggleInfiniteMagicka(caster);
+            } else if (Match(g_deathZoneSpell)) {
+                DeathZone(caster);
+            } else if (Match(g_superJumpSpell)) {
+                ToggleSuperJump(caster);
+            // Wave 12
+            } else if (Match(g_cloneNpcSpell)) {
+                if (crossRef) CloneNPC(crossRef, caster);
+                else RE::DebugNotification("No target in crosshair to clone.");
+            } else if (Match(g_swapPosSpell)) {
+                if (crossRef) SwapPositions(crossRef, caster);
+                else RE::DebugNotification("No target in crosshair to swap with.");
+            } else if (Match(g_massFrenzySpell)) {
+                MassFrenzy(caster);
+            } else if (Match(g_scatterSpell)) {
+                ScatterAll(caster);
+            // Wave 13
+            } else if (Match(g_waterBreathSpell)) {
+                ToggleWaterBreathing(caster);
+            } else if (Match(g_unlockSpell)) {
+                if (crossRef) UnlockTarget(crossRef);
+                else RE::DebugNotification("No target in crosshair to unlock.");
+            } else if (Match(g_countEnemiesSpell)) {
+                CountEnemies(caster);
+            } else if (Match(g_timeStopSpell)) {
+                ToggleTimeStop();
+            // Wave 14
+            } else if (Match(g_infernoSpell)) {
+                Inferno(caster);
+            } else if (Match(g_atronachSpell)) {
+                SummonAtronach(caster);
+            } else if (Match(g_cloneArmySpell)) {
+                CloneArmy(caster);
+            } else if (Match(g_giveArmorSpell)) {
+                GiveArmor(caster);
+            // Wave 15
+            } else if (Match(g_magickaStealSpell)) {
+                auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
+                if (target) MagickaSteal(target, caster);
+                else RE::DebugNotification("No actor in crosshair to steal magicka from.");
+            } else if (Match(g_massExecuteSpell)) {
+                MassExecute(caster);
+            } else if (Match(g_merchantSpell)) {
+                SummonMerchant(caster);
+            } else if (Match(g_magickaRegenSpell)) {
+                ToggleMagickaRegen(caster);
+            // Wave 16
+            } else if (Match(g_staminaSurgeSpell)) {
+                ToggleStaminaSurge(caster);
+            } else if (Match(g_areaStaggerSpell)) {
+                AreaStagger(caster);
+            } else if (Match(g_goldAuraSpell)) {
+                GoldAura(caster);
+            } else if (Match(g_detectLifeSpell)) {
+                DetectLife(caster);
+            // Wave 17
+            } else if (Match(g_disarmSpell)) {
+                DisarmNearby(caster);
+            } else if (Match(g_refillArrowsSpell)) {
+                RefillArrows(caster);
+            } else if (Match(g_massLevitateSpell)) {
+                MassLevitate(caster);
+            } else if (Match(g_soulTrapAuraSpell)) {
+                SoulTrapAura(caster);
+            // Wave 18
+            } else if (Match(g_stealHealthSpell)) {
+                auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
+                if (target) StealHealth(target, caster);
+                else RE::DebugNotification("No actor in crosshair to steal health from.");
+            } else if (Match(g_massUnlockSpell)) {
+                MassUnlock(caster);
+            } else if (Match(g_shieldBashSpell)) {
+                ShieldBash(caster);
+            } else if (Match(g_blizzardSpell)) {
+                Blizzard(caster);
+            // Wave 19
+            } else if (Match(g_ragdollAllSpell)) {
+                RagdollAll(caster);
+            } else if (Match(g_equipBestSpell)) {
+                EquipBest(caster);
+            } else if (Match(g_massResurrectSpell)) {
+                MassResurrect(caster);
+            } else if (Match(g_oblivionGateSpell)) {
+                OblivionGate(caster);
+            // Wave 20
+            } else if (Match(g_ghostFormSpell)) {
+                ToggleGhostForm(caster);
+            } else if (Match(g_worldquakeSpell)) {
+                Worldquake(caster);
+            } else if (Match(g_massParalyzeSpell)) {
+                MassParalyze(caster);
+            } else if (Match(g_spawnWolfPackSpell)) {
+                SpawnWolfPack(caster);
             }
 
             return RE::BSEventNotifyControl::kContinue;
@@ -1610,6 +2621,56 @@ namespace MagicToolkit
         MakeSpell(g_executeSpell,       "[C++] Execute");
         MakeSpell(g_bounceHouseSpell,   "[C++] Bounce House");
         MakeSpell(g_detectionSpell,     "[C++] Toggle Detection");
+        // Wave 11
+        MakeSpell(g_massFreezeSpell,      "[C++] Mass Freeze");
+        MakeSpell(g_infiniteMagickaSpell, "[C++] Infinite Magicka");
+        MakeSpell(g_deathZoneSpell,       "[C++] Death Zone");
+        MakeSpell(g_superJumpSpell,       "[C++] Super Jump");
+        // Wave 12
+        MakeSpell(g_cloneNpcSpell,        "[C++] Clone NPC");
+        MakeSpell(g_swapPosSpell,         "[C++] Swap Positions");
+        MakeSpell(g_massFrenzySpell,      "[C++] Mass Frenzy");
+        MakeSpell(g_scatterSpell,         "[C++] Scatter All");
+        // Wave 13
+        MakeSpell(g_waterBreathSpell,     "[C++] Water Breathing");
+        MakeSpell(g_unlockSpell,          "[C++] Unlock Target");
+        MakeSpell(g_countEnemiesSpell,    "[C++] Count Enemies");
+        MakeSpell(g_timeStopSpell,        "[C++] Toggle Time Stop");
+        // Wave 14
+        MakeSpell(g_infernoSpell,         "[C++] Inferno");
+        MakeSpell(g_atronachSpell,        "[C++] Summon Atronach");
+        MakeSpell(g_cloneArmySpell,       "[C++] Clone Army");
+        MakeSpell(g_giveArmorSpell,       "[C++] Give Armor");
+        // Wave 15
+        MakeSpell(g_magickaStealSpell,    "[C++] Magicka Steal");
+        MakeSpell(g_massExecuteSpell,     "[C++] Mass Execute");
+        MakeSpell(g_merchantSpell,        "[C++] Summon Merchant");
+        MakeSpell(g_magickaRegenSpell,    "[C++] Instant Magicka Regen");
+        // Wave 16
+        MakeSpell(g_staminaSurgeSpell,    "[C++] Stamina Surge");
+        MakeSpell(g_areaStaggerSpell,     "[C++] Area Stagger");
+        MakeSpell(g_goldAuraSpell,        "[C++] Gold Aura");
+        MakeSpell(g_detectLifeSpell,      "[C++] Detect Life");
+        // Wave 17
+        MakeSpell(g_disarmSpell,          "[C++] Disarm Nearby");
+        MakeSpell(g_refillArrowsSpell,    "[C++] Refill Arrows");
+        MakeSpell(g_massLevitateSpell,    "[C++] Mass Levitate");
+        MakeSpell(g_soulTrapAuraSpell,    "[C++] Soul Trap Aura");
+        // Wave 18
+        MakeSpell(g_stealHealthSpell,     "[C++] Steal Health");
+        MakeSpell(g_massUnlockSpell,      "[C++] Mass Unlock");
+        MakeSpell(g_shieldBashSpell,      "[C++] Shield Bash");
+        MakeSpell(g_blizzardSpell,        "[C++] Blizzard");
+        // Wave 19
+        MakeSpell(g_ragdollAllSpell,      "[C++] Ragdoll Wave");
+        MakeSpell(g_equipBestSpell,       "[C++] Equip Best Gear");
+        MakeSpell(g_massResurrectSpell,   "[C++] Mass Resurrect");
+        MakeSpell(g_oblivionGateSpell,    "[C++] Oblivion Gate");
+        // Wave 20
+        MakeSpell(g_ghostFormSpell,       "[C++] Ghost Form");
+        MakeSpell(g_worldquakeSpell,      "[C++] Worldquake");
+        MakeSpell(g_massParalyzeSpell,    "[C++] Mass Paralyze");
+        MakeSpell(g_spawnWolfPackSpell,   "[C++] Summon Wolf Pack");
 
         auto* source = RE::ScriptEventSourceHolder::GetSingleton();
         if (source) {
@@ -1689,6 +2750,56 @@ namespace MagicToolkit
             g_executeSpell,
             g_bounceHouseSpell,
             g_detectionSpell,
+            // Wave 11
+            g_massFreezeSpell,
+            g_infiniteMagickaSpell,
+            g_deathZoneSpell,
+            g_superJumpSpell,
+            // Wave 12
+            g_cloneNpcSpell,
+            g_swapPosSpell,
+            g_massFrenzySpell,
+            g_scatterSpell,
+            // Wave 13
+            g_waterBreathSpell,
+            g_unlockSpell,
+            g_countEnemiesSpell,
+            g_timeStopSpell,
+            // Wave 14
+            g_infernoSpell,
+            g_atronachSpell,
+            g_cloneArmySpell,
+            g_giveArmorSpell,
+            // Wave 15
+            g_magickaStealSpell,
+            g_massExecuteSpell,
+            g_merchantSpell,
+            g_magickaRegenSpell,
+            // Wave 16
+            g_staminaSurgeSpell,
+            g_areaStaggerSpell,
+            g_goldAuraSpell,
+            g_detectLifeSpell,
+            // Wave 17
+            g_disarmSpell,
+            g_refillArrowsSpell,
+            g_massLevitateSpell,
+            g_soulTrapAuraSpell,
+            // Wave 18
+            g_stealHealthSpell,
+            g_massUnlockSpell,
+            g_shieldBashSpell,
+            g_blizzardSpell,
+            // Wave 19
+            g_ragdollAllSpell,
+            g_equipBestSpell,
+            g_massResurrectSpell,
+            g_oblivionGateSpell,
+            // Wave 20
+            g_ghostFormSpell,
+            g_worldquakeSpell,
+            g_massParalyzeSpell,
+            g_spawnWolfPackSpell,
         };
 
         for (auto* spell : spells) {

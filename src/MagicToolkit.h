@@ -77,6 +77,66 @@ namespace MagicToolkit
     void BounceHouse(RE::Actor* a_caster);
     void ToggleDetection();
 
+    // --- Wave 11 ---
+    void MassFreeze(RE::Actor* a_caster);
+    void ToggleInfiniteMagicka(RE::Actor* a_player);
+    void DeathZone(RE::Actor* a_caster);
+    void ToggleSuperJump(RE::Actor* a_player);
+
+    // --- Wave 12 ---
+    void CloneNPC(RE::TESObjectREFR* a_target, RE::Actor* a_caster);
+    void SwapPositions(RE::TESObjectREFR* a_target, RE::Actor* a_player);
+    void MassFrenzy(RE::Actor* a_caster);
+    void ScatterAll(RE::Actor* a_caster);
+
+    // --- Wave 13 ---
+    void ToggleWaterBreathing(RE::Actor* a_player);
+    void UnlockTarget(RE::TESObjectREFR* a_target);
+    void CountEnemies(RE::Actor* a_caster);
+    void ToggleTimeStop();
+
+    // --- Wave 14 ---
+    void Inferno(RE::Actor* a_caster);
+    void SummonAtronach(RE::Actor* a_caster);
+    void CloneArmy(RE::Actor* a_caster);
+    void GiveArmor(RE::Actor* a_player);
+
+    // --- Wave 15 ---
+    void MagickaSteal(RE::Actor* a_target, RE::Actor* a_player);
+    void MassExecute(RE::Actor* a_caster);
+    void SummonMerchant(RE::Actor* a_caster);
+    void ToggleMagickaRegen(RE::Actor* a_player);
+
+    // --- Wave 16 ---
+    void ToggleStaminaSurge(RE::Actor* a_player);
+    void AreaStagger(RE::Actor* a_caster);
+    void GoldAura(RE::Actor* a_caster);
+    void DetectLife(RE::Actor* a_caster);
+
+    // --- Wave 17 ---
+    void DisarmNearby(RE::Actor* a_caster);
+    void RefillArrows(RE::Actor* a_player);
+    void MassLevitate(RE::Actor* a_caster);
+    void SoulTrapAura(RE::Actor* a_caster);
+
+    // --- Wave 18 ---
+    void StealHealth(RE::Actor* a_target, RE::Actor* a_player);
+    void MassUnlock(RE::Actor* a_caster);
+    void ShieldBash(RE::Actor* a_caster);
+    void Blizzard(RE::Actor* a_caster);
+
+    // --- Wave 19 ---
+    void RagdollAll(RE::Actor* a_caster);
+    void EquipBest(RE::Actor* a_player);
+    void MassResurrect(RE::Actor* a_caster);
+    void OblivionGate(RE::Actor* a_caster);
+
+    // --- Wave 20 ---
+    void ToggleGhostForm(RE::Actor* a_player);
+    void Worldquake(RE::Actor* a_caster);
+    void MassParalyze(RE::Actor* a_caster);
+    void SpawnWolfPack(RE::Actor* a_caster);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

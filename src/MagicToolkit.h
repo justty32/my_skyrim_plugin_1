@@ -185,6 +185,30 @@ namespace MagicToolkit
     void FortifyAll(RE::Actor* a_player);
     void DivineIntervention(RE::Actor* a_player);
 
+    // --- Wave 29 ---
+    void SpawnMammoth(RE::Actor* a_caster);
+    void MassKnockback(RE::Actor* a_caster);
+    void ToggleWaterWalk(RE::Actor* a_player);
+    void StealWeapon(RE::TESObjectREFR* a_target, RE::Actor* a_player);
+
+    // --- Wave 30 ---
+    void SpawnSabreCat(RE::Actor* a_caster);
+    void ToggleSlowTime();
+    void SummonDraugr(RE::Actor* a_caster);
+    void MassIgnite(RE::Actor* a_caster);
+
+    // --- Wave 31 ---
+    void MassScream(RE::Actor* a_caster);
+    void SpawnFalmer(RE::Actor* a_caster);
+    void SwapHealth(RE::TESObjectREFR* a_target, RE::Actor* a_player);
+    void ChaosRain(RE::Actor* a_caster);
+
+    // --- Wave 32 ---
+    void NukeBlast(RE::Actor* a_caster);
+    void SpawnSpider(RE::Actor* a_caster);
+    void MassLootDead(RE::Actor* a_player);
+    void ToggleStaminaRegen(RE::Actor* a_player);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

@@ -161,6 +161,30 @@ namespace MagicToolkit
     void DragonShout(RE::Actor* a_caster);
     void EssenceAbsorb(RE::Actor* a_target, RE::Actor* a_player);
 
+    // --- Wave 25 ---
+    void SummonTroll(RE::Actor* a_caster);
+    void MassFlee(RE::Actor* a_caster);
+    void TelekinesisPull(RE::TESObjectREFR* a_target, RE::Actor* a_player);
+    void ToggleXRay(RE::Actor* a_player);
+
+    // --- Wave 26 ---
+    void SpawnBear(RE::Actor* a_caster);
+    void MassCharm(RE::Actor* a_caster);
+    void ToggleStoneFlesh(RE::Actor* a_player);
+    void ThunderBolt(RE::TESObjectREFR* a_target, RE::Actor* a_caster);
+
+    // --- Wave 27 ---
+    void ToggleAutoHeal(RE::Actor* a_player);
+    void SummonGiant(RE::Actor* a_caster);
+    void MassStrength(RE::Actor* a_caster);
+    void CrumbleNearby(RE::Actor* a_caster);
+
+    // --- Wave 28 ---
+    void SummonHunter(RE::Actor* a_caster);
+    void MassDisplace(RE::Actor* a_caster);
+    void FortifyAll(RE::Actor* a_player);
+    void DivineIntervention(RE::Actor* a_player);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

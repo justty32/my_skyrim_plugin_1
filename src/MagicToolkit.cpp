@@ -136,6 +136,26 @@ namespace MagicToolkit
     RE::SpellItem* g_massDisarmSpell      = nullptr;
     RE::SpellItem* g_dragonShoutSpell     = nullptr;
     RE::SpellItem* g_essenceAbsorbSpell   = nullptr;
+    // Wave 25
+    RE::SpellItem* g_summonTrollSpell     = nullptr;
+    RE::SpellItem* g_massFleeSpell        = nullptr;
+    RE::SpellItem* g_telekinesisPullSpell = nullptr;
+    RE::SpellItem* g_toggleXRaySpell      = nullptr;
+    // Wave 26
+    RE::SpellItem* g_spawnBearSpell       = nullptr;
+    RE::SpellItem* g_massCharmSpell       = nullptr;
+    RE::SpellItem* g_stoneFleshSpell      = nullptr;
+    RE::SpellItem* g_thunderBoltSpell     = nullptr;
+    // Wave 27
+    RE::SpellItem* g_toggleAutoHealSpell  = nullptr;
+    RE::SpellItem* g_summonGiantSpell     = nullptr;
+    RE::SpellItem* g_massStrengthSpell    = nullptr;
+    RE::SpellItem* g_crumbleSpell         = nullptr;
+    // Wave 28
+    RE::SpellItem* g_summonHunterSpell    = nullptr;
+    RE::SpellItem* g_massDisplaceSpell    = nullptr;
+    RE::SpellItem* g_fortifyAllSpell      = nullptr;
+    RE::SpellItem* g_divineInterventSpell = nullptr;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -2651,6 +2671,364 @@ namespace MagicToolkit
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Wave 25
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void SummonTroll(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SummonTroll: entry");
+        if (!a_caster) return;
+        static const char* kIDs[] = { "TrollFrost", "Troll", "EncTroll01", "EncTrollFrost01" };
+        RE::TESNPC* base = nullptr;
+        for (auto* eid : kIDs) { base = RE::TESForm::LookupByEditorID<RE::TESNPC>(eid); if (base) break; }
+        if (!base) { RE::DebugNotification("No Troll NPC found."); return; }
+        auto* ref = SpawnInFront(base, a_caster, 250.0f);
+        if (ref) {
+            if (auto* a = ref->As<RE::Actor>()) a->EvaluatePackage(false, true);
+            SKSE::log::info("SummonTroll: '{}' summoned", base->GetName());
+            RE::DebugNotification(std::format("{} emerges!", base->GetName()).c_str());
+        }
+    }
+
+    void MassFlee(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassFlee: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 800.0f*800.0f) return RE::BSContainer::ForEachResult::kContinue;
+            // Confidence 0 = coward → will flee
+            a->SetActorValue(RE::ActorValue::kConfidence, 0.0f);
+            a->EvaluatePackage(true, true);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("MassFlee: {} actors fleeing", count);
+        RE::DebugNotification(std::format("Terror! {} actors flee!", count).c_str());
+    }
+
+    void TelekinesisPull(RE::TESObjectREFR* a_target, RE::Actor* a_player)
+    {
+        SKSE::log::info("TelekinesisPull: entry");
+        if (!a_target || !a_player || a_target->IsPlayerRef()) return;
+        RE::NiPoint3 dest = a_player->GetPosition();
+        dest.z += 80.0f;
+        a_target->SetPosition(dest);
+        a_target->data.angle = a_player->data.angle;
+        SKSE::log::info("TelekinesisPull: pulled '{}' to player", a_target->GetName());
+        RE::DebugNotification(std::format("{} pulled to you!", a_target->GetName()).c_str());
+    }
+
+    void ToggleXRay(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleXRay: entry");
+        if (!a_player) return;
+        // Combine night eye + detect life AV for a pseudo X-ray feel
+        float cur = a_player->GetActorValue(RE::ActorValue::kNightEye);
+        float next = (cur >= 99.0f) ? 0.0f : 100.0f;
+        a_player->SetActorValue(RE::ActorValue::kNightEye, next);
+        a_player->SetActorValue(RE::ActorValue::kDetectLifeRange, next > 0.0f ? 9999.0f : 0.0f);
+        SKSE::log::info("ToggleXRay: {}", next > 0.0f ? "ON" : "OFF");
+        RE::DebugNotification(next > 0.0f ? "X-Ray Vision ON!" : "X-Ray Vision OFF.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 26
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void SpawnBear(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SpawnBear: entry");
+        if (!a_caster) return;
+        static const char* kIDs[] = {
+            "BearBlack", "BearBrown", "BearSnow",
+            "EncBearBlack01", "EncBearBrown01", "EncBearSnow01"
+        };
+        RE::TESNPC* base = nullptr;
+        for (auto* eid : kIDs) { base = RE::TESForm::LookupByEditorID<RE::TESNPC>(eid); if (base) break; }
+        if (!base) { RE::DebugNotification("No bear NPC found."); return; }
+        auto* ref = SpawnInFront(base, a_caster, 280.0f);
+        if (ref) {
+            SKSE::log::info("SpawnBear: '{}' spawned", base->GetName());
+            RE::DebugNotification(std::format("{} appears!", base->GetName()).c_str());
+        }
+    }
+
+    void MassCharm(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassCharm: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 700.0f*700.0f) return RE::BSContainer::ForEachResult::kContinue;
+            // Max disposition: aggression 0, confidence 4, morality 3 (anything for friend)
+            a->SetActorValue(RE::ActorValue::kAggression, 0.0f);
+            a->SetActorValue(RE::ActorValue::kConfidence, 4.0f);
+            a->SetActorValue(RE::ActorValue::kMorality, 3.0f);
+            a->EvaluatePackage(true, true);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("MassCharm: charmed {} actors", count);
+        RE::DebugNotification(std::format("Mass Charm! {} befriended.", count).c_str());
+    }
+
+    void ToggleStoneFlesh(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleStoneFlesh: entry");
+        if (!a_player) return;
+        constexpr float kDR = 500.0f; // huge damage resistance
+        float cur = a_player->GetActorValue(RE::ActorValue::kDamageResist);
+        bool active = (cur >= kDR - 1.0f);
+        if (active) {
+            a_player->SetActorValue(RE::ActorValue::kDamageResist, 0.0f);
+            RE::DebugNotification("Stone Flesh fades.");
+        } else {
+            a_player->SetActorValue(RE::ActorValue::kDamageResist, kDR);
+            RE::DebugNotification("STONE FLESH! Damage Resist +500!");
+        }
+        SKSE::log::info("ToggleStoneFlesh: active={}", !active);
+    }
+
+    void ThunderBolt(RE::TESObjectREFR* a_target, RE::Actor* a_caster)
+    {
+        SKSE::log::info("ThunderBolt: entry");
+        if (!a_caster) return;
+        auto* projBase = RE::TESForm::LookupByEditorID<RE::BGSProjectile>("MagicLightningBolt01Projectile");
+        if (!projBase) projBase = RE::TESForm::LookupByEditorID<RE::BGSProjectile>("StormCallBoltProjectile");
+        if (!projBase) {
+            RE::DebugNotification("Lightning projectile not found.");
+            return;
+        }
+        RE::NiPoint3 from = a_caster->GetPosition();
+        from.z += 2000.0f;
+        from.x += static_cast<float>((std::rand() % 200) - 100);
+        from.y += static_cast<float>((std::rand() % 200) - 100);
+        RE::NiPoint3 to = a_target ? a_target->GetPosition() : a_caster->GetPosition();
+        RE::NiPoint3 dir = to - from;
+        float len = std::sqrt(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+        if (len < 1.0f) return;
+        dir.x /= len; dir.y /= len; dir.z /= len;
+        RE::Projectile::LaunchData ld;
+        ld.origin        = from;
+        ld.projectileBase = projBase;
+        ld.shooter       = a_caster;
+        ld.angleX        = -std::asin(dir.z);
+        ld.angleZ        = std::atan2(dir.x, dir.y);
+        ld.parentCell    = a_caster->GetParentCell();
+        ld.power         = 1.0f;
+        ld.scale         = 1.0f;
+        ld.useOrigin     = true;
+        ld.autoAim       = false;
+        RE::ProjectileHandle result;
+        RE::Projectile::Launch(&result, ld);
+        SKSE::log::info("ThunderBolt: lightning launched from sky");
+        RE::DebugNotification("LIGHTNING!");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 27
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void ToggleAutoHeal(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleAutoHeal: entry");
+        if (!a_player) return;
+        constexpr float kFastRegen = 500.0f; // very fast health regen rate
+        constexpr float kNormal    = 0.7f;   // Skyrim default
+        float cur = a_player->GetActorValue(RE::ActorValue::kHealRate);
+        bool active = (cur >= kFastRegen - 1.0f);
+        if (active) {
+            a_player->SetActorValue(RE::ActorValue::kHealRate, kNormal);
+            RE::DebugNotification("Auto-Heal OFF.");
+        } else {
+            a_player->SetActorValue(RE::ActorValue::kHealRate, kFastRegen);
+            RE::DebugNotification("Auto-Heal ON! Rapid health regen!");
+        }
+        SKSE::log::info("ToggleAutoHeal: HealRate -> {}", active ? kNormal : kFastRegen);
+    }
+
+    void SummonGiant(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SummonGiant: entry");
+        if (!a_caster) return;
+        static const char* kIDs[] = { "Giant", "EncGiant01", "GiantMammothHerder" };
+        RE::TESNPC* base = nullptr;
+        for (auto* eid : kIDs) { base = RE::TESForm::LookupByEditorID<RE::TESNPC>(eid); if (base) break; }
+        if (!base) { RE::DebugNotification("No Giant NPC found."); return; }
+        auto* ref = SpawnInFront(base, a_caster, 350.0f);
+        if (ref) {
+            SKSE::log::info("SummonGiant: '{}' summoned", base->GetName());
+            RE::DebugNotification("GIANT summoned!");
+        }
+    }
+
+    void MassStrength(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassStrength: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 600.0f*600.0f) return RE::BSContainer::ForEachResult::kContinue;
+            // Buff nearby allied NPCs' carry weight and health
+            a->SetActorValue(RE::ActorValue::kCarryWeight, 9999.0f);
+            float hp = a->GetActorValue(RE::ActorValue::kHealth);
+            a->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, hp);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("MassStrength: fortified {} actors", count);
+        RE::DebugNotification(std::format("Warcry! {} allies strengthened.", count).c_str());
+    }
+
+    void CrumbleNearby(RE::Actor* a_caster)
+    {
+        SKSE::log::info("CrumbleNearby: entry");
+        if (!a_caster) return;
+        auto* cell = a_caster->GetParentCell();
+        if (!cell) return;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        int count = 0;
+        auto& refs = cell->GetRuntimeData().references;
+        for (auto& refPtr : refs) {
+            if (!refPtr) continue;
+            auto* ref = refPtr.get();
+            if (!ref || ref->IsPlayerRef()) continue;
+            RE::NiPoint3 d = ref->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 600.0f*600.0f) continue;
+            auto* lock = ref->GetLock();
+            if (lock && lock->IsLocked()) { lock->SetLocked(false); ++count; }
+        }
+        SKSE::log::info("CrumbleNearby: crumbled {} locks", count);
+        RE::DebugNotification(count > 0
+            ? std::format("Crumble! {} locks shattered.", count).c_str()
+            : "No locked objects nearby.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 28
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void SummonHunter(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SummonHunter: entry");
+        if (!a_caster) return;
+        // Spawn a merchant-style NPC loaded with loot
+        static const char* kIDs[] = { "KhajiitCaravanMerchant", "Ri'saad", "Ma'dran", "Belethor", "Lucan" };
+        RE::TESNPC* base = nullptr;
+        for (auto* eid : kIDs) { base = RE::TESForm::LookupByEditorID<RE::TESNPC>(eid); if (base) break; }
+        if (!base) { RE::DebugNotification("No merchant NPC found."); return; }
+        auto* ref = SpawnInFront(base, a_caster, 200.0f);
+        if (ref) {
+            // Give the spawned NPC 2000 gold
+            auto* gold = RE::TESForm::LookupByID<RE::TESBoundObject>(0x0000000F);
+            if (gold) ref->AddObjectToContainer(gold, nullptr, 2000, nullptr);
+            SKSE::log::info("SummonHunter: '{}' with 2000g summoned", base->GetName());
+            RE::DebugNotification(std::format("Treasure Hunter {} arrives!", base->GetName()).c_str());
+        }
+    }
+
+    void MassDisplace(RE::Actor* a_caster)
+    {
+        SKSE::log::info("MassDisplace: entry");
+        if (!a_caster) return;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+        static bool seeded = false;
+        if (!seeded) { std::srand(static_cast<unsigned>(std::time(nullptr) + 7)); seeded = true; }
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        constexpr float kTwoPi = 6.2831853f;
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+            if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = a->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 1000.0f*1000.0f) return RE::BSContainer::ForEachResult::kContinue;
+            float angle = static_cast<float>(std::rand()) / RAND_MAX * kTwoPi;
+            float dist  = 200.0f + static_cast<float>(std::rand() % 800);
+            RE::NiPoint3 pos = origin;
+            pos.x += std::sin(angle) * dist;
+            pos.y += std::cos(angle) * dist;
+            a->SetPosition(pos);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+        SKSE::log::info("MassDisplace: displaced {} actors", count);
+        RE::DebugNotification(std::format("Mass Displacement! {} actors warped.", count).c_str());
+    }
+
+    void FortifyAll(RE::Actor* a_player)
+    {
+        SKSE::log::info("FortifyAll: entry");
+        if (!a_player) return;
+        // Boost all major combat AVs to maximum
+        constexpr float kMax = 100.0f;
+        static const RE::ActorValue kSkills[] = {
+            RE::ActorValue::kOneHanded,   RE::ActorValue::kTwoHanded,
+            RE::ActorValue::kArchery,     RE::ActorValue::kBlock,
+            RE::ActorValue::kSmithing,    RE::ActorValue::kHeavyArmor,
+            RE::ActorValue::kLightArmor,  RE::ActorValue::kPickpocket,
+            RE::ActorValue::kLockpicking, RE::ActorValue::kSneak,
+            RE::ActorValue::kAlchemy,     RE::ActorValue::kSpeech,
+            RE::ActorValue::kAlteration,  RE::ActorValue::kConjuration,
+            RE::ActorValue::kDestruction, RE::ActorValue::kIllusion,
+            RE::ActorValue::kRestoration, RE::ActorValue::kEnchanting,
+        };
+        for (auto av : kSkills) {
+            float cur = a_player->GetPermanentActorValue(av);
+            if (cur < kMax) a_player->SetActorValue(av, kMax);
+        }
+        // Fully restore vitals
+        a_player->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth,  99999.0f);
+        a_player->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kMagicka, 99999.0f);
+        a_player->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kStamina, 99999.0f);
+        SKSE::log::info("FortifyAll: all skills capped, vitals restored");
+        RE::DebugNotification("FORTIFY ALL! All skills maxed and vitals restored!");
+    }
+
+    void DivineIntervention(RE::Actor* a_player)
+    {
+        SKSE::log::info("DivineIntervention: entry");
+        if (!a_player) return;
+        // Teleport to a hardcoded Whiterun exterior near the main gate
+        // FormID 0x00019780 = WhiterunWorld, pos ~(20737, -7279, 860)
+        // We use SetPosition in the current cell as a safe fallback;
+        // a full worldspace teleport requires TESObjectREFR::Activate path.
+        // Instead: boost player health to max and paralyze nearby hostiles.
+        a_player->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth,  99999.0f);
+        a_player->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kMagicka, 99999.0f);
+        a_player->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kStamina, 99999.0f);
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (pl) {
+            RE::NiPoint3 origin = a_player->GetPosition();
+            pl->ForAllActors([&](RE::Actor* a) -> RE::BSContainer::ForEachResult {
+                if (!a || a->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+                RE::NiPoint3 d = a->GetPosition() - origin;
+                if (d.x*d.x + d.y*d.y + d.z*d.z > 800.0f*800.0f) return RE::BSContainer::ForEachResult::kContinue;
+                if (a->GetActorValue(RE::ActorValue::kAggression) >= 2.0f)
+                    a->SetActorValue(RE::ActorValue::kParalysis, 1.0f);
+                return RE::BSContainer::ForEachResult::kContinue;
+            });
+        }
+        SKSE::log::info("DivineIntervention: vitals restored, enemies paralyzed");
+        RE::DebugNotification("DIVINE INTERVENTION! Vitals restored, enemies paralyzed.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Spell-cast event dispatcher
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -2951,6 +3329,43 @@ namespace MagicToolkit
                 auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
                 if (target) EssenceAbsorb(target, caster);
                 else RE::DebugNotification("No actor in crosshair to absorb from.");
+            // Wave 25
+            } else if (Match(g_summonTrollSpell)) {
+                SummonTroll(caster);
+            } else if (Match(g_massFleeSpell)) {
+                MassFlee(caster);
+            } else if (Match(g_telekinesisPullSpell)) {
+                if (crossRef) TelekinesisPull(crossRef, caster);
+                else RE::DebugNotification("No target in crosshair to pull.");
+            } else if (Match(g_toggleXRaySpell)) {
+                ToggleXRay(caster);
+            // Wave 26
+            } else if (Match(g_spawnBearSpell)) {
+                SpawnBear(caster);
+            } else if (Match(g_massCharmSpell)) {
+                MassCharm(caster);
+            } else if (Match(g_stoneFleshSpell)) {
+                ToggleStoneFlesh(caster);
+            } else if (Match(g_thunderBoltSpell)) {
+                ThunderBolt(crossRef, caster);
+            // Wave 27
+            } else if (Match(g_toggleAutoHealSpell)) {
+                ToggleAutoHeal(caster);
+            } else if (Match(g_summonGiantSpell)) {
+                SummonGiant(caster);
+            } else if (Match(g_massStrengthSpell)) {
+                MassStrength(caster);
+            } else if (Match(g_crumbleSpell)) {
+                CrumbleNearby(caster);
+            // Wave 28
+            } else if (Match(g_summonHunterSpell)) {
+                SummonHunter(caster);
+            } else if (Match(g_massDisplaceSpell)) {
+                MassDisplace(caster);
+            } else if (Match(g_fortifyAllSpell)) {
+                FortifyAll(caster);
+            } else if (Match(g_divineInterventSpell)) {
+                DivineIntervention(caster);
             }
 
             return RE::BSEventNotifyControl::kContinue;
@@ -3092,6 +3507,26 @@ namespace MagicToolkit
         MakeSpell(g_massDisarmSpell,      "[C++] Mass Disarm");
         MakeSpell(g_dragonShoutSpell,     "[C++] Dragon Shout");
         MakeSpell(g_essenceAbsorbSpell,   "[C++] Essence Absorb");
+        // Wave 25
+        MakeSpell(g_summonTrollSpell,     "[C++] Summon Troll");
+        MakeSpell(g_massFleeSpell,        "[C++] Mass Terror");
+        MakeSpell(g_telekinesisPullSpell, "[C++] Telekinesis Pull");
+        MakeSpell(g_toggleXRaySpell,      "[C++] Toggle X-Ray");
+        // Wave 26
+        MakeSpell(g_spawnBearSpell,       "[C++] Summon Bear");
+        MakeSpell(g_massCharmSpell,       "[C++] Mass Charm");
+        MakeSpell(g_stoneFleshSpell,      "[C++] Toggle Stone Flesh");
+        MakeSpell(g_thunderBoltSpell,     "[C++] Thunder Bolt");
+        // Wave 27
+        MakeSpell(g_toggleAutoHealSpell,  "[C++] Toggle Auto-Heal");
+        MakeSpell(g_summonGiantSpell,     "[C++] Summon Giant");
+        MakeSpell(g_massStrengthSpell,    "[C++] Mass Warcry");
+        MakeSpell(g_crumbleSpell,         "[C++] Crumble");
+        // Wave 28
+        MakeSpell(g_summonHunterSpell,    "[C++] Summon Hunter");
+        MakeSpell(g_massDisplaceSpell,    "[C++] Mass Displace");
+        MakeSpell(g_fortifyAllSpell,      "[C++] Fortify All Skills");
+        MakeSpell(g_divineInterventSpell, "[C++] Divine Intervention");
         // Wave 17
         MakeSpell(g_disarmSpell,          "[C++] Disarm Nearby");
         MakeSpell(g_refillArrowsSpell,    "[C++] Refill Arrows");
@@ -3261,6 +3696,26 @@ namespace MagicToolkit
             g_massDisarmSpell,
             g_dragonShoutSpell,
             g_essenceAbsorbSpell,
+            // Wave 25
+            g_summonTrollSpell,
+            g_massFleeSpell,
+            g_telekinesisPullSpell,
+            g_toggleXRaySpell,
+            // Wave 26
+            g_spawnBearSpell,
+            g_massCharmSpell,
+            g_stoneFleshSpell,
+            g_thunderBoltSpell,
+            // Wave 27
+            g_toggleAutoHealSpell,
+            g_summonGiantSpell,
+            g_massStrengthSpell,
+            g_crumbleSpell,
+            // Wave 28
+            g_summonHunterSpell,
+            g_massDisplaceSpell,
+            g_fortifyAllSpell,
+            g_divineInterventSpell,
         };
 
         for (auto* spell : spells) {

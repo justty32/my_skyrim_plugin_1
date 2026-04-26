@@ -21,6 +21,11 @@ namespace MagicToolkit
     RE::SpellItem* g_addGoldSpell       = nullptr;
     RE::SpellItem* g_giveWeaponSpell    = nullptr;
     RE::SpellItem* g_inspectSpell       = nullptr;
+    // Wave 2
+    RE::SpellItem* g_timeFreezeSpell    = nullptr;
+    RE::SpellItem* g_spawnGuardSpell    = nullptr;
+    RE::SpellItem* g_teleportSpell      = nullptr;
+    RE::SpellItem* g_healTargetSpell    = nullptr;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -378,6 +383,111 @@ namespace MagicToolkit
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Wave 2 features
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void ToggleTimeFreeze()
+    {
+        SKSE::log::info("ToggleTimeFreeze: entry");
+
+        auto* global = RE::TESForm::LookupByEditorID<RE::TESGlobal>("TimeScale");
+        if (!global) {
+            SKSE::log::error("ToggleTimeFreeze: TimeScale global not found");
+            return;
+        }
+
+        // Normal Skyrim timescale is 20. We toggle between 20 and 0.2.
+        static constexpr float kNormal  = 20.0f;
+        static constexpr float kFrozen  = 0.2f;
+
+        const bool isFrozen = global->value < 1.0f;
+        global->value = isFrozen ? kNormal : kFrozen;
+
+        SKSE::log::info("ToggleTimeFreeze: TimeScale -> {}", global->value);
+        RE::DebugNotification(isFrozen ? "Time resumed." : "Time nearly frozen.");
+    }
+
+    void SpawnGuard(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SpawnGuard: entry");
+        if (!a_caster) return;
+
+        // Try Whiterun Guard by EditorID, fallback to copying the player base
+        auto* guardBase = RE::TESForm::LookupByEditorID<RE::TESNPC>("WhiterunGuard");
+        if (!guardBase) guardBase = RE::TESForm::LookupByEditorID<RE::TESNPC>("WRGuardTemplateA");
+        if (!guardBase) {
+            // Absolute fallback: copy player NPC and name it Guardian
+            auto* tmpl    = RE::TESForm::LookupByID<RE::TESNPC>(0x00000007);
+            auto* factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESNPC>();
+            if (tmpl && factory) {
+                guardBase = factory->Create()->As<RE::TESNPC>();
+                if (guardBase) {
+                    guardBase->Copy(tmpl);
+                    guardBase->fullName = "Guardian";
+                }
+            }
+        }
+
+        if (!guardBase) {
+            SKSE::log::error("SpawnGuard: no guard base found");
+            return;
+        }
+
+        auto* ref = SpawnInFront(guardBase, a_caster, 180.0f);
+        if (ref) {
+            if (auto* actor = ref->As<RE::Actor>()) {
+                actor->EvaluatePackage(false, true);
+            }
+            SKSE::log::info("SpawnGuard: '{}' spawned", guardBase->GetName());
+            RE::DebugNotification(std::format("Guardian '{}' summoned.", guardBase->GetName()).c_str());
+        }
+    }
+
+    void TeleportToCrosshair(RE::Actor* a_player)
+    {
+        SKSE::log::info("TeleportToCrosshair: entry");
+        if (!a_player) return;
+
+        auto* pick = RE::CrosshairPickData::GetSingleton();
+        if (!pick) {
+            SKSE::log::warn("TeleportToCrosshair: CrosshairPickData singleton null");
+            return;
+        }
+
+        // collisionPoint is the exact surface the crosshair hit — nudge Z up a bit
+        // so the player lands on top rather than inside the geometry.
+        RE::NiPoint3 dest = pick->collisionPoint;
+        dest.z += 60.0f;
+
+        // Only teleport if the collision point is meaningfully far from the player
+        // (prevents jitter when nothing is in crosshair).
+        RE::NiPoint3 delta = dest - a_player->GetPosition();
+        float distSq = delta.x * delta.x + delta.y * delta.y + delta.z * delta.z;
+        if (distSq < 100.0f) {
+            RE::DebugNotification("No valid destination in crosshair.");
+            return;
+        }
+
+        a_player->SetPosition(dest);
+
+        SKSE::log::info("TeleportToCrosshair: player moved to ({:.1f},{:.1f},{:.1f})", dest.x, dest.y, dest.z);
+        RE::DebugNotification("Teleported!");
+    }
+
+    void HealTarget(RE::Actor* a_target)
+    {
+        SKSE::log::info("HealTarget: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target) return;
+
+        float maxHp = a_target->GetPermanentActorValue(RE::ActorValue::kHealth);
+        a_target->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, maxHp);
+        a_target->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kStamina, maxHp);
+
+        SKSE::log::info("HealTarget: {} healed (max hp={:.1f})", a_target->GetName(), maxHp);
+        RE::DebugNotification(std::format("{} healed.", a_target->GetName()).c_str());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Spell-cast event dispatcher
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -444,6 +554,16 @@ namespace MagicToolkit
                 GiveWeapon(caster);
             } else if (Match(g_inspectSpell)) {
                 InspectInventory(caster);
+            } else if (Match(g_timeFreezeSpell)) {
+                ToggleTimeFreeze();
+            } else if (Match(g_spawnGuardSpell)) {
+                SpawnGuard(caster);
+            } else if (Match(g_teleportSpell)) {
+                TeleportToCrosshair(caster);
+            } else if (Match(g_healTargetSpell)) {
+                auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
+                if (target) HealTarget(target);
+                else RE::DebugNotification("No NPC in crosshair to heal.");
             }
 
             return RE::BSEventNotifyControl::kContinue;
@@ -490,6 +610,11 @@ namespace MagicToolkit
         MakeSpell(g_addGoldSpell,       "[C++] Add Gold");
         MakeSpell(g_giveWeaponSpell,    "[C++] Give Weapon");
         MakeSpell(g_inspectSpell,       "[C++] Inspect Stats");
+        // Wave 2
+        MakeSpell(g_timeFreezeSpell,    "[C++] Toggle Time Freeze");
+        MakeSpell(g_spawnGuardSpell,    "[C++] Spawn Guardian");
+        MakeSpell(g_teleportSpell,      "[C++] Teleport to Crosshair");
+        MakeSpell(g_healTargetSpell,    "[C++] Heal Target");
 
         auto* source = RE::ScriptEventSourceHolder::GetSingleton();
         if (source) {
@@ -524,6 +649,11 @@ namespace MagicToolkit
             g_addGoldSpell,
             g_giveWeaponSpell,
             g_inspectSpell,
+            // Wave 2
+            g_timeFreezeSpell,
+            g_spawnGuardSpell,
+            g_teleportSpell,
+            g_healTargetSpell,
         };
 
         for (auto* spell : spells) {

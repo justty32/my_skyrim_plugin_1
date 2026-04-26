@@ -23,6 +23,12 @@ namespace MagicToolkit
     void GiveWeapon(RE::Actor* a_player);
     void InspectInventory(RE::Actor* a_player);
 
+    // --- Wave 2 ---
+    void ToggleTimeFreeze();
+    void SpawnGuard(RE::Actor* a_caster);
+    void TeleportToCrosshair(RE::Actor* a_player);
+    void HealTarget(RE::Actor* a_target);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

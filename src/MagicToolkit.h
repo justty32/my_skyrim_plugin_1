@@ -47,6 +47,12 @@ namespace MagicToolkit
     void LootTarget(RE::TESObjectREFR* a_target, RE::Actor* a_player);
     void ToggleSpeedBoost(RE::Actor* a_player);
 
+    // --- Wave 6 ---
+    void GravityPull(RE::Actor* a_caster);
+    void SpawnSkeletonArmy(RE::Actor* a_caster);
+    void LaunchTarget(RE::Actor* a_target);
+    void ToggleSkillBoost(RE::Actor* a_player);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

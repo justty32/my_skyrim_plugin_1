@@ -41,6 +41,11 @@ namespace MagicToolkit
     RE::SpellItem* g_frenzySpell        = nullptr;
     RE::SpellItem* g_lootSpell          = nullptr;
     RE::SpellItem* g_speedSpell         = nullptr;
+    // Wave 6
+    RE::SpellItem* g_gravityPullSpell   = nullptr;
+    RE::SpellItem* g_skeletonArmySpell  = nullptr;
+    RE::SpellItem* g_launchSpell        = nullptr;
+    RE::SpellItem* g_skillBoostSpell    = nullptr;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -789,6 +794,158 @@ namespace MagicToolkit
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Wave 6 features
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void GravityPull(RE::Actor* a_caster)
+    {
+        SKSE::log::info("GravityPull: entry");
+        if (!a_caster) return;
+
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        constexpr float kRadius   = 600.0f;
+        constexpr float kPullDist = 350.0f;
+        int count = 0;
+
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+
+        pl->ForAllActors([&](RE::Actor* actor) -> RE::BSContainer::ForEachResult {
+            if (!actor || actor->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+
+            RE::NiPoint3 delta = actor->GetPosition() - origin;
+            float distSq = delta.x * delta.x + delta.y * delta.y + delta.z * delta.z;
+            if (distSq > kRadius * kRadius || distSq < 1.0f) return RE::BSContainer::ForEachResult::kContinue;
+
+            float dist = std::sqrt(distSq);
+            RE::NiPoint3 toPlayer = (origin - actor->GetPosition()) / dist;
+
+            // Pull toward player but stop 80 units away to avoid overlap
+            float pull = std::min(kPullDist, dist - 80.0f);
+            if (pull <= 0.0f) return RE::BSContainer::ForEachResult::kContinue;
+
+            RE::NiPoint3 newPos = actor->GetPosition() + toPlayer * pull;
+            actor->SetPosition(newPos);
+            ++count;
+
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+
+        SKSE::log::info("GravityPull: pulled {} actors toward player", count);
+        RE::DebugNotification(std::format("Gravity Pull! {} actors dragged in.", count).c_str());
+    }
+
+    void SpawnSkeletonArmy(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SpawnSkeletonArmy: entry");
+        if (!a_caster) return;
+
+        // Try vanilla skeleton, then draugr, then player-copy fallback
+        auto* skelBase = RE::TESForm::LookupByEditorID<RE::TESNPC>("EncSkeletonWarrior01");
+        if (!skelBase) skelBase = RE::TESForm::LookupByEditorID<RE::TESNPC>("EncDraugr01");
+        if (!skelBase) skelBase = RE::TESForm::LookupByEditorID<RE::TESNPC>("DraugrMale01");
+
+        bool isFallback = false;
+        RE::TESNPC* fallbackBase = nullptr;
+        if (!skelBase) {
+            auto* tmpl    = RE::TESForm::LookupByID<RE::TESNPC>(0x00000007);
+            auto* factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESNPC>();
+            if (tmpl && factory) {
+                fallbackBase = factory->Create()->As<RE::TESNPC>();
+                if (fallbackBase) { fallbackBase->Copy(tmpl); fallbackBase->fullName = "Skeleton"; }
+                skelBase   = fallbackBase;
+                isFallback = true;
+            }
+        }
+
+        if (!skelBase) {
+            SKSE::log::error("SpawnSkeletonArmy: no skeleton form found");
+            return;
+        }
+
+        constexpr int   kCount  = 3;
+        constexpr float kRadius = 220.0f;
+        constexpr float kTwoPi  = 6.2831853f;
+        float baseAngle = a_caster->data.angle.z;
+
+        int spawned = 0;
+        for (int i = 0; i < kCount; ++i) {
+            float angle = baseAngle + (kTwoPi / kCount) * i;
+            RE::NiPoint3 pos = a_caster->GetPosition();
+            pos.x += std::sin(angle) * kRadius;
+            pos.y += std::cos(angle) * kRadius;
+
+            auto* ref = a_caster->PlaceObjectAtMe(skelBase, false);
+            if (ref) {
+                ref->SetPosition(pos);
+                if (auto* actor = ref->As<RE::Actor>()) {
+                    actor->EvaluatePackage(false, true);
+                }
+                ++spawned;
+            }
+        }
+
+        SKSE::log::info("SpawnSkeletonArmy: spawned {} '{}' units", spawned, skelBase->GetName());
+        RE::DebugNotification(std::format("Skeleton army ({})!", spawned).c_str());
+    }
+
+    void LaunchTarget(RE::Actor* a_target)
+    {
+        SKSE::log::info("LaunchTarget: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target || a_target->IsPlayerRef()) return;
+
+        RE::NiPoint3 pos = a_target->GetPosition();
+        pos.z += 1800.0f;
+        a_target->SetPosition(pos);
+
+        SKSE::log::info("LaunchTarget: '{}' launched to z={:.0f}", a_target->GetName(), pos.z);
+        RE::DebugNotification(std::format("{} launched!", a_target->GetName()).c_str());
+    }
+
+    void ToggleSkillBoost(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleSkillBoost: entry");
+        if (!a_player) return;
+
+        // Check current One-Handed to detect boosted state (base skill capped at 100 normally)
+        constexpr float kMax   = 100.0f;
+        constexpr float kReset = 15.0f;
+
+        float cur = a_player->GetActorValue(RE::ActorValue::kOneHanded);
+        bool  isBoosted = cur >= kMax - 0.5f;
+
+        float target = isBoosted ? kReset : kMax;
+
+        static const RE::ActorValue kSkills[] = {
+            RE::ActorValue::kOneHanded,
+            RE::ActorValue::kTwoHanded,
+            RE::ActorValue::kArchery,
+            RE::ActorValue::kBlock,
+            RE::ActorValue::kHeavyArmor,
+            RE::ActorValue::kLightArmor,
+            RE::ActorValue::kSneak,
+            RE::ActorValue::kLockpicking,
+            RE::ActorValue::kPickpocket,
+            RE::ActorValue::kSpeech,
+            RE::ActorValue::kAlteration,
+            RE::ActorValue::kConjuration,
+            RE::ActorValue::kDestruction,
+            RE::ActorValue::kIllusion,
+            RE::ActorValue::kRestoration,
+            RE::ActorValue::kEnchanting,
+            RE::ActorValue::kSmithing,
+            RE::ActorValue::kAlchemy,
+        };
+
+        for (auto av : kSkills) {
+            a_player->SetActorValue(av, target);
+        }
+
+        SKSE::log::info("ToggleSkillBoost: all skills -> {:.0f}", target);
+        RE::DebugNotification(isBoosted ? "Skills reset to 15." : "All skills maxed to 100!");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Spell-cast event dispatcher
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -896,6 +1053,16 @@ namespace MagicToolkit
                 else RE::DebugNotification("No target in crosshair to loot.");
             } else if (Match(g_speedSpell)) {
                 ToggleSpeedBoost(caster);
+            } else if (Match(g_gravityPullSpell)) {
+                GravityPull(caster);
+            } else if (Match(g_skeletonArmySpell)) {
+                SpawnSkeletonArmy(caster);
+            } else if (Match(g_launchSpell)) {
+                auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
+                if (target) LaunchTarget(target);
+                else RE::DebugNotification("No NPC in crosshair to launch.");
+            } else if (Match(g_skillBoostSpell)) {
+                ToggleSkillBoost(caster);
             }
 
             return RE::BSEventNotifyControl::kContinue;
@@ -962,6 +1129,11 @@ namespace MagicToolkit
         MakeSpell(g_frenzySpell,        "[C++] Frenzy Target");
         MakeSpell(g_lootSpell,          "[C++] Loot Target");
         MakeSpell(g_speedSpell,         "[C++] Speed Boost");
+        // Wave 6
+        MakeSpell(g_gravityPullSpell,   "[C++] Gravity Pull");
+        MakeSpell(g_skeletonArmySpell,  "[C++] Skeleton Army");
+        MakeSpell(g_launchSpell,        "[C++] Launch Target");
+        MakeSpell(g_skillBoostSpell,    "[C++] Toggle Max Skills");
 
         auto* source = RE::ScriptEventSourceHolder::GetSingleton();
         if (source) {
@@ -1016,6 +1188,11 @@ namespace MagicToolkit
             g_frenzySpell,
             g_lootSpell,
             g_speedSpell,
+            // Wave 6
+            g_gravityPullSpell,
+            g_skeletonArmySpell,
+            g_launchSpell,
+            g_skillBoostSpell,
         };
 
         for (auto* spell : spells) {

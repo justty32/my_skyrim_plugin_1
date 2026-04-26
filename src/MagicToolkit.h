@@ -29,6 +29,12 @@ namespace MagicToolkit
     void TeleportToCrosshair(RE::Actor* a_player);
     void HealTarget(RE::Actor* a_target);
 
+    // --- Wave 3 ---
+    void ForcePush(RE::Actor* a_caster);
+    void ToggleGodMode();
+    void RandomTeleport(RE::Actor* a_player);
+    void CloneObject(RE::TESObjectREFR* a_target);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

@@ -26,6 +26,11 @@ namespace MagicToolkit
     RE::SpellItem* g_spawnGuardSpell    = nullptr;
     RE::SpellItem* g_teleportSpell      = nullptr;
     RE::SpellItem* g_healTargetSpell    = nullptr;
+    // Wave 3
+    RE::SpellItem* g_forcePushSpell     = nullptr;
+    RE::SpellItem* g_godModeSpell       = nullptr;
+    RE::SpellItem* g_randomTeleSpell    = nullptr;
+    RE::SpellItem* g_cloneObjectSpell   = nullptr;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -488,6 +493,109 @@ namespace MagicToolkit
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Wave 3 features
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void ForcePush(RE::Actor* a_caster)
+    {
+        SKSE::log::info("ForcePush: entry");
+        if (!a_caster) return;
+
+        RE::NiPoint3 origin  = a_caster->GetPosition();
+        constexpr float kRadius    = 600.0f;
+        constexpr float kPushDist  = 400.0f;
+        int count = 0;
+
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+
+        pl->ForAllActors([&](RE::Actor* actor) -> RE::BSContainer::ForEachResult {
+            if (!actor || actor->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+
+            RE::NiPoint3 delta = actor->GetPosition() - origin;
+            float distSq = delta.x * delta.x + delta.y * delta.y + delta.z * delta.z;
+            if (distSq > kRadius * kRadius || distSq < 0.001f) return RE::BSContainer::ForEachResult::kContinue;
+
+            float dist = std::sqrt(distSq);
+            RE::NiPoint3 dir = delta / dist;
+
+            RE::NiPoint3 newPos = actor->GetPosition() + dir * kPushDist;
+            newPos.z += 80.0f; // slight upward pop
+            actor->SetPosition(newPos);
+            actor->NotifyAnimationGraph("staggerStart");
+            ++count;
+
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+
+        SKSE::log::info("ForcePush: pushed {} actors", count);
+        RE::DebugNotification(std::format("Force Push! {} actors blasted.", count).c_str());
+    }
+
+    void ToggleGodMode()
+    {
+        SKSE::log::info("ToggleGodMode: entry");
+
+        // IsGodMode() reads from this global bool — we write to it directly.
+        REL::Relocation<bool*> godModeFlag{ RELOCATION_ID(517711, 404238) };
+        *godModeFlag = !(*godModeFlag);
+
+        bool now = *godModeFlag;
+        SKSE::log::info("ToggleGodMode: godMode={}", now);
+        RE::DebugNotification(now ? "God Mode ON." : "God Mode OFF.");
+    }
+
+    void RandomTeleport(RE::Actor* a_player)
+    {
+        SKSE::log::info("RandomTeleport: entry");
+        if (!a_player) return;
+
+        static bool seeded = false;
+        if (!seeded) { std::srand(static_cast<unsigned>(std::time(nullptr))); seeded = true; }
+
+        // Random direction (uniform angle), random distance 800–2500 units
+        constexpr float kTwoPi = 6.2831853f;
+        float angle = static_cast<float>(std::rand()) / RAND_MAX * kTwoPi;
+        float dist  = 800.0f + static_cast<float>(std::rand() % 1700);
+
+        RE::NiPoint3 pos = a_player->GetPosition();
+        pos.x += std::sin(angle) * dist;
+        pos.y += std::cos(angle) * dist;
+        // keep Z — let the engine handle ground alignment on next tick
+
+        a_player->SetPosition(pos);
+
+        SKSE::log::info("RandomTeleport: moved {:.0f} units at angle {:.2f}rad", dist, angle);
+        RE::DebugNotification(std::format("Random teleport! ({:.0f} units away)", dist).c_str());
+    }
+
+    void CloneObject(RE::TESObjectREFR* a_target)
+    {
+        SKSE::log::info("CloneObject: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target) return;
+
+        auto* baseForm = a_target->GetBaseObject();
+        if (!baseForm) {
+            SKSE::log::warn("CloneObject: GetBaseObject() returned null");
+            return;
+        }
+
+        // Place a clone adjacent to the original (offset by 80 units on X)
+        auto* clone = a_target->PlaceObjectAtMe(baseForm, false);
+        if (clone) {
+            RE::NiPoint3 pos = a_target->GetPosition();
+            pos.x += 80.0f;
+            clone->SetPosition(pos);
+            clone->data.angle = a_target->data.angle;
+
+            SKSE::log::info("CloneObject: cloned '{}' at ({:.1f},{:.1f},{:.1f})", baseForm->GetName(), pos.x, pos.y, pos.z);
+            RE::DebugNotification(std::format("Cloned: {}", baseForm->GetName()).c_str());
+        } else {
+            SKSE::log::warn("CloneObject: PlaceObjectAtMe returned null");
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Spell-cast event dispatcher
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -564,6 +672,15 @@ namespace MagicToolkit
                 auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
                 if (target) HealTarget(target);
                 else RE::DebugNotification("No NPC in crosshair to heal.");
+            } else if (Match(g_forcePushSpell)) {
+                ForcePush(caster);
+            } else if (Match(g_godModeSpell)) {
+                ToggleGodMode();
+            } else if (Match(g_randomTeleSpell)) {
+                RandomTeleport(caster);
+            } else if (Match(g_cloneObjectSpell)) {
+                if (crossRef) CloneObject(crossRef);
+                else RE::DebugNotification("No object in crosshair to clone.");
             }
 
             return RE::BSEventNotifyControl::kContinue;
@@ -615,6 +732,11 @@ namespace MagicToolkit
         MakeSpell(g_spawnGuardSpell,    "[C++] Spawn Guardian");
         MakeSpell(g_teleportSpell,      "[C++] Teleport to Crosshair");
         MakeSpell(g_healTargetSpell,    "[C++] Heal Target");
+        // Wave 3
+        MakeSpell(g_forcePushSpell,     "[C++] Force Push");
+        MakeSpell(g_godModeSpell,       "[C++] Toggle God Mode");
+        MakeSpell(g_randomTeleSpell,    "[C++] Random Teleport");
+        MakeSpell(g_cloneObjectSpell,   "[C++] Clone Object");
 
         auto* source = RE::ScriptEventSourceHolder::GetSingleton();
         if (source) {
@@ -654,6 +776,11 @@ namespace MagicToolkit
             g_spawnGuardSpell,
             g_teleportSpell,
             g_healTargetSpell,
+            // Wave 3
+            g_forcePushSpell,
+            g_godModeSpell,
+            g_randomTeleSpell,
+            g_cloneObjectSpell,
         };
 
         for (auto* spell : spells) {

@@ -36,6 +36,11 @@ namespace MagicToolkit
     RE::SpellItem* g_deleteTargetSpell  = nullptr;
     RE::SpellItem* g_paralyzeSpell      = nullptr;
     RE::SpellItem* g_spawnDragonSpell   = nullptr;
+    // Wave 5
+    RE::SpellItem* g_weatherSpell       = nullptr;
+    RE::SpellItem* g_frenzySpell        = nullptr;
+    RE::SpellItem* g_lootSpell          = nullptr;
+    RE::SpellItem* g_speedSpell         = nullptr;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -689,6 +694,101 @@ namespace MagicToolkit
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Wave 5 features
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void ToggleWeather()
+    {
+        SKSE::log::info("ToggleWeather: entry");
+
+        auto* sky = RE::Sky::GetSingleton();
+        if (!sky) {
+            SKSE::log::error("ToggleWeather: Sky singleton null");
+            return;
+        }
+
+        // If we have an override weather active, clear it to restore default.
+        if (sky->overrideWeather) {
+            sky->ForceWeather(sky->defaultWeather ? sky->defaultWeather : sky->lastWeather, false);
+            SKSE::log::info("ToggleWeather: restored default weather");
+            RE::DebugNotification("Weather cleared.");
+            return;
+        }
+
+        // Apply a storm — try several EditorIDs across vanilla + DLC
+        auto* storm = RE::TESForm::LookupByEditorID<RE::TESWeather>("StormRain01");
+        if (!storm) storm = RE::TESForm::LookupByEditorID<RE::TESWeather>("KynesgroveWeather01");
+        if (!storm) storm = RE::TESForm::LookupByEditorID<RE::TESWeather>("SkyrimOvercastFog");
+
+        if (!storm) {
+            SKSE::log::error("ToggleWeather: no storm weather form found");
+            RE::DebugNotification("Storm weather form not found.");
+            return;
+        }
+
+        sky->ForceWeather(storm, true);
+        SKSE::log::info("ToggleWeather: forced storm '{}'", storm->GetFormEditorID());
+        RE::DebugNotification(std::format("Weather: {}", storm->GetFormEditorID()).c_str());
+    }
+
+    void FrenzyTarget(RE::Actor* a_target)
+    {
+        SKSE::log::info("FrenzyTarget: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target || a_target->IsPlayerRef()) return;
+
+        a_target->SetActorValue(RE::ActorValue::kAggression, 3.0f);  // Frenzied
+        a_target->SetActorValue(RE::ActorValue::kConfidence, 4.0f);  // Foolhardy
+        a_target->SetActorValue(RE::ActorValue::kMorality, 0.0f);    // Any crime
+        a_target->EvaluatePackage(true, true);
+
+        SKSE::log::info("FrenzyTarget: {} frenzied", a_target->GetName());
+        RE::DebugNotification(std::format("{} is now frenzied!", a_target->GetName()).c_str());
+    }
+
+    void LootTarget(RE::TESObjectREFR* a_target, RE::Actor* a_player)
+    {
+        SKSE::log::info("LootTarget: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target || !a_player || a_target->IsPlayerRef()) return;
+
+        auto inv = a_target->GetInventory();
+        if (inv.empty()) {
+            RE::DebugNotification("Nothing to loot.");
+            return;
+        }
+
+        int transferred = 0;
+        for (auto& [form, data] : inv) {
+            int count = data.first;
+            if (form && count > 0) {
+                a_target->RemoveItem(form, count, RE::ITEM_REMOVE_REASON::kRemove, nullptr, a_player);
+                ++transferred;
+                SKSE::log::info("  Looted: {} x{}", form->GetName(), count);
+            }
+        }
+
+        SKSE::log::info("LootTarget: transferred {} item types from '{}'", transferred, a_target->GetName());
+        RE::DebugNotification(std::format("Looted {} item type(s) from {}.", transferred, a_target->GetName()).c_str());
+    }
+
+    void ToggleSpeedBoost(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleSpeedBoost: entry");
+        if (!a_player) return;
+
+        constexpr float kNormal = 100.0f;
+        constexpr float kFast   = 300.0f;
+
+        float cur  = a_player->GetActorValue(RE::ActorValue::kSpeedMult);
+        float next = (cur >= kFast - 1.0f) ? kNormal : kFast;
+
+        // Use ForceActorValue so it bypasses clamp logic for the base value.
+        a_player->SetActorValue(RE::ActorValue::kSpeedMult, next);
+
+        SKSE::log::info("ToggleSpeedBoost: SpeedMult {:.0f} -> {:.0f}", cur, next);
+        RE::DebugNotification(next > kNormal ? "Speed Boost ON (3x)!" : "Speed restored.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Spell-cast event dispatcher
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -785,6 +885,17 @@ namespace MagicToolkit
                 else RE::DebugNotification("No NPC in crosshair to paralyze.");
             } else if (Match(g_spawnDragonSpell)) {
                 SpawnDragon(caster);
+            } else if (Match(g_weatherSpell)) {
+                ToggleWeather();
+            } else if (Match(g_frenzySpell)) {
+                auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
+                if (target) FrenzyTarget(target);
+                else RE::DebugNotification("No NPC in crosshair to frenzy.");
+            } else if (Match(g_lootSpell)) {
+                if (crossRef) LootTarget(crossRef, caster);
+                else RE::DebugNotification("No target in crosshair to loot.");
+            } else if (Match(g_speedSpell)) {
+                ToggleSpeedBoost(caster);
             }
 
             return RE::BSEventNotifyControl::kContinue;
@@ -846,6 +957,11 @@ namespace MagicToolkit
         MakeSpell(g_deleteTargetSpell,  "[C++] Delete Target");
         MakeSpell(g_paralyzeSpell,      "[C++] Toggle Paralyze");
         MakeSpell(g_spawnDragonSpell,   "[C++] Summon Dragon");
+        // Wave 5
+        MakeSpell(g_weatherSpell,       "[C++] Toggle Storm");
+        MakeSpell(g_frenzySpell,        "[C++] Frenzy Target");
+        MakeSpell(g_lootSpell,          "[C++] Loot Target");
+        MakeSpell(g_speedSpell,         "[C++] Speed Boost");
 
         auto* source = RE::ScriptEventSourceHolder::GetSingleton();
         if (source) {
@@ -895,6 +1011,11 @@ namespace MagicToolkit
             g_deleteTargetSpell,
             g_paralyzeSpell,
             g_spawnDragonSpell,
+            // Wave 5
+            g_weatherSpell,
+            g_frenzySpell,
+            g_lootSpell,
+            g_speedSpell,
         };
 
         for (auto* spell : spells) {

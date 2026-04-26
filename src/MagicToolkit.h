@@ -41,6 +41,12 @@ namespace MagicToolkit
     void ParalyzeTarget(RE::Actor* a_target);
     void SpawnDragon(RE::Actor* a_caster);
 
+    // --- Wave 5 ---
+    void ToggleWeather();
+    void FrenzyTarget(RE::Actor* a_target);
+    void LootTarget(RE::TESObjectREFR* a_target, RE::Actor* a_player);
+    void ToggleSpeedBoost(RE::Actor* a_player);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

@@ -209,6 +209,30 @@ namespace MagicToolkit
     void MassLootDead(RE::Actor* a_player);
     void ToggleStaminaRegen(RE::Actor* a_player);
 
+    // --- Wave 33 ---
+    void SpawnHagraven(RE::Actor* a_caster);
+    void MassBlind(RE::Actor* a_caster);
+    void RevealContainers(RE::Actor* a_caster);
+    void CrushTarget(RE::TESObjectREFR* a_target);
+
+    // --- Wave 34 ---
+    void SpawnIceWraith(RE::Actor* a_caster);
+    void ToggleParryMaster(RE::Actor* a_player);
+    void AoEBlizzardBurst(RE::Actor* a_caster);
+    void PhaseShift(RE::Actor* a_player);
+
+    // --- Wave 35 ---
+    void SpawnChaurus(RE::Actor* a_caster);
+    void SiphonStamina(RE::Actor* a_caster);
+    void MassUnequip(RE::Actor* a_caster);
+    void SoulStorm(RE::Actor* a_caster);
+
+    // --- Wave 36 ---
+    void SpawnWisp(RE::Actor* a_caster);
+    void ToggleHealthLock(RE::Actor* a_player);
+    void SummonDragonPriest(RE::Actor* a_caster);
+    void MassTransfer(RE::Actor* a_player);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

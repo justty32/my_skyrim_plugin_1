@@ -65,6 +65,18 @@ namespace MagicToolkit
     void MassHealNearby();
     void DrainTarget(RE::Actor* a_target);
 
+    // --- Wave 9 ---
+    void GatherNPCs(RE::Actor* a_caster);
+    void ToggleUnlimitedCarry(RE::Actor* a_player);
+    void FrostBarrage(RE::Actor* a_caster);
+    void SnapToGround(RE::TESObjectREFR* a_target, RE::Actor* a_caster);
+
+    // --- Wave 10 ---
+    void ToggleMiniaturizeAll(RE::Actor* a_caster);
+    void ExecuteTarget(RE::Actor* a_target);
+    void BounceHouse(RE::Actor* a_caster);
+    void ToggleDetection();
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

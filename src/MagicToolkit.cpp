@@ -56,6 +56,16 @@ namespace MagicToolkit
     RE::SpellItem* g_playerGiantSpell   = nullptr;
     RE::SpellItem* g_massHealSpell      = nullptr;
     RE::SpellItem* g_drainTargetSpell   = nullptr;
+    // Wave 9
+    RE::SpellItem* g_gatherNpcsSpell    = nullptr;
+    RE::SpellItem* g_carrySpell         = nullptr;
+    RE::SpellItem* g_frostBarrageSpell  = nullptr;
+    RE::SpellItem* g_snapGroundSpell    = nullptr;
+    // Wave 10
+    RE::SpellItem* g_miniaturizeSpell   = nullptr;
+    RE::SpellItem* g_executeSpell       = nullptr;
+    RE::SpellItem* g_bounceHouseSpell   = nullptr;
+    RE::SpellItem* g_detectionSpell     = nullptr;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -1138,6 +1148,216 @@ namespace MagicToolkit
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Wave 9 features
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void GatherNPCs(RE::Actor* a_caster)
+    {
+        SKSE::log::info("GatherNPCs: entry");
+        if (!a_caster) return;
+
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+
+        // Collect nearby actors first so we can assign ring positions
+        std::vector<RE::Actor*> nearby;
+        RE::NiPoint3 origin = a_caster->GetPosition();
+
+        pl->ForAllActors([&](RE::Actor* actor) -> RE::BSContainer::ForEachResult {
+            if (!actor || actor->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = actor->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z < 1000.0f * 1000.0f) nearby.push_back(actor);
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+
+        constexpr float kTwoPi = 6.2831853f;
+        float ringRadius = 160.0f + nearby.size() * 15.0f; // expand ring with crowd size
+        for (int i = 0; i < static_cast<int>(nearby.size()); ++i) {
+            float angle = kTwoPi * i / static_cast<float>(nearby.size());
+            RE::NiPoint3 pos = origin;
+            pos.x += std::sin(angle) * ringRadius;
+            pos.y += std::cos(angle) * ringRadius;
+            nearby[i]->SetPosition(pos);
+        }
+
+        SKSE::log::info("GatherNPCs: gathered {} actors into ring r={:.0f}", nearby.size(), ringRadius);
+        RE::DebugNotification(std::format("Gathered {} NPCs around you!", nearby.size()).c_str());
+    }
+
+    void ToggleUnlimitedCarry(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleUnlimitedCarry: entry");
+        if (!a_player) return;
+
+        constexpr float kUnlimited = 999999.0f;
+        float cur = a_player->GetActorValue(RE::ActorValue::kCarryWeight);
+
+        if (cur >= kUnlimited - 1.0f) {
+            // Restore base carry weight
+            float base = a_player->GetPermanentActorValue(RE::ActorValue::kCarryWeight);
+            a_player->SetActorValue(RE::ActorValue::kCarryWeight, base);
+            SKSE::log::info("ToggleUnlimitedCarry: restored base carry {:.0f}", base);
+            RE::DebugNotification(std::format("Carry weight restored ({:.0f}).", base).c_str());
+        } else {
+            a_player->SetActorValue(RE::ActorValue::kCarryWeight, kUnlimited);
+            SKSE::log::info("ToggleUnlimitedCarry: set to unlimited");
+            RE::DebugNotification("Unlimited carry weight ON!");
+        }
+    }
+
+    void FrostBarrage(RE::Actor* a_caster)
+    {
+        SKSE::log::info("FrostBarrage: entry");
+        if (!a_caster) return;
+
+        // Try ice/frost projectile, fall back to fireball
+        auto* projBase = RE::TESForm::LookupByEditorID<RE::BGSProjectile>("MagicIceSpikeProjectile01");
+        if (!projBase) projBase = RE::TESForm::LookupByEditorID<RE::BGSProjectile>("MagicIceStormProjectile01");
+        if (!projBase) projBase = RE::TESForm::LookupByID<RE::BGSProjectile>(0x00015CFD); // fireball fallback
+
+        if (!projBase) {
+            SKSE::log::error("FrostBarrage: no projectile form found");
+            return;
+        }
+
+        // 8 projectiles fanned across ±45° in the player's facing direction
+        constexpr int   kCount    = 8;
+        constexpr float kSpread   = 1.5708f / 2.0f; // 45° total half-spread
+        float baseYaw = a_caster->data.angle.z;
+
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        origin.z += 120.0f; // fire from chest height
+
+        for (int i = 0; i < kCount; ++i) {
+            float t   = (kCount > 1) ? static_cast<float>(i) / (kCount - 1) : 0.5f;
+            float yaw = baseYaw + kSpread * (t * 2.0f - 1.0f);
+
+            RE::Projectile::LaunchData ld;
+            ld.origin         = origin;
+            ld.projectileBase = projBase;
+            ld.shooter        = a_caster;
+            ld.angleZ         = yaw;
+            ld.angleX         = 0.0f;
+            ld.parentCell     = a_caster->GetParentCell();
+            ld.castingSource  = RE::MagicSystem::CastingSource::kRightHand;
+            ld.power          = 1.0f;
+            ld.scale          = 1.0f;
+            ld.useOrigin      = true;
+            ld.autoAim        = false;
+
+            RE::ProjectileHandle result;
+            RE::Projectile::Launch(&result, ld);
+        }
+
+        SKSE::log::info("FrostBarrage: fired {} projectiles", kCount);
+        RE::DebugNotification("Frost Barrage!");
+    }
+
+    void SnapToGround(RE::TESObjectREFR* a_target, RE::Actor* a_caster)
+    {
+        SKSE::log::info("SnapToGround: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target || !a_caster) return;
+
+        RE::NiPoint3 pos = a_target->GetPosition();
+        pos.z = a_caster->GetPosition().z;
+        a_target->SetPosition(pos);
+
+        SKSE::log::info("SnapToGround: '{}' snapped to z={:.1f}", a_target->GetName(), pos.z);
+        RE::DebugNotification(std::format("{} snapped to ground.", a_target->GetName()).c_str());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 10 features
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void ToggleMiniaturizeAll(RE::Actor* a_caster)
+    {
+        SKSE::log::info("ToggleMiniaturizeAll: entry");
+
+        static bool s_miniaturized = false;
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        std::uint16_t targetScale = s_miniaturized ? 100 : 20; // 1.0x or 0.2x
+        int count = 0;
+
+        pl->ForAllActors([&](RE::Actor* actor) -> RE::BSContainer::ForEachResult {
+            if (!actor || actor->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = actor->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > 800.0f * 800.0f) return RE::BSContainer::ForEachResult::kContinue;
+            actor->GetReferenceRuntimeData().refScale = targetScale;
+            actor->DoReset3D(true);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+
+        s_miniaturized = !s_miniaturized;
+        SKSE::log::info("ToggleMiniaturizeAll: {} actors -> {:.1f}x", count, targetScale / 100.0f);
+        RE::DebugNotification(s_miniaturized
+            ? std::format("{} NPCs miniaturized (0.2x)!", count).c_str()
+            : std::format("{} NPCs restored to normal size.", count).c_str());
+    }
+
+    void ExecuteTarget(RE::Actor* a_target)
+    {
+        SKSE::log::info("ExecuteTarget: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target || a_target->IsPlayerRef()) return;
+
+        std::string name = a_target->GetName();
+        // Deal enough negative health to kill regardless of max HP
+        a_target->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, -99999.0f);
+
+        SKSE::log::info("ExecuteTarget: '{}' executed", name);
+        RE::DebugNotification(std::format("{} executed!", name).c_str());
+    }
+
+    void BounceHouse(RE::Actor* a_caster)
+    {
+        SKSE::log::info("BounceHouse: entry");
+        if (!a_caster) return;
+
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+
+        RE::NiPoint3 origin = a_caster->GetPosition();
+        constexpr float kRadius = 500.0f;
+        int count = 0;
+
+        pl->ForAllActors([&](RE::Actor* actor) -> RE::BSContainer::ForEachResult {
+            if (!actor || actor->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 d = actor->GetPosition() - origin;
+            if (d.x*d.x + d.y*d.y + d.z*d.z > kRadius * kRadius) return RE::BSContainer::ForEachResult::kContinue;
+            RE::NiPoint3 pos = actor->GetPosition();
+            pos.z += 1000.0f;
+            actor->SetPosition(pos);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+
+        SKSE::log::info("BounceHouse: launched {} actors", count);
+        RE::DebugNotification(std::format("Bounce House! {} launched!", count).c_str());
+    }
+
+    void ToggleDetection()
+    {
+        SKSE::log::info("ToggleDetection: entry");
+
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) {
+            SKSE::log::error("ToggleDetection: ProcessLists singleton null");
+            return;
+        }
+
+        pl->runDetection = !pl->runDetection;
+
+        SKSE::log::info("ToggleDetection: runDetection={}", pl->runDetection);
+        RE::DebugNotification(pl->runDetection
+            ? "Detection ON — NPCs can see you."
+            : "Detection OFF — you are undetectable.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Spell-cast event dispatcher
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -1278,6 +1498,27 @@ namespace MagicToolkit
                 auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
                 if (target) DrainTarget(target);
                 else RE::DebugNotification("No actor in crosshair to drain.");
+            // Wave 9
+            } else if (Match(g_gatherNpcsSpell)) {
+                GatherNPCs(caster);
+            } else if (Match(g_carrySpell)) {
+                ToggleUnlimitedCarry(caster);
+            } else if (Match(g_frostBarrageSpell)) {
+                FrostBarrage(caster);
+            } else if (Match(g_snapGroundSpell)) {
+                if (crossRef) SnapToGround(crossRef, caster);
+                else RE::DebugNotification("No object in crosshair to snap.");
+            // Wave 10
+            } else if (Match(g_miniaturizeSpell)) {
+                ToggleMiniaturizeAll(caster);
+            } else if (Match(g_executeSpell)) {
+                auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
+                if (target) ExecuteTarget(target);
+                else RE::DebugNotification("No actor in crosshair to execute.");
+            } else if (Match(g_bounceHouseSpell)) {
+                BounceHouse(caster);
+            } else if (Match(g_detectionSpell)) {
+                ToggleDetection();
             }
 
             return RE::BSEventNotifyControl::kContinue;
@@ -1359,6 +1600,16 @@ namespace MagicToolkit
         MakeSpell(g_playerGiantSpell,   "[C++] Cycle Player Scale");
         MakeSpell(g_massHealSpell,      "[C++] Mass Heal");
         MakeSpell(g_drainTargetSpell,   "[C++] Drain Life");
+        // Wave 9
+        MakeSpell(g_gatherNpcsSpell,    "[C++] Gather NPCs");
+        MakeSpell(g_carrySpell,         "[C++] Unlimited Carry");
+        MakeSpell(g_frostBarrageSpell,  "[C++] Frost Barrage");
+        MakeSpell(g_snapGroundSpell,    "[C++] Snap to Ground");
+        // Wave 10
+        MakeSpell(g_miniaturizeSpell,   "[C++] Miniaturize All");
+        MakeSpell(g_executeSpell,       "[C++] Execute");
+        MakeSpell(g_bounceHouseSpell,   "[C++] Bounce House");
+        MakeSpell(g_detectionSpell,     "[C++] Toggle Detection");
 
         auto* source = RE::ScriptEventSourceHolder::GetSingleton();
         if (source) {
@@ -1428,6 +1679,16 @@ namespace MagicToolkit
             g_playerGiantSpell,
             g_massHealSpell,
             g_drainTargetSpell,
+            // Wave 9
+            g_gatherNpcsSpell,
+            g_carrySpell,
+            g_frostBarrageSpell,
+            g_snapGroundSpell,
+            // Wave 10
+            g_miniaturizeSpell,
+            g_executeSpell,
+            g_bounceHouseSpell,
+            g_detectionSpell,
         };
 
         for (auto* spell : spells) {

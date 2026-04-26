@@ -31,6 +31,11 @@ namespace MagicToolkit
     RE::SpellItem* g_godModeSpell       = nullptr;
     RE::SpellItem* g_randomTeleSpell    = nullptr;
     RE::SpellItem* g_cloneObjectSpell   = nullptr;
+    // Wave 4
+    RE::SpellItem* g_levelUpSpell       = nullptr;
+    RE::SpellItem* g_deleteTargetSpell  = nullptr;
+    RE::SpellItem* g_paralyzeSpell      = nullptr;
+    RE::SpellItem* g_spawnDragonSpell   = nullptr;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -596,6 +601,94 @@ namespace MagicToolkit
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Wave 4 features
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void LevelUpPlayer(RE::PlayerCharacter* a_player)
+    {
+        SKSE::log::info("LevelUpPlayer: entry");
+        if (!a_player) return;
+
+        auto* skills = a_player->GetPlayerRuntimeData().skills;
+        if (!skills) {
+            SKSE::log::error("LevelUpPlayer: skills pointer is null");
+            return;
+        }
+
+        skills->AdvanceLevel(true);
+
+        SKSE::log::info("LevelUpPlayer: level advanced");
+        RE::DebugNotification("Level Up!");
+    }
+
+    void DeleteTarget(RE::TESObjectREFR* a_target)
+    {
+        SKSE::log::info("DeleteTarget: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target) return;
+
+        // Never delete the player or a quest object
+        if (a_target->IsPlayerRef()) {
+            RE::DebugNotification("Cannot delete the player.");
+            return;
+        }
+        if (a_target->HasQuestObject()) {
+            RE::DebugNotification("Cannot delete a quest object.");
+            return;
+        }
+
+        std::string name = a_target->GetName();
+        a_target->Disable();
+        a_target->SetDelete(true);
+
+        SKSE::log::info("DeleteTarget: '{}' disabled and marked for deletion", name);
+        RE::DebugNotification(std::format("Deleted: {}", name).c_str());
+    }
+
+    void ParalyzeTarget(RE::Actor* a_target)
+    {
+        SKSE::log::info("ParalyzeTarget: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target || a_target->IsPlayerRef()) return;
+
+        // kParalysis (53): 1.0 = paralyzed, 0.0 = normal
+        float current = a_target->GetActorValue(RE::ActorValue::kParalysis);
+        float next    = (current > 0.5f) ? 0.0f : 1.0f;
+        a_target->SetActorValue(RE::ActorValue::kParalysis, next);
+
+        SKSE::log::info("ParalyzeTarget: {} paralysis {:.0f} -> {:.0f}", a_target->GetName(), current, next);
+        RE::DebugNotification(
+            next > 0.5f
+                ? std::format("{} paralyzed.", a_target->GetName()).c_str()
+                : std::format("{} unparalyzed.", a_target->GetName()).c_str());
+    }
+
+    void SpawnDragon(RE::Actor* a_caster)
+    {
+        SKSE::log::info("SpawnDragon: entry");
+        if (!a_caster) return;
+
+        // Try several EditorIDs; dragons vary by version/DLC
+        RE::TESNPC* dragonBase = RE::TESForm::LookupByEditorID<RE::TESNPC>("MQ101Dragon");
+        if (!dragonBase) dragonBase = RE::TESForm::LookupByEditorID<RE::TESNPC>("DragonAtronach01");
+        if (!dragonBase) dragonBase = RE::TESForm::LookupByID<RE::TESNPC>(0x000D3A54); // Mirmulnir
+        if (!dragonBase) dragonBase = RE::TESForm::LookupByID<RE::TESNPC>(0x0005A814); // Dragon01
+
+        if (!dragonBase) {
+            SKSE::log::error("SpawnDragon: no dragon form found");
+            RE::DebugNotification("Dragon form not found in this load order.");
+            return;
+        }
+
+        auto* ref = SpawnInFront(dragonBase, a_caster, 500.0f);
+        if (ref) {
+            if (auto* actor = ref->As<RE::Actor>()) {
+                actor->EvaluatePackage(false, true);
+            }
+            SKSE::log::info("SpawnDragon: '{}' summoned", dragonBase->GetName());
+            RE::DebugNotification(std::format("Dragon '{}' summoned!", dragonBase->GetName()).c_str());
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Spell-cast event dispatcher
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -681,6 +774,17 @@ namespace MagicToolkit
             } else if (Match(g_cloneObjectSpell)) {
                 if (crossRef) CloneObject(crossRef);
                 else RE::DebugNotification("No object in crosshair to clone.");
+            } else if (Match(g_levelUpSpell)) {
+                LevelUpPlayer(RE::PlayerCharacter::GetSingleton());
+            } else if (Match(g_deleteTargetSpell)) {
+                if (crossRef) DeleteTarget(crossRef);
+                else RE::DebugNotification("No object in crosshair to delete.");
+            } else if (Match(g_paralyzeSpell)) {
+                auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
+                if (target) ParalyzeTarget(target);
+                else RE::DebugNotification("No NPC in crosshair to paralyze.");
+            } else if (Match(g_spawnDragonSpell)) {
+                SpawnDragon(caster);
             }
 
             return RE::BSEventNotifyControl::kContinue;
@@ -737,6 +841,11 @@ namespace MagicToolkit
         MakeSpell(g_godModeSpell,       "[C++] Toggle God Mode");
         MakeSpell(g_randomTeleSpell,    "[C++] Random Teleport");
         MakeSpell(g_cloneObjectSpell,   "[C++] Clone Object");
+        // Wave 4
+        MakeSpell(g_levelUpSpell,       "[C++] Level Up");
+        MakeSpell(g_deleteTargetSpell,  "[C++] Delete Target");
+        MakeSpell(g_paralyzeSpell,      "[C++] Toggle Paralyze");
+        MakeSpell(g_spawnDragonSpell,   "[C++] Summon Dragon");
 
         auto* source = RE::ScriptEventSourceHolder::GetSingleton();
         if (source) {
@@ -781,6 +890,11 @@ namespace MagicToolkit
             g_godModeSpell,
             g_randomTeleSpell,
             g_cloneObjectSpell,
+            // Wave 4
+            g_levelUpSpell,
+            g_deleteTargetSpell,
+            g_paralyzeSpell,
+            g_spawnDragonSpell,
         };
 
         for (auto* spell : spells) {

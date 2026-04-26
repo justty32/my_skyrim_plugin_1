@@ -35,6 +35,12 @@ namespace MagicToolkit
     void RandomTeleport(RE::Actor* a_player);
     void CloneObject(RE::TESObjectREFR* a_target);
 
+    // --- Wave 4 ---
+    void LevelUpPlayer(RE::PlayerCharacter* a_player);
+    void DeleteTarget(RE::TESObjectREFR* a_target);
+    void ParalyzeTarget(RE::Actor* a_target);
+    void SpawnDragon(RE::Actor* a_caster);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

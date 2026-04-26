@@ -46,6 +46,16 @@ namespace MagicToolkit
     RE::SpellItem* g_skeletonArmySpell  = nullptr;
     RE::SpellItem* g_launchSpell        = nullptr;
     RE::SpellItem* g_skillBoostSpell    = nullptr;
+    // Wave 7
+    RE::SpellItem* g_pacifyAllSpell     = nullptr;
+    RE::SpellItem* g_identifySpell      = nullptr;
+    RE::SpellItem* g_resurrectSpell     = nullptr;
+    RE::SpellItem* g_armorBoostSpell    = nullptr;
+    // Wave 8
+    RE::SpellItem* g_markRecallSpell    = nullptr;
+    RE::SpellItem* g_playerGiantSpell   = nullptr;
+    RE::SpellItem* g_massHealSpell      = nullptr;
+    RE::SpellItem* g_drainTargetSpell   = nullptr;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -946,6 +956,188 @@ namespace MagicToolkit
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Wave 7 features
+    // ──────────────────────────────────────────────────────────────────────────
+
+    void PacifyAll()
+    {
+        SKSE::log::info("PacifyAll: entry");
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+
+        int count = 0;
+        pl->ForAllActors([&](RE::Actor* actor) -> RE::BSContainer::ForEachResult {
+            if (!actor || actor->IsPlayerRef()) return RE::BSContainer::ForEachResult::kContinue;
+            pl->StopCombatAndAlarmOnActor(actor, true);
+            actor->SetActorValue(RE::ActorValue::kAggression, 0.0f);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+
+        SKSE::log::info("PacifyAll: pacified {} actors", count);
+        RE::DebugNotification(std::format("Peace! {} actors calmed.", count).c_str());
+    }
+
+    void IdentifyTarget(RE::TESObjectREFR* a_target)
+    {
+        SKSE::log::info("IdentifyTarget: entry");
+        if (!a_target) return;
+
+        auto* base = a_target->GetBaseObject();
+        auto* cell = a_target->GetParentCell();
+
+        std::string info = std::format(
+            "{} | FormID:{:#010x} | Base:{} ({:#010x}) | Cell:{}",
+            a_target->GetName(),
+            a_target->GetFormID(),
+            base ? base->GetName() : "?",
+            base ? base->GetFormID() : 0u,
+            cell ? cell->GetName() : "?");
+
+        SKSE::log::info("IdentifyTarget: {}", info);
+        RE::DebugNotification(info.c_str());
+    }
+
+    void ResurrectTarget(RE::Actor* a_target)
+    {
+        SKSE::log::info("ResurrectTarget: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target || a_target->IsPlayerRef()) return;
+
+        if (!a_target->IsDead()) {
+            RE::DebugNotification(std::format("{} is not dead.", a_target->GetName()).c_str());
+            return;
+        }
+
+        a_target->Resurrect(false, true);
+        a_target->EvaluatePackage(false, true);
+
+        SKSE::log::info("ResurrectTarget: {} resurrected", a_target->GetName());
+        RE::DebugNotification(std::format("{} lives again!", a_target->GetName()).c_str());
+    }
+
+    void ToggleArmorBoost(RE::Actor* a_player)
+    {
+        SKSE::log::info("ToggleArmorBoost: entry");
+        if (!a_player) return;
+
+        constexpr float kBoosted = 10000.0f; // effectively immune
+        constexpr float kNormal  = 0.0f;
+
+        float cur  = a_player->GetActorValue(RE::ActorValue::kDamageResist);
+        float next = (cur >= kBoosted - 1.0f) ? kNormal : kBoosted;
+        a_player->SetActorValue(RE::ActorValue::kDamageResist, next);
+
+        SKSE::log::info("ToggleArmorBoost: DamageResist {} -> {}", cur, next);
+        RE::DebugNotification(next > 0.0f ? "Iron Skin: ON (immune to damage)." : "Iron Skin: OFF.");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Wave 8 features
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // Mark/Recall: static storage for marked position (valid after first cast)
+    static bool           s_hasMark   = false;
+    static RE::NiPoint3   s_markPos   = {};
+    static RE::TESObjectCELL* s_markCell = nullptr;
+
+    void MarkOrRecall(RE::Actor* a_player)
+    {
+        SKSE::log::info("MarkOrRecall: entry, hasMark={}", s_hasMark);
+        if (!a_player) return;
+
+        if (!s_hasMark) {
+            // First cast: save position
+            s_markPos  = a_player->GetPosition();
+            s_markCell = a_player->GetParentCell();
+            s_hasMark  = true;
+            SKSE::log::info("MarkOrRecall: marked at ({:.1f},{:.1f},{:.1f})", s_markPos.x, s_markPos.y, s_markPos.z);
+            RE::DebugNotification("Position marked. Cast again to recall.");
+        } else {
+            // Second cast: teleport back, then clear mark
+            a_player->SetPosition(s_markPos);
+            s_hasMark = false;
+            SKSE::log::info("MarkOrRecall: recalled to ({:.1f},{:.1f},{:.1f})", s_markPos.x, s_markPos.y, s_markPos.z);
+            RE::DebugNotification("Recalled to marked position!");
+        }
+    }
+
+    void CyclePlayerScale(RE::Actor* a_player)
+    {
+        SKSE::log::info("CyclePlayerScale: entry");
+        if (!a_player) return;
+
+        static const float kScales[] = { 1.0f, 2.0f, 4.0f, 0.5f };
+        static const int   kCount    = static_cast<int>(std::size(kScales));
+
+        float cur     = a_player->GetScale();
+        int   nextIdx = 0;
+        for (int i = 0; i < kCount; ++i) {
+            if (std::abs(cur - kScales[i]) < 0.1f) { nextIdx = (i + 1) % kCount; break; }
+        }
+
+        float next = kScales[nextIdx];
+        a_player->GetReferenceRuntimeData().refScale = static_cast<std::uint16_t>(next * 100.0f);
+        a_player->DoReset3D(true);
+
+        SKSE::log::info("CyclePlayerScale: {:.1f} -> {:.1f}", cur, next);
+        RE::DebugNotification(std::format("Player scale: {:.1f}x", next).c_str());
+    }
+
+    void MassHealNearby()
+    {
+        SKSE::log::info("MassHealNearby: entry");
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        if (!player) return;
+
+        RE::NiPoint3 origin = player->GetPosition();
+        constexpr float kRadius = 800.0f;
+        int count = 0;
+
+        auto* pl = RE::ProcessLists::GetSingleton();
+        if (!pl) return;
+
+        pl->ForAllActors([&](RE::Actor* actor) -> RE::BSContainer::ForEachResult {
+            RE::NiPoint3 delta = actor->GetPosition() - origin;
+            float distSq = delta.x * delta.x + delta.y * delta.y + delta.z * delta.z;
+            if (distSq > kRadius * kRadius) return RE::BSContainer::ForEachResult::kContinue;
+
+            float maxHp = actor->GetPermanentActorValue(RE::ActorValue::kHealth);
+            actor->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, maxHp);
+            ++count;
+            return RE::BSContainer::ForEachResult::kContinue;
+        });
+
+        SKSE::log::info("MassHealNearby: healed {} actors", count);
+        RE::DebugNotification(std::format("Mass Heal! {} actors restored.", count).c_str());
+    }
+
+    void DrainTarget(RE::Actor* a_target)
+    {
+        SKSE::log::info("DrainTarget: entry, target={}", a_target ? a_target->GetName() : "null");
+        if (!a_target || a_target->IsPlayerRef()) return;
+
+        float cur  = a_target->GetActorValue(RE::ActorValue::kHealth);
+        float drain = cur * 0.5f; // drain 50 % of current HP
+
+        if (drain < 1.0f) {
+            RE::DebugNotification(std::format("{} is nearly dead already.", a_target->GetName()).c_str());
+            return;
+        }
+
+        // Negative restore = damage
+        a_target->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, -drain);
+
+        // Give the drained HP to the player
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        if (player) {
+            player->RestoreActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kHealth, drain);
+        }
+
+        SKSE::log::info("DrainTarget: drained {:.0f} HP from {}", drain, a_target->GetName());
+        RE::DebugNotification(std::format("Drained {:.0f} HP from {}!", drain, a_target->GetName()).c_str());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Spell-cast event dispatcher
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -1063,6 +1255,29 @@ namespace MagicToolkit
                 else RE::DebugNotification("No NPC in crosshair to launch.");
             } else if (Match(g_skillBoostSpell)) {
                 ToggleSkillBoost(caster);
+            // Wave 7
+            } else if (Match(g_pacifyAllSpell)) {
+                PacifyAll();
+            } else if (Match(g_identifySpell)) {
+                if (crossRef) IdentifyTarget(crossRef);
+                else RE::DebugNotification("No object in crosshair to identify.");
+            } else if (Match(g_resurrectSpell)) {
+                auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
+                if (target) ResurrectTarget(target);
+                else RE::DebugNotification("No actor in crosshair to resurrect.");
+            } else if (Match(g_armorBoostSpell)) {
+                ToggleArmorBoost(caster);
+            // Wave 8
+            } else if (Match(g_markRecallSpell)) {
+                MarkOrRecall(caster);
+            } else if (Match(g_playerGiantSpell)) {
+                CyclePlayerScale(caster);
+            } else if (Match(g_massHealSpell)) {
+                MassHealNearby();
+            } else if (Match(g_drainTargetSpell)) {
+                auto* target = crossRef ? crossRef->As<RE::Actor>() : nullptr;
+                if (target) DrainTarget(target);
+                else RE::DebugNotification("No actor in crosshair to drain.");
             }
 
             return RE::BSEventNotifyControl::kContinue;
@@ -1134,6 +1349,16 @@ namespace MagicToolkit
         MakeSpell(g_skeletonArmySpell,  "[C++] Skeleton Army");
         MakeSpell(g_launchSpell,        "[C++] Launch Target");
         MakeSpell(g_skillBoostSpell,    "[C++] Toggle Max Skills");
+        // Wave 7
+        MakeSpell(g_pacifyAllSpell,     "[C++] Pacify All");
+        MakeSpell(g_identifySpell,      "[C++] Identify Target");
+        MakeSpell(g_resurrectSpell,     "[C++] Resurrect");
+        MakeSpell(g_armorBoostSpell,    "[C++] Toggle Iron Skin");
+        // Wave 8
+        MakeSpell(g_markRecallSpell,    "[C++] Mark / Recall");
+        MakeSpell(g_playerGiantSpell,   "[C++] Cycle Player Scale");
+        MakeSpell(g_massHealSpell,      "[C++] Mass Heal");
+        MakeSpell(g_drainTargetSpell,   "[C++] Drain Life");
 
         auto* source = RE::ScriptEventSourceHolder::GetSingleton();
         if (source) {
@@ -1193,6 +1418,16 @@ namespace MagicToolkit
             g_skeletonArmySpell,
             g_launchSpell,
             g_skillBoostSpell,
+            // Wave 7
+            g_pacifyAllSpell,
+            g_identifySpell,
+            g_resurrectSpell,
+            g_armorBoostSpell,
+            // Wave 8
+            g_markRecallSpell,
+            g_playerGiantSpell,
+            g_massHealSpell,
+            g_drainTargetSpell,
         };
 
         for (auto* spell : spells) {

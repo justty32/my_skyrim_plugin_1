@@ -53,6 +53,18 @@ namespace MagicToolkit
     void LaunchTarget(RE::Actor* a_target);
     void ToggleSkillBoost(RE::Actor* a_player);
 
+    // --- Wave 7 ---
+    void PacifyAll();
+    void IdentifyTarget(RE::TESObjectREFR* a_target);
+    void ResurrectTarget(RE::Actor* a_target);
+    void ToggleArmorBoost(RE::Actor* a_player);
+
+    // --- Wave 8 ---
+    void MarkOrRecall(RE::Actor* a_player);
+    void CyclePlayerScale(RE::Actor* a_player);
+    void MassHealNearby();
+    void DrainTarget(RE::Actor* a_target);
+
     // --- Lifecycle ---
     void InitializeMagic();
     void GiveSpellsToPlayer();

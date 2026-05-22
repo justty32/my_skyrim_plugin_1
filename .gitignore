@@ -25,3 +25,6 @@ Thumbs.db
 
 # Local reference / tutorial notes (not part of the plugin)
 skyrim_mod/
+
+# Local clone of the library source (dependency comes from vcpkg, not vendored)
+CommonLibSSE-NG/

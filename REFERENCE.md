@@ -25,24 +25,7 @@ The modern, comprehensive C++ library for Skyrim Special Edition/Anniversary Edi
 
 ---
 
-## 2. skse64
-**Path:** `skse64/`
-
-### What it is
-The original source code for the Skyrim Script Extender. While `CommonLibSSE-NG` is better for plugin development, the original `skse64` source is the "ground truth" for how SKSE itself works.
-
-### Where to look
-- **Internal Logic:** `skse64/skse64/`
-  - `PluginAPI.h`: The low-level interface SKSE provides to plugins.
-  - `Papyrus*.h/cpp`: Examples of how to expose new C++ functions to the Papyrus scripting language.
-  - `Game*.h`: Older definitions of game classes. Use these for comparison if `CommonLib` is ambiguous.
-
-### Troubleshooting
-- Use this if you need to understand the **lifecycle** of a plugin (loading, initialization sequence) or how SKSE handles binary serialization (`Serialization.h`).
-
----
-
-## 3. skyrim_mod (Tutorials & Analysis)
+## 2. skyrim_mod (Tutorials & Analysis)
 **Path:** `skyrim_mod/`
 
 ### What it is
@@ -60,7 +43,8 @@ A collection of local analysis notes and tutorials specifically curated for this
 
 ## General Workflow for Agents
 1. **Identify the Goal:** (e.g., "Add a new shout").
-2. **Consult `skyrim_mod/`:** Check if there's a tutorial for Shouts or Dynamic Forms.
-3. **Search `CommonLibSSE-NG/include/RE/`:** Find the relevant classes (e.g., `TESShout`, `SpellItem`).
-4. **Reference `skse64/`:** If you need to see how SKSE handles specific data types or Papyrus bindings.
-5. **Verify with `src/util.h`:** This project has many local helpers. Check if a helper already exists for what you're doing.
+2. **Read `MODDING_COOKBOOK.md` first:** 本專案的核心模式（純 C++ 動態法術、不靠 ESP）、生命週期、必避雷區與一整套實作食譜都在這。新功能照 `src/NpcGenerator.cpp` 範本走。
+3. **Look up classes in `COMMONLIBSSE_INDEX.md`:** 依系統分類的 CommonLibSSE-NG 索引 + 重點 class 常用方法速查（繁中）。
+4. **Consult `skyrim_mod/`:** Check if there's a tutorial for Shouts or Dynamic Forms.
+5. **Search `CommonLibSSE-NG/include/RE/`:** Find the relevant classes (e.g., `TESShout`, `SpellItem`).
+6. **Verify with `src/util.h`:** This project has many local helpers. Check if a helper already exists for what you're doing.

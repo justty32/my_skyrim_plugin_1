@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/quest-engine/quest.core.schema.json",
+  "title": "Quest Engine — Core Vocabulary Schema",
+  "description": "PROVISIONAL / 暫定，隨時可能改。本檔只涵蓋 QUEST_ENGINE_SPEC.md 的『核心詞彙』與文件結構。各遊戲 adapter 宣告的擴充詞彙（如 give_item、player_level_gte、actor_death）不在此檔；實際驗證用『有效 schema』= 本核心 schema ∪ adapter 擴充。因此 condition/action/trigger 對未知 key 採寬鬆放行（additionalProperties:true），交由合併後的 adapter schema 收緊。",
+  "type": "object",
+  "required": ["id", "title"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "minLength": 1, "description": "全域唯一穩定 ID，持久化主鍵。發佈後勿改。" },
+    "title": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1 },
+    "priority": { "enum": ["high", "normal", "low"], "description": "暫定，可能改。多任務爭用時的優先序。" },
+    "characters": {
+      "type": "object",
+      "additionalProperties": true,
+      "$comment": "綁定描述是 adapter 定義的，核心不解讀。"
+    },
+    "vars": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/value" }
+    },
+    "objectives": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/objective" }
+    },
+    "dialogues": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/dialogue" }
+    },
+    "triggers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/trigger" }
+    },
+    "on_start": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/action" }
+    }
+  },
+  "$defs": {
+    "value": { "type": ["number", "boolean", "string"] },
+    "objectiveState": { "enum": ["inactive", "active", "done", "failed"] },
+    "objective": {
+      "type": "object",
+      "required": ["text"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string" },
+        "state": { "$ref": "#/$defs/objectiveState" }
+      }
+    },
+    "dialogue": {
+      "type": "object",
+      "required": ["entry", "nodes"],
+      "additionalProperties": false,
+      "properties": {
+        "entry": { "type": "string" },
+        "nodes": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/node" }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["speaker"],
+      "additionalProperties": false,
+      "properties": {
+        "speaker": { "type": "string" },
+        "lines": { "type": "array", "items": { "type": "string" } },
+        "choices": { "type": "array", "items": { "$ref": "#/$defs/choice" } },
+        "end": { "const": true }
+      },
+      "oneOf": [
+        { "required": ["choices"] },
+        { "required": ["end"] }
+      ]
+    },
+    "choice": {
+      "type": "object",
+      "required": ["text"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string" },
+        "when": { "$ref": "#/$defs/condition" },
+        "then": { "type": "array", "items": { "$ref": "#/$defs/action" } },
+        "goto": { "type": "string" },
+        "end": { "const": true }
+      },
+      "oneOf": [
+        { "required": ["goto"] },
+        { "required": ["end"] }
+      ]
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["on", "do"],
+      "additionalProperties": true,
+      "$comment": "核心 on: quest_start | dialogue_end | objective_completed。adapter 觸發另加 on 值與過濾鍵，故 additionalProperties:true。",
+      "properties": {
+        "on": { "type": "string" },
+        "dialogue": { "type": "string" },
+        "objective": { "type": "string" },
+        "character": { "type": "string" },
+        "form": { "type": "string" },
+        "location": { "type": "string" },
+        "when": { "$ref": "#/$defs/condition" },
+        "do": { "type": "array", "items": { "$ref": "#/$defs/action" } }
+      }
+    },
+    "varValue": {
+      "type": "object",
+      "required": ["var", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "var": { "type": "string" },
+        "value": { "$ref": "#/$defs/value" }
+      }
+    },
+    "varNumber": {
+      "type": "object",
+      "required": ["var", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "var": { "type": "string" },
+        "value": { "type": "number" }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": true,
+      "$comment": "核心條件鍵如下；adapter 條件經 additionalProperties 放行，合併 schema 應收緊。物件含多鍵 = AND。",
+      "properties": {
+        "var_eq": { "$ref": "#/$defs/varValue" },
+        "var_neq": { "$ref": "#/$defs/varValue" },
+        "var_gte": { "$ref": "#/$defs/varNumber" },
+        "var_lte": { "$ref": "#/$defs/varNumber" },
+        "objective_state": {
+          "type": "object",
+          "required": ["objective", "state"],
+          "additionalProperties": false,
+          "properties": {
+            "objective": { "type": "string" },
+            "state": { "$ref": "#/$defs/objectiveState" }
+          }
+        },
+        "random": {
+          "type": "object",
+          "required": ["chance"],
+          "additionalProperties": false,
+          "properties": {
+            "chance": { "type": "number", "minimum": 0, "maximum": 1 },
+            "key": { "type": "string" }
+          }
+        },
+        "all": { "type": "array", "items": { "$ref": "#/$defs/condition" } },
+        "any": { "type": "array", "items": { "$ref": "#/$defs/condition" } },
+        "not": { "$ref": "#/$defs/condition" }
+      }
+    },
+    "action": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": true,
+      "$comment": "每個 action 物件恰一個動詞鍵。核心動詞如下；adapter 動詞（give_item、spawn_character…）經 additionalProperties 放行。",
+      "properties": {
+        "set_var": { "$ref": "#/$defs/varValue" },
+        "add_var": { "$ref": "#/$defs/varNumber" },
+        "set_objective_active": { "type": "string" },
+        "complete_objective": { "type": "string" },
+        "fail_objective": { "type": "string" },
+        "complete_quest": { "const": true },
+        "fail_quest": { "const": true },
+        "start_dialogue": { "type": "string" },
+        "show_message": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "required": ["text"],
+              "additionalProperties": false,
+              "properties": { "text": { "type": "string" } }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

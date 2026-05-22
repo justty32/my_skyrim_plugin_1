@@ -1,93 +1,42 @@
-# JSON 劇情/對話引擎 — 設計文件
+# 劇情/對話引擎 — C++ 參考實作 + Skyrim Adapter
 
-> 狀態：**設計階段，尚未實作**。本檔是給之後實作的人（含 AI）與餵 LLM 生成劇情用的契約。
+> 狀態：**設計階段，尚未實作**。
+> **可攜契約（格式、狀態機語意、詞彙、能力埠、持久化、一致性）在 `QUEST_ENGINE_SPEC.md`。本檔只談這個規格在 C++/SKSE/Skyrim 上的落地。**
 > 搭配閱讀：`MODDING_COOKBOOK.md`（本專案核心模式）、`COMMONLIBSSE_INDEX.md`（有哪些 class）、`PITFALLS.md`（編譯雷區）、`CLAUDE.md`（專案規則）。
 
-## 0. 目標與一句話
-
-用**純 JSON 定義劇情與對話**，執行期由 C++ 驅動，**完全不依賴 Creation Kit / ESP**。延續本專案「動態 form + 事件分派 + co-save 持久化」的核心模式。
-
-範圍（已拍板）：
-- 對話呈現：**原生 `DialogueMenu` 是高風險 spike；MessageBox 是保底**。呈現層可抽換。
-- 劇情深度：**完整任務系統**（目標、世界觸發、追蹤）。
-- NPC 來源：**現有 NPC 與動態生成都要**。
-- 撰寫者：**手寫 + LLM 生成** → schema 要嚴格、詞彙封閉、錯誤好懂。
+C++/SKSE 是 spec 的**參考實作之一**；Skyrim 是它的第一個 adapter。
 
 ---
 
-## 1. 第一鐵則：呈現層必須可抽換
-
-整個架構**不能賭原生對話能成**。劇情引擎只透過抽象介面跟「對話呈現」溝通，backend 可換。
+## 1. 兩個 target：可攜核心 + Skyrim adapter
 
 ```
-config/quests/*.json  (劇情定義)
-        │  載入 + 驗證
-┌───────▼────────────────────────────────┐
-│  QuestEngine（C++ 狀態機）                 │  ← 不知道也不在乎對話長怎樣
-│  變數 / 條件 / 動作 / 目標 / 轉移 / 觸發     │
-└───────┬────────────────────────────────┘
-        │  IDialoguePresenter::Present(node) → 回傳玩家選了哪個 choice index
-        │
-   ┌────┴──────────────┬─────────────────────┐
-   ▼                   ▼                     ▼
-MessageBoxPresenter  NativePresenter        ScaleformPresenter
-（保底，必做）         （spike，不保證可行）    （phase 4，選配）
+src/core/   ── 可攜核心 Runtime：實作 SPEC 的狀態機/條件/動作/對話流程/持久化格式
+            ── 鐵則：一行 RE:: / SKSE:: 都不能有，只依賴 std + nlohmann-json
+src/skyrim/ ── Skyrim adapter：唯一 include RE::Skyrim.h / SKSE，實作所有能力埠（§5 of SPEC）
 ```
 
-`IDialoguePresenter` 介面（概念，非最終簽名）：
+`src/core/` 理想上是可獨立抽出的 library，換遊戲時整包搬走、只重寫 adapter。
 
-```cpp
-struct PresentedChoice { std::string text; bool enabled; int index; };
-struct PresentedNode {
-    std::string speaker;                 // 角色 id（給 presenter 解析顯示名/語音）
-    std::vector<std::string> lines;      // NPC 台詞（可多句）
-    std::vector<PresentedChoice> choices;// 已過濾條件後可見的選項
-};
-class IDialoguePresenter {
-public:
-    virtual ~IDialoguePresenter() = default;
-    // 顯示一個節點，透過 callback 回傳玩家選的 choice.index（-1 = 取消/結束）
-    virtual void Present(const PresentedNode& node, std::function<void(int)> onChoice) = 0;
-    virtual void Close() = 0;
-};
-```
+能力埠 → Skyrim 實作對照：
 
-實作策略：**先把整條任務流程用 `MessageBoxPresenter` 打通**，原生對話當平行 spike，能成才接 `NativePresenter`。spike 失敗只是換 backend，狀態機 / JSON / 存檔全部不動。
+| SPEC 能力埠 | Skyrim adapter 實作方式 |
+|-------------|------------------------|
+| EntityResolver | `LookupByEditorID` / `FormUtil::Parse`（FormID~mod）；spawn 走 `NpcGenerator::SpawnNpc` 模式（`PlaceObjectAtMe`）|
+| ActionRunner | 見 §2 動詞對照表 |
+| ConditionEvaluator | 見 §2 條件對照表 |
+| EventSource | `ScriptEventSourceHolder` + `BSTEventSink<T>`（`TESActivateEvent` / `TESDeathEvent` / `TESContainerChangedEvent` / `TESCellAttachDetachEvent`）|
+| DialoguePresenter | §3：MessageBox（保底）/ 原生 DialogueMenu（spike）/ Scaleform（選配）|
+| PersistenceBackend | `SKSE::SerializationInterface`（co-save）—— 見 §4 |
+| Clock / Logger / RNG | `RE::Calendar` / `SKSE::log` / std RNG |
 
 ---
 
-## 2. JSON Schema（手寫 + LLM 的契約）
+## 2. Skyrim adapter 宣告的擴充詞彙
 
-一個任務一個檔，放 `config/quests/<id>.json`，啟動時用 `SystemUtil::File::GetConfigs` 掃描載入。
+核心詞彙由 `src/core/` 直接實作（見 SPEC §4.1–4.3）。下列是 **Skyrim adapter 對核心宣告**的擴充詞彙（SPEC §4.4），及其對應 API。
 
-### 2.1 Form 參照格式
-
-沿用本專案 `FormUtil::Parse` 慣例，所有指向遊戲 form 的欄位接受兩種寫法：
-- `"0x0001A6AC~Skyrim.esm"` — FormID + 來源 plugin（delimiter `~`）
-- `"BelethorServices"` — EditorID（內部走 `LookupByEditorID`）
-
-### 2.2 頂層結構
-
-```json
-{
-  "id": "mq_merchant_secret",
-  "title": "商人的秘密",
-  "version": 1,
-  "characters": { /* 角色綁定，見 2.3 */ },
-  "vars": { "trust": 0, "knows_secret": false },
-  "objectives": { /* 目標，見 2.4 */ },
-  "dialogues": { /* 對話樹，見 2.5 */ },
-  "triggers": [ /* 世界事件觸發，見 2.6 */ ],
-  "on_start": [ /* 任務啟動時跑的 actions */ ]
-}
-```
-
-- `id`：**全域唯一穩定字串**，co-save 的 key。一旦發佈不可改（改了等於新任務）。
-- `vars`：任務內變數，型別由初值決定（number / bool / string），隨存檔持久。
-
-### 2.3 角色綁定（casting registry）
-
-JSON 用穩定別名（如 `"merchant"`）引用角色，執行期解析成實際 actor。兩種綁定:
+### 2.1 實體綁定描述（characters 區塊由 adapter 解讀）
 
 ```json
 "characters": {
@@ -95,136 +44,76 @@ JSON 用穩定別名（如 `"merchant"`）引用角色，執行期解析成實�
   "thug":     { "bind": "spawn", "template": "0x00000007", "name": "可疑的打手" }
 }
 ```
+- `existing`：`ref` 走 `FormUtil::Parse`（`"0x..~Skyrim.esm"`）或 EditorID。身分穩定。
+- `spawn`：`template` 模板 NPC 動態生（`NpcGenerator` 模式），`name` 覆寫顯示名。
+- 解析結果（FormID / spawned handle）序列化進 co-save；讀檔後重解析，spawned 失效依政策重生或標記中斷。
 
-- `existing`：鎖定遊戲既有 NPC（身分穩定）。`ref` 是 Form 參照。
-- `spawn`：用 `template`（模板 NPC）動態生（沿用 `NpcGenerator::SpawnNpc` 模式）。`name` 覆寫顯示名。
-- 解析結果（FormID / spawned actor handle）寫入 co-save；讀檔後重新解析，spawned actor 若失效依政策重生或標記中斷。
+### 2.2 擴充動作（ActionRunner）
 
-### 2.4 目標（自製日誌追蹤，先不碰原生 QUST）
-
-```json
-"objectives": {
-  "obj_meet":   { "text": "去白漫城找商人 Belethor", "state": "active" },
-  "obj_decide": { "text": "決定要不要幫商人",        "state": "inactive" }
-}
-```
-
-- `state`：`inactive` | `active` | `done` | `failed`。初值在此設定。
-- 顯示先用通知 / 自製追蹤；要原生日誌再評估動態 `TESQuest`（見 §5 風險）。
-
-### 2.5 對話樹
-
-```json
-"dialogues": {
-  "talk_merchant": {
-    "entry": "greet",
-    "nodes": {
-      "greet": {
-        "speaker": "merchant",
-        "lines": ["你不是本地人吧？"],
-        "choices": [
-          { "text": "誰在問？", "goto": "wary" },
-          { "text": "[等級5] 只是路過。",
-            "when": { "player_level_gte": 5 },
-            "then": [ { "add_var": { "var": "trust", "value": 1 } } ],
-            "goto": "lie" }
-        ]
-      },
-      "wary": { "speaker": "merchant", "lines": ["哼。"], "end": true }
-    }
-  }
-}
-```
-
-- `node`：`speaker` + `lines`（NPC 台詞）+ `choices` 或 `end: true`。
-- `choice`：`text`（玩家選項）、選配 `when`（不滿足則隱藏/灰掉）、選配 `then`（選後跑的 actions）、`goto`（下一節點）或 `end: true`。
-- 節點的 `saidOnce` 之類旗標由引擎持久化。
-
-### 2.6 觸發（世界事件 → 動作）
-
-```json
-"triggers": [
-  { "on": "dialogue_end", "dialogue": "talk_merchant",
-    "do": [ { "complete_objective": "obj_meet" }, { "set_objective_active": "obj_decide" } ] },
-  { "on": "actor_death", "character": "thug",
-    "do": [ { "complete_quest": true } ] }
-]
-```
-
-每個觸發 = `on`（事件型別）+ 過濾欄位 + 選配 `when` + `do`（actions）。
-
----
-
-## 3. 封閉詞彙表（LLM 不能亂掰，validator 能擋）
-
-### 3.1 條件 `when`（皆為布林，物件內多鍵預設 AND）
-
-| key | 參數 | 意義 |
-|-----|------|------|
-| `var_eq` / `var_neq` | `{var, value}` | 任務變數等於 / 不等於 |
-| `var_gte` / `var_lte` | `{var, value}` | 數值變數 ≥ / ≤ |
-| `player_level_gte` / `_lte` | number | 玩家等級 |
-| `player_gold_gte` | number | 玩家金幣 |
-| `player_has_item` | `{form, count}` | 持有物品 ≥ count |
-| `player_has_spell` | `{form}` | 已學法術 |
-| `character_alive` / `character_dead` | `{character}` | 角色死活 |
-| `objective_state` | `{objective, state}` | 目標處於某狀態 |
-| `in_location` | `{location}` | 玩家在某地點 |
-| `time_of_day` | `{from, to}` | 遊戲時間區間（時） |
-| `random` | `{chance}` | 0.0–1.0 機率 |
-| `all` / `any` | `[ ...conditions ]` | 邏輯組合 |
-| `not` | `{ ...condition }` | 反向 |
-
-### 3.2 動作 `then` / `do` / `on_start`（封閉動詞表）
-
-| 動詞 | 參數 | 對應 API（已驗證/可用）|
-|------|------|------|
-| `set_var` / `add_var` | `{var, value}` | 引擎內部 |
+| 動詞 | 參數 | Skyrim API |
+|------|------|-----------|
 | `give_item` / `remove_item` | `{form, count}` | `Actor::AddObjectToContainer` / `RemoveItem` |
 | `give_gold` / `remove_gold` | `{amount}` | 同上（Gold001）|
-| `add_spell` / `remove_spell` | `{form}` | `Actor::AddSpell`（見 NpcGenerator）|
+| `add_spell` / `remove_spell` | `{form}` | `Actor::AddSpell`（見 `NpcGenerator`）|
 | `add_shout` | `{form}` | `ActorEquipManager::EquipShout` |
-| `spawn_character` | `{character}` | casting registry → `PlaceObjectAtMe` |
+| `spawn_character` | `{character}` | EntityResolver spawn → `PlaceObjectAtMe` |
 | `move_character` | `{character, to}` | `SetPosition`（to: `player`/marker/另一 character）|
 | `teleport_player` | `{to}` | `MoveTo` / `ObjectUtil::Transform::TranslateTo` |
 | `start_combat` | `{character, against}` | `Actor::StartCombat` |
 | `set_relationship` | `{character, level}` | relationship rank |
 | `play_idle` | `{character, idle}` | `AnimUtil::Idle::Play`（util.h 已有）|
 | `add_map_marker` | `{pos, name}` | 動態 map marker |
-| `set_objective_active` / `complete_objective` / `fail_objective` | `{objective}` 或字串 | 引擎內部 |
-| `complete_quest` / `fail_quest` | `true` | 引擎內部 |
-| `start_dialogue` | `{dialogue}` | 開一段對話樹 |
-| `show_message` | `{text}` | `RE::DebugNotification` / HUD |
-| `play_sound` | `{form}` | 音效 |
+| `play_sound` | `{form}` | `BSAudioManager` |
 
-### 3.3 觸發 `on`（事件型別 → BSTEventSink）
+### 2.3 擴充條件（ConditionEvaluator）
 
-| `on` | 過濾欄位 | 對應事件 |
-|------|----------|----------|
-| `quest_start` | — | 任務啟動 |
-| `dialogue_end` | `{dialogue}` | 對話樹結束 |
-| `activate` | `{character}` | 對 NPC 互動（談話入口）`TESActivateEvent` |
+| key | 參數 | Skyrim API |
+|-----|------|-----------|
+| `player_level_gte` / `_lte` | number | `PlayerCharacter::GetLevel` |
+| `player_gold_gte` | number | 玩家金幣計數 |
+| `player_has_item` | `{form, count}` | inventory 查詢 |
+| `player_has_spell` | `{form}` | `Actor::HasSpell` |
+| `character_alive` / `character_dead` | `{character}` | `Actor::IsDead` |
+| `in_location` | `{location}` | `PlayerCharacter::GetCurrentLocation` |
+| `time_of_day` | `{from, to}` | `RE::Calendar` |
+
+### 2.4 擴充觸發（EventSource）
+
+| `on` | 過濾 | 事件 |
+|------|------|------|
+| `activate` | `{character}` | `TESActivateEvent`（談話入口）|
 | `actor_death` | `{character}` | `TESDeathEvent` |
 | `item_acquired` | `{form}` | `TESContainerChangedEvent` |
-| `location_entered` | `{location}` | `TESCellAttachDetachEvent` / 位置檢查 |
-| `objective_completed` | `{objective}` | 引擎內部 |
+| `location_entered` | `{location}` | `TESCellAttachDetachEvent` + 位置檢查 |
 
-> 新增動詞/條件/觸發 = 改這三張表 + 改對應的 C++ 解析，**不要在 JSON 端發明新語法**。
-
----
-
-## 4. 持久化（co-save）
-
-用 `SKSE::SerializationInterface`（見 `COMMONLIBSSE_INDEX.md` §SKSE）。
-
-- **key 一律用 JSON 穩定字串 ID**（任務 id / 目標 id / 節點 id / 角色別名），**絕不存動態 FormID 當主鍵** —— 動態 form 的 `0xFF...` ID 讀檔後會變。
-- 每個進行中的任務存：當前對話節點、`vars` 值、各目標 `state`、角色綁定解析結果（FormID 或 spawned handle）、節點 saidOnce 旗標。
-- 讀檔流程：先重新載入 JSON 定義（程式碼提供），再從 co-save 套用「玩家進度」。定義與進度分離 → 改 .json 文字（非結構）不會讓舊存檔壞掉。
-- spawned 角色：存其 FormID，讀檔後驗證是否仍解析得到；失效則依政策重生或標記任務中斷。
+> 新增擴充詞彙 = 改這三張表 + adapter 對核心多宣告一項 + 實作對應埠。**JSON 端不發明新語法。**
 
 ---
 
-## 5. 原生 DialogueMenu — spike 研究筆記
+## 3. DialoguePresenter 三個 backend
+
+SPEC §5.5 的對話呈現埠，Skyrim 有三個可換實作：
+
+| backend | 體驗 | 工程量 | 風險 | 角色 |
+|---------|------|--------|------|------|
+| **MessageBoxPresenter** | 彈窗選項 + 字幕/通知顯示台詞 | 低 | 幾乎無 | **保底，先用它把整條流程打通** |
+| **NativePresenter** | 原生對話選單 | 高 | 高（見 §5）| spike，成功才接 |
+| **ScaleformPresenter** | 自訂沉浸 UI | 很高 | 中 | phase 4 選配 |
+
+換 backend MUST NOT 影響核心或劇情 JSON。
+
+---
+
+## 4. 持久化：co-save 實作 PersistenceBackend
+
+- 用 `SKSE::SerializationInterface`（見 `COMMONLIBSSE_INDEX.md` §SKSE）。
+- 核心給一個版本化進度 blob（SPEC §6），adapter 把它寫進 .skse co-save、讀回。blob 內含 `master_seed`（供 SPEC §8 的 `random` 確定性導出）；adapter 不需理解內容，原樣存取即可。
+- **鍵一律穩定字串 ID，絕不存動態 FormID 當主鍵**（讀檔後會變）。
+- 讀檔流程：先重載 JSON 定義，再套用 blob 進度。改 .json 文字內容不弄壞舊存檔。
+
+---
+
+## 5. 原生 DialogueMenu — spike 研究筆記（Skyrim 專屬）
 
 已讀過 `CommonLibSSE-NG/include/RE/` 相關 header，結論：**結構都摸得到，但沒有現成「開一段自訂對話」的入口，是 R&D，不是食譜。**
 
@@ -249,36 +138,44 @@ JSON 用穩定別名（如 `"merchant"`）引用角色，執行期解析成實�
 > 本專案 `CMakeLists.txt` 不 glob：新 `.cpp` 登 `cmake/sourcelist.cmake`、新 `.h` 登 `cmake/headerlist.cmake`，否則不編譯。
 
 ```
-src/quest/QuestEngine.{h,cpp}      載入 JSON、持有狀態機、總分派
-src/quest/QuestState.h             執行期狀態結構（vars/objectives/節點）
-src/quest/Conditions.{h,cpp}       §3.1 條件求值
-src/quest/Actions.{h,cpp}          §3.2 動作執行
-src/quest/Triggers.{h,cpp}         §3.3 事件 sink → 觸發分派
-src/quest/CastingRegistry.{h,cpp}  §2.3 角色綁定/解析
-src/quest/Persistence.{h,cpp}      §4 co-save 序列化
-src/dialogue/IDialoguePresenter.h  §1 抽象呈現介面
-src/dialogue/MessageBoxPresenter.{h,cpp}   保底 backend
-src/dialogue/NativePresenter.{h,cpp}       §5 spike backend
+src/core/QuestEngine.{h,cpp}       載入 JSON、持有狀態機、總分派（無 RE::）
+src/core/QuestState.h              執行期狀態結構（vars/objectives/節點）
+src/core/Conditions.{h,cpp}        SPEC §4.1 核心條件求值
+src/core/Actions.{h,cpp}           SPEC §4.2 核心動作執行
+src/core/Triggers.{h,cpp}          SPEC §3.3 觸發分派
+src/core/Ports.h                   SPEC §5 能力埠的 C++ 抽象介面
+src/core/Persistence.{h,cpp}       SPEC §6 進度 blob 序列化（格式）
+
+src/skyrim/SkyrimAdapter.{h,cpp}   綁定核心 ↔ 遊戲，向核心宣告擴充詞彙
+src/skyrim/SkyrimEntities.{h,cpp}  EntityResolver（§2.1）
+src/skyrim/SkyrimActions.{h,cpp}   ActionRunner（§2.2）
+src/skyrim/SkyrimConditions.{h,cpp} ConditionEvaluator（§2.3）
+src/skyrim/SkyrimEvents.{h,cpp}    EventSource（§2.4）
+src/skyrim/CoSavePersistence.{h,cpp} PersistenceBackend（§4）
+src/skyrim/dialogue/MessageBoxPresenter.{h,cpp}  保底
+src/skyrim/dialogue/NativePresenter.{h,cpp}      §5 spike
+
 config/quests/*.json               劇情定義
-config/schema/quest.schema.json    JSON Schema（驗證 + 餵 LLM）
+config/schema/quest.core.schema.json  核心詞彙 JSON Schema（adapter 擴充與之合併成有效 schema）
 ```
 
 ---
 
 ## 7. 分期路線
 
-- **Phase 0 — 骨架**：`IDialoguePresenter` + `MessageBoxPresenter` + 最小狀態機 + 1 個寫死的 JSON 對話樹跑通分支。觸發沿用「對目標施法 = 開始對話」。
-- **Phase 1 — 核心**：完整條件/動作詞彙 + co-save 持久化 + casting registry + 目標狀態。
-- **Phase 2 — 任務化**：世界事件觸發（殺/到/拿）+ 自製日誌追蹤 + 多任務並行 + JSON Schema validator（嚴格錯誤訊息）。
+- **Phase 0 — 骨架**：`src/core/` 最小狀態機 + 能力埠介面 + `MessageBoxPresenter` + 1 個寫死 JSON 對話樹跑通分支。觸發沿用「對目標施法 = 開始對話」。
+- **Phase 1 — 核心**：完整核心 + Skyrim 擴充詞彙 + co-save + EntityResolver 兩種綁定 + 目標狀態。
+- **Phase 2 — 任務化**：世界事件觸發（殺/到/拿）+ 自製日誌追蹤 + 多任務並行 + 有效 schema validator（嚴格錯誤訊息）。
 - **Phase 3 — 原生對話 spike**：依 §5 go/no-go；成功才接 `NativePresenter`。
-- **Phase 4（選配）**：自製 Scaleform 對話 UI。
+- **Phase 4（選配）**：Scaleform 對話 UI；把 `src/core/` 抽成獨立 library 驗證可攜性。
 
 ---
 
 ## 8. 待定問題（之後決策）
 
-- 多任務同時進行的優先序 / 互斥規則。
+- ~~多任務優先序~~ → 已暫定（SPEC §8）：3 級 `priority` + 先搶先贏；強制執行細節待實作期再定。
+- ~~第二 adapter 試金石~~ → 已定：headless CLI harness（SPEC 附錄 A），同時當離線 validator；實作語言待定。
+- LLM 生成的驗證：核心 schema 已生（`config/schema/quest.core.schema.json`，**暫定可能改**）；離線 validator vs 載入時驗證的時機待定。
 - 對話進行中存檔的行為（鎖存檔？還是允許並在讀檔後重開對話？）。
 - spawned 角色讀檔失效的預設政策（重生 / 中斷 / 視任務標記）。
 - 是否要 MCM 風格的任務日誌 UI（vs 純通知）。
-- LLM 生成後的自動驗證流程（離線 validator vs 載入時驗證）。

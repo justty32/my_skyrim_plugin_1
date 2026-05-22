@@ -1,0 +1,68 @@
+{
+  "id": "demo_court_wizard",
+  "title": "宮廷大法師 — Phase 0 demo",
+  "version": 1,
+  "vars": { "delivered": false },
+  "objectives": {
+    "lift_curse": { "text": "對受詛咒的侍從施法解咒", "state": "inactive" }
+  },
+  "on_start": [
+    { "show_message": "（你成為白漫的客座大法師，回去等候領主差遣。）" },
+    { "schedule": { "after_hours": 48, "key": "wr_summon" } }
+  ],
+  "triggers": [
+    { "on": "timer", "key": "wr_summon",
+      "when": { "var_eq": { "var": "delivered", "value": false } },
+      "do": [
+        { "show_message": "一封來自龍臨堡的信送到了。" },
+        { "set_var": { "var": "delivered", "value": true } },
+        { "start_dialogue": "court_brief" }
+      ] },
+
+    { "on": "spell_cast_on", "character": "victim",
+      "when": { "objective_state": { "objective": "lift_curse", "state": "active" } },
+      "do": [ { "complete_objective": "lift_curse" } ] },
+
+    { "on": "objective_completed", "objective": "lift_curse",
+      "do": [ { "start_dialogue": "thanks" } ] }
+  ],
+  "dialogues": {
+    "court_brief": {
+      "entry": "n0",
+      "nodes": {
+        "n0": {
+          "speaker": "領主巴爾古夫",
+          "lines": [ "大法師，府上一名侍從中了詛咒，群醫束手。", "你能解此厄嗎？" ],
+          "choices": [
+            { "text": "讓我看看那名侍從。",
+              "then": [
+                { "spawn_character": { "name": "受詛咒的侍從" } },
+                { "set_objective_active": "lift_curse" }
+              ],
+              "goto": "n1" },
+            { "text": "恕難從命。", "end": true }
+          ]
+        },
+        "n1": { "speaker": "領主巴爾古夫", "lines": [ "善。她就在偏廳，速去吧。" ], "end": true }
+      }
+    },
+    "thanks": {
+      "entry": "m0",
+      "nodes": {
+        "m0": {
+          "speaker": "領主巴爾古夫",
+          "lines": [ "詛咒已解！白漫感念你的相助。" ],
+          "choices": [
+            { "text": "舉手之勞。",
+              "then": [
+                { "give_gold": { "amount": 500 } },
+                { "add_var": { "var": "global.whiterun_tasks_done", "value": 1 } },
+                { "reset_quest": true }
+              ],
+              "end": true }
+          ]
+        }
+      }
+    }
+  }
+}

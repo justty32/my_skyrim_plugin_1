@@ -168,7 +168,9 @@ config/schema/quest.core.schema.json  核心詞彙 JSON Schema（adapter 擴充�
 
 ## 7. 分期路線
 
-- **Phase 0 — 骨架**：`src/core/` 最小狀態機 + 能力埠介面 + `MessageBoxPresenter` + 1 個寫死 JSON 對話樹跑通分支。觸發沿用「對目標施法 = 開始對話」。
+- **Phase 0 — 骨架** ✅（2026-05-23，`feature/court-wizard`）：`src/core/`（`QuestState.h` / `Ports.h` / `QuestEngine.{h,cpp}`，零 RE::/SKSE::）實作核心狀態機 + 條件/動作/觸發 + 同步對話流程 + `schedule`/`timer` + 全域變數 + `reset_quest`。能力埠先由 **headless CLI harness**（`tools/cli_harness/`，SPEC 附錄 A）實作以無遊戲驗證；`MessageBoxPresenter` 待接 Skyrim adapter 再補。Demo `config/quests/demo_court_wizard.json` 跑通整條召喚循環（信→對話→「對 victim 施法」事件解咒→領賞→`reset_quest` 重排，`global.whiterun_tasks_done` 跨循環保留）。建置：`scripts/build_cli.sh` → `build/cli/qe_cli`。
+  - **注意**：core 目前只由該腳本原生（clang，Manjaro）編譯，**尚未**登錄 `cmake/sourcelist.cmake`/`headerlist.cmake`——接 Skyrim adapter、並確保 PCH（`RE::Skyrim.h`）不汙染 core TU 時，於 Phase 1 登錄。
+  - Conditions/Actions/Triggers 暫合在 `QuestEngine.cpp`，成長後再依本檔 §6 拆檔。`random`（待 PRF）、持久化（§4）未實作。
 - **Phase 1 — 核心**：完整核心 + Skyrim 擴充詞彙 + co-save + EntityResolver 兩種綁定 + 目標狀態。
 - **Phase 2 — 任務化**：世界事件觸發（殺/到/拿）+ 自製日誌追蹤 + 多任務並行 + 有效 schema validator（嚴格錯誤訊息）。
 - **Phase 3 — 原生對話 spike**：依 §5 go/no-go；成功才接 `NativePresenter`。

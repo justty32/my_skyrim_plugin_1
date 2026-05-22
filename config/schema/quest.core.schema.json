@@ -96,7 +96,7 @@
       "type": "object",
       "required": ["on", "do"],
       "additionalProperties": true,
-      "$comment": "核心 on: quest_start | dialogue_end | objective_completed。adapter 觸發另加 on 值與過濾鍵，故 additionalProperties:true。",
+      "$comment": "核心 on: quest_start | dialogue_end | objective_completed | timer（filter: key）。標準擴充 message_ack（SPEC §4.5）。adapter 觸發另加 on 值與過濾鍵，故 additionalProperties:true。",
       "properties": {
         "on": { "type": "string" },
         "dialogue": { "type": "string" },
@@ -104,6 +104,7 @@
         "character": { "type": "string" },
         "form": { "type": "string" },
         "location": { "type": "string" },
+        "key": { "type": "string" },
         "when": { "$ref": "#/$defs/condition" },
         "do": { "type": "array", "items": { "$ref": "#/$defs/action" } }
       }
@@ -164,7 +165,7 @@
       "minProperties": 1,
       "maxProperties": 1,
       "additionalProperties": true,
-      "$comment": "每個 action 物件恰一個動詞鍵。核心動詞如下；adapter 動詞（give_item、spawn_character…）經 additionalProperties 放行。",
+      "$comment": "每個 action 物件恰一個動詞鍵。核心動詞如下（含 schedule / reset_quest）；set_var/add_var 的 var MAY 用 global.<name> 前綴。標準擴充 deliver_message（SPEC §4.5）非核心、不在本檔，由 adapter 合併。adapter 動詞（give_item、spawn_character…）經 additionalProperties 放行。",
       "properties": {
         "set_var": { "$ref": "#/$defs/varValue" },
         "add_var": { "$ref": "#/$defs/varNumber" },
@@ -184,7 +185,19 @@
               "properties": { "text": { "type": "string" } }
             }
           ]
-        }
+        },
+        "schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["key"],
+          "anyOf": [ { "required": ["after_hours"] }, { "required": ["at"] } ],
+          "properties": {
+            "after_hours": { "type": "number", "exclusiveMinimum": 0 },
+            "at": { "type": "number", "minimum": 0 },
+            "key": { "type": "string", "minLength": 1 }
+          }
+        },
+        "reset_quest": { "const": true }
       }
     }
   }

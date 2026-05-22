@@ -41,6 +41,8 @@
 | **Condition（條件）** | 布林判斷式。核心詞彙 + adapter 擴充（§4）。 |
 | **Action（動作）** | 副作用指令。核心詞彙 + adapter 擴充（§4）。 |
 | **Entity ref（實體參照）** | **對核心不透明的字串**，由 adapter 解析成遊戲實體（§5.1）。 |
+| **Global var（全域變數）** | 跨任務、系統層持久的具名值。以 `global.<name>` 在任意任務的條件/動作中參照（§2.4）。 |
+| **Timer（計時器）** | 由 `schedule` 動作排定的未來事件；到期時由 Clock 埠驅動 `timer` 事件（§4.2/§4.3）。 |
 
 ---
 
@@ -102,6 +104,14 @@
 }
 ```
 
+### 2.4 全域變數（globals）
+
+跨任務共享、隨存檔在系統層持久的具名值（型別由初值定，比照任務 `vars`）。
+
+- 在任意任務的條件/動作中，以 **`global.<name>`** 前綴的 `var` 參數參照（如 `{"add_var":{"var":"global.whiterun_tasks_done","value":1}}`）。沿用既有 `set_var`/`add_var`/`var_*`，**不新增動詞**。
+- 全域變數 MUST 在**系統層預先宣告**（名稱 + 初值，型別由初值定）；宣告來源/檔案格式由實作決定（如一份 manifest 文件）。未宣告即被參照 MUST 於驗證期報錯（§7）。
+- 在系統層持久化，**不綁任何單一任務**（§6）；任務 `reset_quest`（§3.1）不影響全域變數。
+
 ---
 
 ## 3. 狀態機語意（跨實作 MUST 一致）
@@ -110,6 +120,7 @@
 1. 載入 + 驗證（§7）→ 套用持久化進度（§6）；無進度則為初始狀態（`vars` 初值、`objectives` 初始 state）。
 2. 任務啟動時執行 `on_start`，並發出 `quest_start` 事件。
 3. 任務在 `complete_quest` / `fail_quest` 後進入終止狀態，MUST 停止其觸發回應。
+4. `reset_quest`（§4.2）把當前任務復位到初始狀態：`vars`/`objectives` 回初值、清當前對話與 saidOnce 旗標、清本任務待發計時器，再執行 `on_start` 並重發 `quest_start`。**全域變數（§2.4）不受影響**——跨循環的計數應放全域變數。供可重複任務（如反覆召喚）。
 
 ### 3.2 對話流程
 1. `start_dialogue` 進入指定對話樹的 `entry` 節點。
@@ -155,8 +166,12 @@
 | `complete_quest` / `fail_quest` | `true` | 任務終止 |
 | `start_dialogue` | 字串（dialogue id）| 開一段對話樹 |
 | `show_message` | 字串 或 `{text}` | 經呈現埠顯示短訊息（§5.5）|
+| `schedule` | `{after_hours\|at, key}` | 排定計時器：經 Clock 埠在 `after_hours`（遊戲內小時）後、或絕對遊戲時間 `at`，發出 `timer` 事件（filter=`key`）。重排同 `key` MUST 取代舊到期時間（§6/§8）。需 Clock 埠（§5.7）|
+| `reset_quest` | `true` | 復位當前任務（語意見 §3.1），供可重複任務。**不動全域變數** |
 
 > id 類核心動作收「字串 id 簡寫」（如 `{"complete_objective": "obj_meet"}`），對手寫與 LLM 生成較友善。
+>
+> `set_var`/`add_var` 與 §4.1 的 `var_*` 條件，其 `var` MAY 用 `global.<name>` 指向全域變數（§2.4）。
 
 ### 4.3 核心觸發（無遊戲依賴）
 
@@ -165,6 +180,7 @@
 | `quest_start` | — | 任務啟動 |
 | `dialogue_end` | `{dialogue}` | 對話結束 |
 | `objective_completed` | `{objective}` | 目標完成 |
+| `timer` | `{key}` | `schedule`（§4.2）排定的計時器到期 |
 
 ### 4.4 Adapter 擴充機制
 
@@ -172,6 +188,16 @@
 - 「**有效 schema**」= 核心詞彙 schema ∪ adapter 宣告的擴充。驗證（§7）對有效 schema 進行。
 - 核心遇到擴充詞彙時，MUST 把（動詞名、參數、已解析實體）轉交對應能力埠（§5）；核心**不理解**擴充詞彙的內部語意。
 - 範例擴充（非規格強制，供參考）：`give_item`、`spawn_character`、`start_combat`、`teleport_player`；條件 `player_level_gte`、`player_has_item`、`character_alive`；觸發 `activate`、`actor_death`、`item_acquired`、`location_entered`。各遊戲支援哪些由 adapter 決定。
+
+### 4.5 標準可攜擴充：非同步訊息（deliver_message / message_ack）
+
+「延後送達、由玩家確認後才推進」的訊息（信件、信使、收件匣）有與遊戲無關的核心，但非每個 adapter 都需要，故定為**標準可攜擴充**（SHOULD，非核心 MUST）：adapter 若支援，MUST 用本節釘死的 schema，使內容在支援它的 adapter 間可攜；不支援的 adapter，用到它的內容於驗證期被擋（§4.4）。
+
+- 動作 `deliver_message` `{ to:"player", subject, body, key }`：把一則訊息排入送達。送達**渲染**走呈現層 / ActionRunner（adapter 定，如 Skyrim 信使+note、CLI 印出待 ack），與引擎解耦。
+- 觸發 `message_ack` `{ key }`：玩家**確認/讀取**該訊息時發出，由 EventSource 回送核心。
+
+> 與即時的 `show_message`（§4.2）區別：`show_message` 即時、單向、不回事件；`deliver_message` 延後、需確認、確認後以 `message_ack` 推進。兩者語意不可互換。
+> 未確認前重載存檔：未確認訊息 MUST 隨進度持久化（§6），讀檔後仍待確認。
 
 ---
 
@@ -203,8 +229,9 @@
 ### 5.6 PersistenceBackend（持久化後端）
 - 把核心給的不透明進度 blob 寫進當前存檔、讀回。鍵結到「當前遊戲存檔」的方式由 adapter 決定（如 SKSE co-save）。
 
-### 5.7 選配埠
-- Clock（遊戲時間）、Logger、RNG。RNG 見 §8。
+### 5.7 Clock / Logger / RNG 埠
+- **Clock（遊戲時間）**：原為選配，但 `schedule`/`timer`（§4.2/§4.3）一旦使用即**必需**——核心靠它判斷計時器到期。不支援 Clock 的實作 MUST NOT 宣稱支援含 `schedule` 的內容。
+- Logger、RNG 為選配。RNG 見 §8。
 
 ---
 
@@ -212,6 +239,9 @@
 
 - 核心 MUST 能把所有進行中任務的**進度**序列化成版本化 blob，並還原。
 - 進度包含：每個任務的 `vars` 值、各 objective state、當前對話節點（若進行中）、節點 saidOnce 之類旗標、實體綁定的可序列化識別。
+- 進度 blob MUST 含**全域變數**（§2.4）當前值，鍵用全域變數名，於**系統層**（不綁單一任務）序列化。
+- 進度 blob MUST 含**待發計時器**（§4.2）：每筆為（任務 id、`key`、絕對到期遊戲時間）。讀檔後到期時間已過者 MUST 視為到期（立即/補發 `timer`），未到者續排（§8）。
+- 進度 blob MUST 含**未確認的非同步訊息**（§4.5，若 adapter 支援）：讀檔後仍待 `message_ack`。
 - 進度 blob MUST 含一個**主種子 `master_seed`**：於該存檔首次初始化任務系統時產生一次、之後固定不變，供 `random` 確定性導出（§8）。
 - **所有鍵 MUST 用 JSON 的穩定字串 ID**（任務 id / objective id / 節點 id / 角色 alias）。**MUST NOT** 用遊戲執行期動態 ID 當主鍵（那種 ID 跨存檔不穩）。
 - **定義與進度分離**：還原時先由程式重新載入 JSON 定義，再套用 blob 的進度。→ 改 JSON 的「文字內容」（非結構）SHOULD NOT 弄壞舊存檔。
@@ -227,6 +257,7 @@
 3. 依本規格的狀態機語意（§3）運作。
 4. 依 §6 持久化，鍵用穩定字串 ID。
 5. 把擴充詞彙轉交能力埠，不自行臆測其語意。
+6. `global.<name>` 參照 MUST 指向已宣告全域變數（§2.4），否則驗證期報錯。
 
 MAY：宣告任意 adapter 擴充詞彙；提供多個 DialoguePresenter；提供離線 validator。
 
@@ -245,6 +276,8 @@ MAY：宣告任意 adapter 擴充詞彙；提供多個 DialoguePresenter；提�
   - 要「每次命中可能不同」的擲骰：MUST 改用顯式變數（例如 `add_var` 計數並把計數納入 site key），核心**不提供**非冪等 `random`。
 - **多任務並行（暫定，可能改）**：每個任務 MAY 宣告 `priority` ∈ {`high`,`normal`,`low`}（預設 `normal`，意圖對應主線/支線/雜項）。多任務爭用互斥資源（同時要開對話、或控制同一角色）時：**較高 priority 優先；同級則先搶先贏**（已持有/先啟動者保留）。強制執行範圍暫不深入定義，實作初期 MAY 僅記錄欄位而不強制。
 - **重複事件**：同一事件對到多觸發時依陣列順序執行（§3.3）。
+- **計時器（確定性）**：`schedule` 到期時間 MUST 以**絕對遊戲時間**存 blob（§6），重載不變。需「隨機間隔」MUST 用 `random` + `add_var` 顯式導出（符合本節 `random` 冪等規則），核心不提供非冪等抖動。重排同 `key` 取代舊到期。
+- **`reset_quest`**：復位後重跑 `on_start` MUST 確定性；全域變數不受復位影響，故跨循環計數以全域變數承載而非任務 `vars`。
 
 ---
 
@@ -255,6 +288,8 @@ MAY：宣告任意 adapter 擴充詞彙；提供多個 DialoguePresenter；提�
 1. **`PRF` 演算法（高優先，阻擋 `random` 實作）**：`random` 確定性導出用的 `PRF(master_seed, quest_id, site_key)`（§8）尚未定案。跨語言實作 MUST 得出**同一結果**，故須指定一個各語言都易重現的明確演算法。候選：對 `master_seed | quest_id | site_key` 做 SHA-256（或 SipHash），取前 64 bit 當整數除以 2^64 映到 `[0,1)`。**未定案前 `random` 不應實作。** 定案後寫入附錄 B。
 2. **priority 強制範圍（暫定，§8）**：多任務 `priority` 的「互斥資源」具體涵蓋哪些（對話、角色控制、其他？）、仲裁時機，暫定「高優先先、同級先搶先贏」，細節待實作期定。
 3. **`site key` 的精確規則（§8）**：`random` 的穩定路徑表示法（陣列索引格式、作者 `key` 與自動路徑的優先序）需與附錄 B 一併釘死，否則不同實作算出的 site key 不一致。
+
+> 已於本版納入（原列 `COURT_WIZARD_DESIGN.md` §6 開放問題）：可重複任務 → `reset_quest`（§3.1/§4.2，搭配全域變數承載跨循環計數）；時間排程 → `schedule`/`timer`（§4.2/§4.3）；跨任務狀態 → 全域變數（§2.4）；非同步訊息 → 標準擴充（§4.5）。
 
 > 內容類（非規格）的未定項（對話中存檔行為、spawned 失效政策、日誌 UI 等）記在 `QUEST_ENGINE_DESIGN.md` §8。
 
@@ -275,6 +310,9 @@ MAY：宣告任意 adapter 擴充詞彙；提供多個 DialoguePresenter；提�
 | DialoguePresenter | 印 speaker/lines、列出 choices、讀 stdin 取索引 |
 | PersistenceBackend | 把進度 blob 寫成一個 `.json` 檔；「當前存檔」= 一個 slot 檔名 |
 | Clock / RNG / Logger | 系統時鐘 / 以 `master_seed` 實作 §8 的 PRF / 印 log |
+| Timers（`schedule`/`timer`）| Clock + 互動 `advance-time` 指令推進遊戲時間，到期發 `timer` |
+| Globals（§2.4）| 記憶體 map，slot 檔持久 |
+| deliver_message / message_ack（§4.5）| 印出訊息、待互動 `ack <key>` 指令 |
 
 **這個練習對目前 SPEC 的檢驗結論（多為「驗證通過」）：**
 

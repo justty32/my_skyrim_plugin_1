@@ -248,6 +248,18 @@ MAY：宣告任意 adapter 擴充詞彙；提供多個 DialoguePresenter；提�
 
 ---
 
+## 9. 未定事項（Open Issues）
+
+下列尚未釘死，實作前需先定案。彙整自全文行內標記。
+
+1. **`PRF` 演算法（高優先，阻擋 `random` 實作）**：`random` 確定性導出用的 `PRF(master_seed, quest_id, site_key)`（§8）尚未定案。跨語言實作 MUST 得出**同一結果**，故須指定一個各語言都易重現的明確演算法。候選：對 `master_seed | quest_id | site_key` 做 SHA-256（或 SipHash），取前 64 bit 當整數除以 2^64 映到 `[0,1)`。**未定案前 `random` 不應實作。** 定案後寫入附錄 B。
+2. **priority 強制範圍（暫定，§8）**：多任務 `priority` 的「互斥資源」具體涵蓋哪些（對話、角色控制、其他？）、仲裁時機，暫定「高優先先、同級先搶先贏」，細節待實作期定。
+3. **`site key` 的精確規則（§8）**：`random` 的穩定路徑表示法（陣列索引格式、作者 `key` 與自動路徑的優先序）需與附錄 B 一併釘死，否則不同實作算出的 site key 不一致。
+
+> 內容類（非規格）的未定項（對話中存檔行為、spawned 失效政策、日誌 UI 等）記在 `QUEST_ENGINE_DESIGN.md` §8。
+
+---
+
 ## 附錄 A：Headless CLI 參考 adapter（可攜性試金石 + 一致性 harness）
 
 為了壓測本規格「真的跨引擎可攜」，定義一個**刻意與 Skyrim 毫無共通點**的假想 adapter：一個純文字、無遊戲引擎的命令列 runtime。它與 Skyrim 共享零假設（無 FormID、無 co-save、無 MessageBox），所以任何「偷渡進核心的 Skyrim 假設」都會在這裡露餡。它同時可當**離線 validator + 一致性測試 harness**。

@@ -175,6 +175,7 @@ config/schema/quest.core.schema.json  核心詞彙 JSON Schema（adapter 擴充�
 
 - ~~多任務優先序~~ → 已暫定（SPEC §8）：3 級 `priority` + 先搶先贏；強制執行細節待實作期再定。
 - ~~第二 adapter 試金石~~ → 已定：headless CLI harness（SPEC 附錄 A），同時當離線 validator；實作語言待定。
+- **`PRF` 演算法未定案（高優先，見 SPEC「未定事項」）**：`random` 確定性導出用的雜湊尚未釘死，未定前 `random` 不可實作。
 - LLM 生成的驗證：核心 schema 已生（`config/schema/quest.core.schema.json`，**暫定可能改**）；離線 validator vs 載入時驗證的時機待定。
 - 對話進行中存檔的行為（鎖存檔？還是允許並在讀檔後重開對話？）。
 - spawned 角色讀檔失效的預設政策（重生 / 中斷 / 視任務標記）。

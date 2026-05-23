@@ -43,6 +43,12 @@ add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} ${sources}) # <--- sp
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h) # <--- PCH.h is required!
 
+# Keep the portable quest-engine core (src/core/, DESIGN §6) out of the forced
+# PCH: PCH.h pulls in RE/Skyrim.h + SKSE/SKSE.h, which would pollute the core
+# TUs that MUST stay game-agnostic (zero RE::/SKSE::). ${core_sources} is set in
+# cmake/sourcelist.cmake. The core still gets nlohmann-json from the vcpkg deps.
+set_source_files_properties(${core_sources} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+
 target_include_directories(
 	"${PROJECT_NAME}"
 	PRIVATE

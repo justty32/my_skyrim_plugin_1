@@ -11,14 +11,18 @@
 
 namespace qe {
 
-// SPEC §5.5 — present one already-filtered dialogue node, return the chosen
-// choice index, or -1 for cancel / terminal node (no choices).
+// SPEC §5.5 — present one already-filtered dialogue node. DISPLAY-ONLY: this
+// does NOT block for input (Skyrim's MessageBox is async; blocking the main
+// thread would freeze the game). For a choice node (choices non-empty) the
+// adapter feeds the player's pick back via QuestEngine::submitChoice() once the
+// UI callback fires; for a terminal node (choices empty) the engine ends the
+// dialogue immediately and no choice is expected.
 class IDialoguePresenter {
 public:
     virtual ~IDialoguePresenter() = default;
-    virtual int presentNode(const std::string& speaker,
-                            const std::vector<std::string>& lines,
-                            const std::vector<std::string>& choices) = 0;
+    virtual void presentNode(const std::string& speaker,
+                             const std::vector<std::string>& lines,
+                             const std::vector<std::string>& choices) = 0;
     virtual void showMessage(const std::string& text) = 0;
 };
 

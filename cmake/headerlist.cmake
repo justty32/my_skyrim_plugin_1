@@ -5,4 +5,7 @@ set(headers ${headers}
     src/hook.h 
     src/settings.h
     src/NpcGenerator.h
+    src/core/Ports.h
+    src/core/QuestEngine.h
+    src/core/QuestState.h
 )

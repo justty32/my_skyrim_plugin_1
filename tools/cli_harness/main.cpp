@@ -27,23 +27,18 @@ using nlohmann::json;
 
 namespace {
 
+// Display-only presenter (resumable dialogue): print the node and, for a choice
+// node, the prompt — but DON'T read input here. The choice is fed back via
+// QuestEngine::submitChoice() from the main loop (see drainChoices).
 class CliPresenter : public qe::IDialoguePresenter {
 public:
-    int presentNode(const std::string& speaker, const std::vector<std::string>& lines,
-                    const std::vector<std::string>& choices) override {
+    void presentNode(const std::string& speaker, const std::vector<std::string>& lines,
+                     const std::vector<std::string>& choices) override {
         std::cout << "\n";
         for (const auto& l : lines) std::cout << "  " << speaker << ": " << l << "\n";
-        if (choices.empty()) return -1;  // terminal node: no input consumed
         for (std::size_t i = 0; i < choices.size(); ++i)
             std::cout << "    [" << (i + 1) << "] " << choices[i] << "\n";
-        std::cout << "  choose> " << std::flush;
-        std::string line;
-        if (!std::getline(std::cin, line)) return -1;
-        try {
-            return std::stoi(line) - 1;  // 1-based -> 0-based
-        } catch (...) {
-            return -1;
-        }
+        if (!choices.empty()) std::cout << "  choose> " << std::flush;
     }
     void showMessage(const std::string& text) override {
         std::cout << "  \xC2\xBB " << text << "\n";  // » text
@@ -76,6 +71,24 @@ public:
         return false;
     }
 };
+
+// While the engine is awaiting a dialogue choice, read the player's pick
+// (1-based) from stdin and feed it back. Mirrors what a Skyrim adapter does in
+// its async MessageBox callback, just synchronously over stdin.
+void drainChoices(qe::QuestEngine& engine) {
+    while (engine.awaitingChoice()) {
+        std::string line;
+        if (!std::getline(std::cin, line)) {
+            engine.submitChoice(-1);  // EOF -> cancel
+            break;
+        }
+        try {
+            engine.submitChoice(std::stoi(line) - 1);  // 1-based -> 0-based
+        } catch (...) {
+            engine.submitChoice(-1);  // non-numeric -> cancel
+        }
+    }
+}
 
 void dumpState(const qe::QuestEngine& engine, const qe::GlobalStore& globals,
                const CliClock& clock) {
@@ -132,6 +145,7 @@ int main(int argc, char** argv) {
     qe::QuestEngine engine(doc, deps);
     std::cout << "== quest: " << doc.value("title", doc.value("id", "?")) << " ==\n";
     engine.start();
+    drainChoices(engine);  // on_start may open a dialogue immediately
 
     std::string line;
     std::cout << "\n(cmd: time N | cast | fire <on> [k v] | state | quit)\n> " << std::flush;
@@ -163,6 +177,7 @@ int main(int argc, char** argv) {
         } else {
             std::cout << "  ? unknown command: " << cmd << "\n";
         }
+        drainChoices(engine);  // an event may have opened a dialogue
         std::cout << "> " << std::flush;
     }
     std::cout << "\nbye.\n";

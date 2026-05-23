@@ -11,6 +11,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -42,6 +43,13 @@ public:
     // Fire any timers whose due time has passed (SPEC §4.2). Needs the clock.
     void checkTimers();
 
+    // Resumable dialogue (SPEC §3.2): presentNode is display-only, so the
+    // adapter feeds the player's pick here once the UI callback fires. idx is
+    // 0-based into the choices last presented; idx<0 (or out of range) cancels.
+    void submitChoice(int idx);
+    // True while a choice node is presented and waiting for submitChoice().
+    bool awaitingChoice() const { return awaitingChoice_; }
+
     bool terminated() const { return st_.terminated; }
     const QuestState& state() const { return st_; }
 
@@ -58,6 +66,8 @@ private:
     bool evalCondition(const nlohmann::json& cond);
 
     void startDialogue(const std::string& id);
+    void presentCurrentNode();             // display st_.currentNode; await or end
+    void endDialogue(const std::string& id);  // fire dialogue_end + clear state
 
     Value getVar(const std::string& name);
     void setVar(const std::string& name, const Value& v);
@@ -65,10 +75,20 @@ private:
 
     void log(const std::string& msg) const;
 
+    // One visible choice of the currently-awaited node, captured at present
+    // time so submitChoice() is decoupled from re-evaluating doc_/conditions.
+    struct PendingChoice {
+        nlohmann::json then;   // actions to run on pick (null if none)
+        std::string gotoNode;  // next node id ("" -> dialogue ends)
+        bool end = false;      // explicit end after this pick
+    };
+
     nlohmann::json doc_;
     QuestState st_;
     Deps d_;
     std::map<std::string, double> timers_;  // key -> due game-hours (this quest)
+    bool awaitingChoice_ = false;
+    std::vector<PendingChoice> pending_;     // choices for the awaited node
 };
 
 }  // namespace qe

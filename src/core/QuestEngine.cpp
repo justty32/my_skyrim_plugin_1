@@ -67,6 +67,8 @@ void QuestEngine::addVar(const std::string& name, double delta) {
 void QuestEngine::applyInitialState() {
     st_ = QuestState{};
     timers_.clear();  // reset clears this quest's pending timers
+    awaitingChoice_ = false;  // and any dialogue in progress
+    pending_.clear();
     if (doc_.contains("vars")) {
         for (auto& [k, v] : doc_["vars"].items()) st_.vars[k] = jsonToValue(v);
     }
@@ -242,66 +244,111 @@ bool QuestEngine::evalCondition(const nlohmann::json& cond) {
     return result;
 }
 
-// ---- dialogue flow (SPEC §3.2), synchronous (presenter returns the choice) ----
+// ---- dialogue flow (SPEC §3.2), resumable: present a node and yield control;
+// the adapter calls submitChoice() once the player picks (presentNode never
+// blocks, so this maps onto Skyrim's async MessageBox without freezing). ----
 
 void QuestEngine::startDialogue(const std::string& id) {
     if (!doc_.contains("dialogues") || !doc_["dialogues"].contains(id)) {
         log("start_dialogue: unknown dialogue '" + id + "'");
         return;
     }
-    if (st_.activeDialogue != "") {
+    if (!st_.activeDialogue.empty()) {
         log("start_dialogue: a dialogue is already active");  // SPEC §3.2: at most one
         return;
     }
-    const nlohmann::json& dlg = doc_["dialogues"][id];
-    const nlohmann::json& nodes = dlg["nodes"];
     st_.activeDialogue = id;
-    std::string node = dlg.value("entry", std::string{});
+    st_.currentNode = doc_["dialogues"][id].value("entry", std::string{});
+    presentCurrentNode();
+}
 
-    while (!node.empty()) {
-        if (!nodes.contains(node)) {
-            log("dialogue '" + id + "': missing node '" + node + "'");
-            break;
-        }
-        const nlohmann::json& n = nodes[node];
-        const std::string speaker = n.value("speaker", "");
-        std::vector<std::string> lines;
-        if (n.contains("lines")) {
-            for (auto& l : n["lines"]) lines.push_back(l.get<std::string>());
-        }
+void QuestEngine::presentCurrentNode() {
+    awaitingChoice_ = false;
+    pending_.clear();
 
-        const bool terminal = n.value("end", false) || !n.contains("choices");
-        if (terminal) {
-            if (d_.presenter) d_.presenter->presentNode(speaker, lines, {});
-            break;
-        }
-
-        std::vector<const nlohmann::json*> visible;
-        std::vector<std::string> choiceTexts;
-        for (auto& c : n["choices"]) {
-            if (c.contains("when") && !evalCondition(c["when"])) continue;  // SPEC §3.4
-            visible.push_back(&c);
-            choiceTexts.push_back(c.value("text", ""));
-        }
-
-        const int idx = d_.presenter
-                            ? d_.presenter->presentNode(speaker, lines, choiceTexts)
-                            : -1;
-        if (idx < 0 || idx >= static_cast<int>(visible.size())) break;  // cancel
-
-        const nlohmann::json& chosen = *visible[static_cast<std::size_t>(idx)];
-        if (chosen.contains("then")) runActions(chosen["then"]);
-        if (st_.terminated) break;
-        if (chosen.value("end", false)) break;
-        node = chosen.value("goto", std::string{});  // empty -> loop exits
+    const std::string dlgId = st_.activeDialogue;
+    if (dlgId.empty()) return;
+    const nlohmann::json& nodes = doc_["dialogues"][dlgId]["nodes"];
+    const std::string node = st_.currentNode;
+    if (node.empty()) { endDialogue(dlgId); return; }   // goto "" -> end
+    if (!nodes.contains(node)) {
+        log("dialogue '" + dlgId + "': missing node '" + node + "'");
+        endDialogue(dlgId);
+        return;
     }
 
-    const std::string ended = st_.activeDialogue.empty() ? id : st_.activeDialogue;
+    const nlohmann::json& n = nodes[node];
+    const std::string speaker = n.value("speaker", "");
+    std::vector<std::string> lines;
+    if (n.contains("lines"))
+        for (auto& l : n["lines"]) lines.push_back(l.get<std::string>());
+
+    // Build the visible choices (SPEC §3.4 filtering) up front.
+    std::vector<std::string> choiceTexts;
+    if (n.contains("choices")) {
+        for (auto& c : n["choices"]) {
+            if (c.contains("when") && !evalCondition(c["when"])) continue;
+            PendingChoice pc;
+            if (c.contains("then")) pc.then = c["then"];
+            pc.gotoNode = c.value("goto", std::string{});
+            pc.end = c.value("end", false);
+            pending_.push_back(std::move(pc));
+            choiceTexts.push_back(c.value("text", ""));
+        }
+    }
+
+    // Terminal node, or a node whose choices all filtered out: show + end.
+    const bool terminal = n.value("end", false) || pending_.empty();
+    if (terminal) {
+        if (d_.presenter) d_.presenter->presentNode(speaker, lines, {});
+        endDialogue(dlgId);
+        return;
+    }
+
+    awaitingChoice_ = true;
+    if (d_.presenter) d_.presenter->presentNode(speaker, lines, choiceTexts);
+}
+
+void QuestEngine::submitChoice(int idx) {
+    if (!awaitingChoice_) {
+        log("submitChoice called but no choice is awaited");
+        return;
+    }
+    awaitingChoice_ = false;
+    const std::string dlgId = st_.activeDialogue;
+
+    if (idx < 0 || idx >= static_cast<int>(pending_.size())) {
+        pending_.clear();
+        endDialogue(dlgId);  // cancel / out of range -> end (SPEC §3.2)
+        return;
+    }
+
+    PendingChoice pc = std::move(pending_[static_cast<std::size_t>(idx)]);
+    pending_.clear();
+    if (!pc.then.is_null()) runActions(pc.then);
+
+    // A choice action may have ended the quest (complete/fail_quest) or reset it
+    // (reset_quest clears st_, including activeDialogue, and re-emits quest_start).
+    // Either lifecycle change supersedes the dialogue: just ensure it's cleared.
+    if (st_.terminated || st_.activeDialogue != dlgId) {
+        st_.activeDialogue.clear();
+        st_.currentNode.clear();
+        return;
+    }
+
+    if (pc.end) { endDialogue(dlgId); return; }
+    st_.currentNode = pc.gotoNode;  // "" -> presentCurrentNode ends it
+    presentCurrentNode();
+}
+
+void QuestEngine::endDialogue(const std::string& id) {
     st_.activeDialogue.clear();
     st_.currentNode.clear();
+    pending_.clear();
+    awaitingChoice_ = false;
     nlohmann::json f;
-    f["dialogue"] = ended;
-    fireTriggers("dialogue_end", f);
+    f["dialogue"] = id;
+    fireTriggers("dialogue_end", f);  // may start a new dialogue (state now clear)
 }
 
 }  // namespace qe

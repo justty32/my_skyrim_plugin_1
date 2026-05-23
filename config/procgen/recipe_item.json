@@ -1,0 +1,25 @@
+{
+  "_comment": "Runtime ITEM form-generation recipe (research/PROCGEN_NPC_FORMS.md form-mint pattern + research/ALCHEMY_SPIKE_FINDINGS.md persistence findings). Backs the generate_item adapter action and the 'C++: Conjure Item' demo spell. ProcgenItem mints a brand-new TESObjectWEAP/ARMO/MISC base by deep-copying the 'template' (ARMO via its real Copy override; WEAP/MISC via per-component CopyComponent because TESForm::Copy is a no-op for them), applies the overrides below, ADDS it to the player's inventory, and co-saves THIS recipe + the template's plugin FormID so the item is RE-MINTED + re-added on reload (logical persistence — see _caveats). NEVER stores the 0xFF dynamic FormID.",
+
+  "type": "weapon",
+  "_type_note": "Required. One of 'weapon' | 'armor' | 'misc'. Selects which IFormFactory + per-type field copy + override fields apply.",
+
+  "template": "0x00012EB7~Skyrim.esm",
+  "_template_note": "0x00012EB7 = vanilla 'Iron Sword' (TESObjectWEAP) in Skyrim.esm — a complete weapon (model/keywords/sounds/DNAM), so the minted copy is immediately usable. Per-type defaults if 'template' is omitted: weapon=0x00012EB7 Iron Sword, armor=0x00012E49 Iron Armor (cuirass), misc=0x0000000F Gold001. All VERIFIED-common Skyrim.esm base FormIDs (UESP item-code pages). Accepts '0x..~Mod.esp', a bare '0x..' absolute id, or an EditorID.",
+
+  "persist_key": "demo_generated_item",
+  "_persist_key_note": "Stable string id = the logical identity carried across save/reload. On load the item is re-minted and re-added under this key. If omitted, ProcgenItem auto-generates one (gen_item_N).",
+
+  "name": "Procedural Iron Blade",
+  "count": 1,
+  "value": 350,
+  "weight": 9.0,
+  "damage": 14,
+
+  "_overrides_note": "name -> TESFullName::SetFullName on the minted base. count -> how many are added to the player (AddObjectToContainer). value -> TESValueForm::value (gold value). weight -> TESWeightForm::weight. damage -> TESAttackDamageForm::attackDamage (WEAPON only). armor -> TESObjectARMO::armorRating, stored as CK-points*100 (ARMOR only; e.g. \"armor\": 30 -> 3000). Unset fields inherit the template's values.",
+
+  "_armor_example": "For armor: { \"type\": \"armor\", \"template\": \"0x00012E49~Skyrim.esm\", \"name\": \"Procedural Cuirass\", \"armor\": 30, \"value\": 200 }.",
+  "_misc_example": "For misc: { \"type\": \"misc\", \"template\": \"0x0000000F~Skyrim.esm\", \"name\": \"Procedural Trinket\", \"value\": 100, \"count\": 3 }.",
+
+  "_caveats": "PERSISTENCE: the vanilla codec DOES serialize WEAP/ARMO/MISC dynamic forms (that is how player-enchanted items survive), BUT a reloaded dynamic form comes back with ONLY its form type — blank name, no model, zero value (research §3.2 point 2 / ALCHEMY_SPIKE_FINDINGS §2). So we do NOT rely on native persistence; the 'GITM' co-save recipe is the SOURCE OF TRUTH and the item is RE-MINTED + re-added on reload. If a blank native shell of the previous session's item lingered it is NOT deduped here (documented risk; in practice the re-minted item is the usable one). For 'another mod references the item by FormID forever' an ESP/ESL is still required."
+}

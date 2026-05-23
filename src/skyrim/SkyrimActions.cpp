@@ -8,6 +8,9 @@
 #include <filesystem>
 #include <fstream>
 // <<< gen-npc
+// >>> gen-item: JSON-driven runtime ITEM (weapon/armor/misc) form generation.
+#include "skyrim/procgen/ProcgenItem.h"
+// <<< gen-item
 
 namespace skyrim {
 
@@ -283,6 +286,66 @@ void SkyrimActions::run(const std::string& verb, const nlohmann::json& params) {
         return;
     }
     // <<< gen-npc
+
+    // >>> gen-item: runtime procedural ITEM form generation (mirrors generate_npc).
+    // Skyrim adapter-extension action (SPEC §4.4) — mints a brand-new
+    // TESObjectWEAP/ARMO/MISC base from a vanilla template + recipe, applies
+    // overrides, adds it to the PLAYER's inventory, tracks it, and co-saves the
+    // recipe so it rebuilds on reload (research/PROCGEN_NPC_FORMS.md form pattern +
+    // ALCHEMY_SPIKE_FINDINGS persistence findings). No anchor needed — items go to
+    // the player. Recipe source (same shape as generate_npc): inline "recipe"
+    // object, OR a "recipe"/"template" JSON file name under config/procgen/, OR the
+    // params themselves as the recipe.
+    if (verb == "generate_item") {
+        nlohmann::json recipe;
+        bool ok = false;
+        if (params.is_object() && params.contains("recipe") && params["recipe"].is_object()) {
+            recipe = params["recipe"];
+            ok = true;
+        } else {
+            std::string file;
+            if (params.is_object() && params.contains("recipe") && params["recipe"].is_string()) {
+                file = params["recipe"].get<std::string>();
+            } else if (params.is_object() && params.contains("template") &&
+                       params["template"].is_string() &&
+                       params["template"].get<std::string>().find(".json") != std::string::npos) {
+                file = params["template"].get<std::string>();
+            }
+            if (!file.empty()) {
+                if (file.find(".json") == std::string::npos) file += ".json";
+                namespace fs = std::filesystem;
+                fs::path path = fs::path("Data") / "SKSE" / "Plugins" / "Template_Plugin" /
+                                "procgen" / file;
+                if (!fs::exists(path)) {
+                    path = fs::path("Data") / "SKSE" / "Plugins" / "procgen" / file;
+                }
+                std::ifstream in(path);
+                if (in) {
+                    try {
+                        in >> recipe;
+                        ok = recipe.is_object();
+                    } catch (const std::exception& e) {
+                        SKSE::log::error("SkyrimActions: generate_item bad recipe {}: {}",
+                                         path.string(), e.what());
+                    }
+                } else {
+                    SKSE::log::warn("SkyrimActions: generate_item cannot open recipe {}",
+                                    path.string());
+                }
+            } else if (params.is_object()) {
+                recipe = params;
+                ok = recipe.is_object();
+            }
+        }
+        if (!ok) {
+            SKSE::log::warn("SkyrimActions: generate_item skipped (no valid recipe)");
+            return;
+        }
+        const std::string key = procgen::item::Generate(recipe);
+        SKSE::log::info("SkyrimActions: generate_item key='{}'", key);
+        return;
+    }
+    // <<< gen-item
 
     // ---- recognised-but-deferred / high-risk verbs (DESIGN §2.2) ----
     if (verb == "start_combat" || verb == "add_shout" || verb == "teleport_player" ||

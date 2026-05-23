@@ -40,6 +40,12 @@ set(headers ${headers}
 )
 # <<< gen-npc
 
+# >>> gen-item — runtime ITEM (weapon/armor/misc) form generation header.
+set(headers ${headers}
+    src/skyrim/procgen/ProcgenItem.h
+)
+# <<< gen-item
+
 # >>> cosave — central SKSE co-save dispatcher header.
 set(headers ${headers}
     src/skyrim/CoSave.h

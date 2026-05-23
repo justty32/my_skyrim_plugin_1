@@ -38,6 +38,14 @@ set(sources ${sources}
 )
 # <<< gen-npc
 
+# >>> gen-item (research/PROCGEN_NPC_FORMS.md form-mint pattern + ALCHEMY_SPIKE
+# persistence findings) — runtime ITEM (weapon/armor/misc) form generation +
+# 'GITM' co-save rebuild. Normal Skyrim TU (uses the PCH). Appended for trivial merge.
+set(sources ${sources}
+    src/skyrim/procgen/ProcgenItem.cpp
+)
+# <<< gen-item
+
 # >>> cosave — central SKSE co-save (SerializationInterface) dispatcher: ONE
 # SetUniqueID + 3 callbacks per plugin, fanned out to per-record-type handlers
 # ('GNPC', 'PRGN', ...). Normal Skyrim TU (uses the PCH). Appended for trivial merge.

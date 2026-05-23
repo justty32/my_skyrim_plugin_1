@@ -4,6 +4,9 @@
 // >>> gen-npc: demo "C++: Conjure NPC" spell -> ProcgenNpc::Generate.
 #include "skyrim/procgen/ProcgenNpc.h"
 // <<< gen-npc
+// >>> gen-item: demo "C++: Conjure Item" spell -> ProcgenItem::Generate.
+#include "skyrim/procgen/ProcgenItem.h"
+// <<< gen-item
 
 namespace skyrim::procgen {
 
@@ -16,6 +19,9 @@ RE::SpellItem* g_rearrangeSpell = nullptr;
 // >>> gen-npc
 RE::SpellItem* g_conjureNpcSpell = nullptr;
 // <<< gen-npc
+// >>> gen-item
+RE::SpellItem* g_conjureItemSpell = nullptr;
+// <<< gen-item
 
 // Recipe files (live under config/procgen/, copied next to the DLL post-build).
 constexpr const char* kCottageRecipe = "recipe_cottage.json";
@@ -72,6 +78,30 @@ void OnConjureNpc(RE::TESObjectREFR* anchor) {
 }
 // <<< gen-npc
 
+// >>> gen-item: demo recipe — mint a TESObjectWEAP_ from the vanilla Iron Sword
+// template (ProcgenItem's default weapon template, so "template" is omitted),
+// rename it, bump damage/value, and put it in the caster's inventory. Tracked +
+// co-saved by ProcgenItem so it rebuilds on reload. Change "type" to "armor"/"misc"
+// (or add a "template") to mint a different item.
+void OnConjureItem(RE::TESObjectREFR*) {
+    const nlohmann::json recipe = {
+        {"type", "weapon"},
+        {"persist_key", "spell_conjured_item"},
+        {"name", "C++ Conjured Blade"},
+        {"damage", 25},
+        {"value", 500},
+        {"count", 1},
+    };
+    const std::string key = item::Generate(recipe);
+    if (key.empty()) {
+        SKSE::log::error("ProcgenSpells: ConjureItem — generation failed");
+    } else {
+        SKSE::log::info("ProcgenSpells: ConjureItem -> key='{}' ({} tracked)", key,
+                        item::TrackedCount());
+    }
+}
+// <<< gen-item
+
 // Cast handler — same shape as NpcGenerator::SpellCastHandler. We register our
 // own sink (rather than editing NpcGenerator's) so the merge stays isolated; the
 // "C++: " prefix convention keeps both handlers cooperative.
@@ -107,6 +137,11 @@ public:
             SKSE::log::info("ProcgenSpells: Conjure NPC cast by {:X}", anchor->GetFormID());
             OnConjureNpc(anchor);
         // <<< gen-npc
+        // >>> gen-item
+        } else if (name == "C++: Conjure Item") {
+            SKSE::log::info("ProcgenSpells: Conjure Item cast by {:X}", anchor->GetFormID());
+            OnConjureItem(anchor);
+        // <<< gen-item
         }
         return RE::BSEventNotifyControl::kContinue;
     }
@@ -161,6 +196,9 @@ void InitializeSpells() {
     // >>> gen-npc
     CreateSpell(g_conjureNpcSpell, "C++: Conjure NPC");
     // <<< gen-npc
+    // >>> gen-item
+    CreateSpell(g_conjureItemSpell, "C++: Conjure Item");
+    // <<< gen-item
 
     if (auto* source = RE::ScriptEventSourceHolder::GetSingleton()) {
         source->AddEventSink(ProcgenCastHandler::GetSingleton());
@@ -183,6 +221,9 @@ void GiveSpellsToPlayer() {
     // >>> gen-npc
     AddSpell(g_conjureNpcSpell);
     // <<< gen-npc
+    // >>> gen-item
+    AddSpell(g_conjureItemSpell);
+    // <<< gen-item
 }
 
 }  // namespace skyrim::procgen

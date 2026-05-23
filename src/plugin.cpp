@@ -13,6 +13,9 @@
 // >>> gen-npc: runtime NPC form generation + co-save rebuild (research/PROCGEN_NPC_FORMS.md).
 #include "skyrim/procgen/ProcgenNpc.h"
 // <<< gen-npc
+// >>> gen-item: runtime ITEM (weapon/armor/misc) form generation + 'GITM' co-save rebuild.
+#include "skyrim/procgen/ProcgenItem.h"
+// <<< gen-item
 // >>> cosave: central SerializationInterface dispatcher (ONE SetUniqueID per plugin).
 #include "skyrim/CoSave.h"
 // <<< cosave
@@ -63,6 +66,10 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 			// "時機": form system ready, after OnLoad staged the recipes).
 			skyrim::procgen::npc::RebuildStaged();
 			// <<< gen-npc
+				// >>> gen-item: rebuild co-saved items (re-mint + re-add to player) on
+				// the main thread after OnLoad staged the 'GITM' recipes.
+				skyrim::procgen::item::RebuildStaged();
+				// <<< gen-item
 			// >>> procgen-persist: rebuild co-saved rooms/structures on the main
 			// thread from {recipe, origin, seed} (research §5.2 strategy B).
 			skyrim::procgen::RebuildStaged();
@@ -99,6 +106,9 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
 	// in SKSEPluginLoad after SKSE::Init; fenced + null-checked.
 	skyrim::procgen::npc::Register();  // 'GNPC' handler (generated NPCs)
 	skyrim::procgen::Register();       // 'PRGN' handler (generated rooms/structures)
+	// >>> gen-item: 'GITM' handler (generated weapon/armor/misc items).
+	skyrim::procgen::item::Register();
+	// <<< gen-item
 	// >>> qe-persist: 'QEST' handler (quest-engine progress + system globals, SPEC §6).
 	skyrim::SkyrimAdapter::Register();
 	// <<< qe-persist

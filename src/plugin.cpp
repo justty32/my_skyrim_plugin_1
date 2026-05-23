@@ -1,9 +1,15 @@
 #include "log.h"
 #include "NpcGenerator.h"
+// >>> quest-engine Skyrim adapter (Phase 1)
+#include "skyrim/SkyrimAdapter.h"
+// <<< quest-engine Skyrim adapter
 
 void OnDataLoaded()
 {
     NpcGenerator::InitializeMagic();
+    // >>> quest-engine Skyrim adapter (Phase 1): load + start the demo quest.
+    skyrim::SkyrimAdapter::GetSingleton()->StartDemoQuest();
+    // <<< quest-engine Skyrim adapter
 }
 
 void MessageHandler(SKSE::MessagingInterface::Message* a_msg)

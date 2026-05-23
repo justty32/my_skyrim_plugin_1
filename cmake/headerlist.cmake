@@ -9,3 +9,14 @@ set(headers ${headers}
     src/core/QuestEngine.h
     src/core/QuestState.h
 )
+
+# >>> quest-engine Skyrim adapter (Phase 1, DESIGN §6). Appended for trivial merge.
+set(headers ${headers}
+    src/skyrim/SkyrimAdapter.h
+    src/skyrim/SkyrimEntities.h
+    src/skyrim/SkyrimActions.h
+    src/skyrim/SkyrimConditions.h
+    src/skyrim/SkyrimEvents.h
+    src/skyrim/dialogue/MessageBoxPresenter.h
+)
+# <<< quest-engine Skyrim adapter

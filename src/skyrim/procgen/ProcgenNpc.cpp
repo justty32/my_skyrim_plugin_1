@@ -15,13 +15,19 @@ namespace skyrim::procgen::npc {
 
 namespace {
 
-// PLACEHOLDER (research §1.3 / §11 caveat): default template is a real vanilla
-// generic NPC base. 0x0001327B is "Bandit" (Skyrim.esm) — a complete,
-// fully-rigged actor base (race/skeleton/AI/voice/outfit), so Copy() yields an
-// immediately-usable NPC without hand-filling the 12 components in research §1.2.
-// TODO: pick a friendlier "citizen" template per use case; override per-recipe
-// via the recipe's "template" field. Validate the FormID in-game.
-constexpr RE::FormID kDefaultTemplate = 0x0001327B;  // Skyrim.esm Bandit
+// Default NPC template = a real vanilla generic actor base in Skyrim.esm. Copy()
+// of it yields an immediately-usable NPC without hand-filling the ~12 components
+// in research §1.2 (race/skeleton/AI/voice/outfit are all inherited).
+// >>> formids
+// 0x0001BCD8 = vanilla generic "Bandit" (Light-Armored 1H Melee, level 1, Male).
+// VERIFIED: listed as "Bandit" on the skyrimcharactercodes base-ID list and
+// described as "Bandit Light Armored One-Handed Melee, level 01 Male" in the Steam
+// "Pocket Guide to the Empire: Summoning". Replaces the prior unverified
+// 0x0001327B, which is NOT present in any Bandit base-ID list. Override per-recipe
+// via the recipe's "template" field; for a citizen, 0x00000007 (player base, used
+// as a template by NpcGenerator.cpp:63) also works.
+constexpr RE::FormID kDefaultTemplate = 0x0001BCD8;  // Skyrim.esm generic Bandit
+// <<< formids
 
 // One runtime-tracked generated NPC. We track the live ref by handle (never a
 // raw pointer — research §5 step 2) and keep the recipe JSON verbatim so the

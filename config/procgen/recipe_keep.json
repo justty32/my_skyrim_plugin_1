@@ -1,35 +1,36 @@
 {
-  "_comment": "Exterior modular structure template (PROCGEN_EXTERIOR.md §9). Backs the 'C++: Conjure Keep' spell and the generate_structure adapter action. piece = vanilla EditorID or '0x..~Mod.esp'. at = LOCAL coords relative to the structure origin (forward units in front of the caster). rot_z in DEGREES. repeat = {axis, step, count} expands one entry into N stepped pieces (auto wall runs). anchor_ground=true snaps that piece's Z to land height (foundations/gate); other pieces use the flatten_to_max base plane. THESE EDITORIDS NEED IN-GAME VALIDATION.",
+  "_comment": "Exterior modular structure template (PROCGEN_EXTERIOR.md §9). Backs the 'C++: Conjure Keep' spell and the generate_structure adapter action. piece = vanilla EditorID (LookupByEditorID) or '0x..~Skyrim.esm'. at = LOCAL coords relative to the structure origin (forward units in front of the caster). rot_z in DEGREES. repeat = {axis, step, count} expands one entry into N stepped pieces (auto wall runs). anchor_ground=true snaps that piece's Z to land height (towers/gate); other pieces use the flatten_to_max base plane. KIT: the vanilla Whiterun city-wall STAT family (real EditorID prefix 'WR...', confirmed by the 'Whiterun Has Walls' mods that edit these exact base records). It is a CURVED, terrain-hugging kit, so exact edge-to-edge snap on a flat grid is NOT guaranteed and WILL need in-game tuning — but every piece named below is a REAL vanilla form (unknown ids log a warning and skip; no crash). The previous 'WRC*' prefix placeholders did NOT exist and are replaced.",
   "template_id": "small_keep_v1",
   "version": 1,
   "anchor": { "mode": "in_front_of", "ref": "player", "forward": 600.0 },
   "seed": 1337,
   "ground": "flatten_to_max",
   "footprint": { "cells": [3, 3], "cell_size": 1024.0 },
-  "ground_rule": { "mode": "flatten_to_max", "foundation_piece": "WRCWallStraight01" },
+  "ground_rule": { "mode": "flatten_to_max", "foundation_piece": "WRWallStrUp128" },
 
   "pieces": [
-    { "_comment": "North wall run: 4 straight wall segments stepping +1024 along X. WRCWall* = Whiterun city wall STAT family (PLACEHOLDER — validate exact EditorID).",
-      "piece": "WRCWallStraight01", "at": [-1536, 1536, 0], "rot_z": 0, "motion": "fixed",
-      "repeat": { "axis": "x", "step": 1024, "count": 4 } },
-    { "_comment": "South wall run.",
-      "piece": "WRCWallStraight01", "at": [-1536, -1536, 0], "rot_z": 180, "motion": "fixed",
-      "repeat": { "axis": "x", "step": 1024, "count": 4 } },
+    { "_comment": "North wall run: 8 straight wall segments stepping +128 along X (the kit's straight-wall pitch is ~128 units — the '128' suffix on WRWallStrUp128 names the segment length). 'WRWallStrUp128' is a real WR straight-wall STAT (Whiterun Mesh Fixes patch notes reference 'WRWallStrUp128'). _todo: confirm exact variant + pitch in-game.",
+      "piece": "WRWallStrUp128", "at": [-512, 512, 0], "rot_z": 0, "motion": "fixed",
+      "repeat": { "axis": "x", "step": 128, "count": 8 } },
+    { "_comment": "South wall run (mirror).",
+      "piece": "WRWallStrUp128", "at": [-512, -512, 0], "rot_z": 180, "motion": "fixed",
+      "repeat": { "axis": "x", "step": 128, "count": 8 } },
 
-    { "_comment": "Four corner towers. WRCTower* PLACEHOLDER — validate.",
-      "piece": "WRCTower01", "at": [-1536, 1536, 0], "rot_z": 0, "motion": "fixed", "anchor_ground": true },
-    { "piece": "WRCTower01", "at": [1536, 1536, 0], "rot_z": 90, "motion": "fixed", "anchor_ground": true },
-    { "piece": "WRCTower01", "at": [1536, -1536, 0], "rot_z": 180, "motion": "fixed", "anchor_ground": true },
-    { "piece": "WRCTower01", "at": [-1536, -1536, 0], "rot_z": 270, "motion": "fixed", "anchor_ground": true },
+    { "_comment": "Four corner towers. 'WRWallTower01' is a REAL vanilla WR tower STAT (referenced in 'Whiterun Has Walls Redone' / 'Whiterun Mesh Fixes' patch notes editing this base record). Ground-anchored so each tower foot sits on the land.",
+      "piece": "WRWallTower01", "at": [-512, 512, 0], "rot_z": 0, "motion": "fixed", "anchor_ground": true },
+    { "piece": "WRWallTower01", "at": [512, 512, 0], "rot_z": 90, "motion": "fixed", "anchor_ground": true },
+    { "piece": "WRWallTower01", "at": [512, -512, 0], "rot_z": 180, "motion": "fixed", "anchor_ground": true },
+    { "piece": "WRWallTower01", "at": [-512, -512, 0], "rot_z": 270, "motion": "fixed", "anchor_ground": true },
 
-    { "_comment": "Gatehouse on the front (south) edge centre, ground-anchored. WRCGate* PLACEHOLDER — validate.",
-      "piece": "WRCGate01", "at": [0, -1536, 0], "rot_z": 180, "motion": "fixed", "anchor_ground": true },
+    { "_comment": "Gatehouse on the front (south) edge centre, ground-anchored. 'WRWallMainGate' is the REAL vanilla Whiterun main-gate STAT (referenced in 'Whiterun Has Walls' / parallax-fix patch notes editing this base record).",
+      "piece": "WRWallMainGate", "at": [0, -512, 0], "rot_z": 180, "motion": "fixed", "anchor_ground": true },
 
-    { "_comment": "Central keep. WhiterunKeep / Dragonsreach exterior STAT PLACEHOLDER — validate.",
-      "piece": "WRCKeep01", "at": [0, 0, 0], "rot_z": 0, "motion": "fixed" }
+    { "_comment": "Central tower as the 'keep' (no clean vanilla freestanding keep STAT could be verified, so a real tower stands in rather than an invented 'WRCKeep01'). Reuses the verified WRWallTower01.",
+      "piece": "WRWallTower01", "at": [0, 0, 0], "rot_z": 0, "motion": "fixed", "anchor_ground": true }
   ],
 
   "piece_resolve": "editor_id",
-  "_known_limits": "No distant LOD (structure vanishes outside the active 5x5 grid; keep footprint <= 3x3 cells). No runtime navmesh (NPCs can't path; player can walk it). Terrain is only VISUALLY levelled via flatten_to_max + ground-anchored foundations — the heightmap is not modified (PROCGEN_EXTERIOR.md §3).",
-  "_todo": "VALIDATE EDITORIDS in-game: WRCWallStraight01, WRCTower01, WRCGate01, WRCKeep01 (the Whiterun-city/Solitude wall+tower+gate modular kit). Unknown ids log a warning and skip (no crash). Measure each piece's NIF pivot/length and adjust 'at'/'step' so segments snap edge-to-edge (PROCGEN_EXTERIOR.md §2 snap math)."
+  "_confidence": "MEDIUM — the WR EditorID FAMILY is confirmed real (WRWallTower01, WRWallMainGate, WRWallStrUp128 are vanilla base records edited by the popular 'Whiterun Has Walls' / 'Whiterun Mesh Fixes' mods). NOT verified: the exact straight-wall variant/pitch, the precise piece footprint, and whether these curved city-wall pieces tile cleanly on the flat grid used here. No FormIDs are invented; if a name mistypes it is skipped with a warning.",
+  "_known_limits": "No distant LOD (structure vanishes outside the active 5x5 grid; footprint kept <= 3x3 cells). No runtime navmesh (NPCs can't path; player can walk it). Terrain is only VISUALLY levelled via flatten_to_max + ground-anchored towers/gate — the heightmap is not modified (PROCGEN_EXTERIOR.md §3). The Whiterun wall kit is curved/terrain-hugging, so straight-grid placement WILL show gaps/overlaps until tuned in-game.",
+  "_todo": "IN-GAME VALIDATION needed: (1) console 'help WRWall' to confirm exact EditorIDs (WRWallStrUp128 variant, WRWallTower01, WRWallMainGate) and grab their FormIDs; (2) measure each piece's NIF pivot/length and adjust 'at'/'step' (currently assuming a 128-unit straight-wall pitch) so segments snap edge-to-edge (PROCGEN_EXTERIOR.md §2 snap math); (3) consider swapping to a cleaner straight modular kit (e.g. an Imperial Fort exterior 'ImpExt...' family) if the curved Whiterun walls do not tile acceptably."
 }

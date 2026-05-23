@@ -5,9 +5,18 @@
 
 ## 一句話現況
 
-可攜 quest engine 的 **Phase 0 已完成並驗證**；**Phase 1 已起步**：core 已登錄進 Skyrim DLL 建置（PCH 隔離，零 RE:: 汙染已驗證），且對話流程已改成**可恢復式**（為了接 Skyrim 非同步 MessageBox）。下一步是寫 `src/skyrim/` 的能力埠。宮廷大法師 mod 是這個引擎的第一個內容。
+**Phase 1 完成並整合**（branch `feature/court-wizard` @ `f162d23`）：可攜 core（已 audit 強化、validate、防 crash）+ Skyrim adapter 六埠 + MessageBoxPresenter + 煉藥 spike + 程序生成法術/JSON 動作，全部編進**一個 cross-compile DLL**（1.52MB PE32+，乾淨建成）。**尚未 in-game 測試**。成果包：`dist/CourtWizardSuite-0.0.1.zip`。
 
-## Phase 1 進行中（本 session，尚未 commit）
+## 本次自主 session 成果（2026-05-23，已全部 commit + 整合）
+
+- **整合於 `feature/court-wizard`**：`8f0318a`→`f162d23` 一線。內容：Phase 1 base（cmake 登錄 core + PCH 隔離 + 可恢復式對話）、Skyrim adapter（merge）、quest engine audit/強化（merge，54 項測試）、alchemy spike（F11）、procgen 法術 + `generate_interior`/`generate_structure` JSON 動作。
+- **5 份 + 2 份研究文件**在 `research/`（NPC 行為深改、3D 煉藥、無 navmesh 尋路、室內/室外程序生成、煉藥 spike 發現、引擎 audit）。
+- **成果包** `dist/CourtWizardSuite-0.0.1/`（+ `.zip`）：DLL + config 樹 + research + design-docs + `使用說明書.md`。
+- **debug 熱鍵**：F9（輪詢計時器）、F10（觸發 spell_cast_on）、F11（煉藥）。
+- **最大待辦（in-game 必驗）**：procgen recipe 用佔位 EditorID（要換真實模組化套件 FormID 才看得到物件）；co-save 持久化未做；`spell_cast_on` 未自動偵測；煉藥數值/存檔正確性待驗；adapter 高風險動詞為 stub。
+- **多 agent 編排教訓**：worktree 隔離下 agent cwd=主樹，會誤寫主樹再自還原 + 提交到 `worktree-agent-<id>` 分支；整合從分支來（見 memory `feedback_worktree_agents`）。
+
+## （歷史）Phase 1 起步過程
 
 - **core 登錄 cmake + PCH 隔離**（DESIGN §6 step 1）：`cmake/sourcelist.cmake` 新增 `core_sources`（`src/core/QuestEngine.cpp`）、`cmake/headerlist.cmake` 加 core headers；`CMakeLists.txt` 在 PCH 行後 `set_source_files_properties(${core_sources} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)`，確保 `RE/Skyrim.h` 不被強制塞進 core TU。**已驗證**：`compile_commands.json` 中 `QuestEngine.cpp` 無任何 PCH flag，`plugin.cpp` 有；cross-compile DLL 正常編譯 + link。
 - **對話改可恢復式**（決策見下）：`Ports.h` 的 `IDialoguePresenter::presentNode` 改成 **display-only（回傳 void，不阻塞）**；`QuestEngine` 新增 `submitChoice(int)` + `awaitingChoice()`，內部把同步 while 迴圈拆成 `startDialogue → presentCurrentNode → (await) → submitChoice → presentCurrentNode...`，新增 `endDialogue()`。CLI harness 改用 `drainChoices()` 從 stdin 讀選擇餵回。**已驗證**：原驗證情境輸出**逐字節相同**，且「對話中 `reset_quest`」、選 `end:true`、取消（無效輸入）三個 edge case 皆正確。

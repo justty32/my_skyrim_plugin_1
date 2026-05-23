@@ -53,6 +53,10 @@ target_include_directories(
 	"${PROJECT_NAME}"
 	PRIVATE
 		${SIMPLEINI_INCLUDE_DIRS}
+		# >>> quest-engine adapter: put src/ on the include path so src/skyrim/*
+		# can include "core/QuestEngine.h" / "dialogue/MessageBoxPresenter.h" etc.
+		${CMAKE_CURRENT_SOURCE_DIR}/src
+		# <<< quest-engine adapter
 )
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.
 # Only works if you configure DEPLOY_ROOT above (or set the SKYRIM_MODS_FOLDER environment variable)

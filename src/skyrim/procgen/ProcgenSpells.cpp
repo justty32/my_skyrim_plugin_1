@@ -1,6 +1,9 @@
 #include "skyrim/procgen/ProcgenSpells.h"
 
 #include "skyrim/procgen/Procgen.h"
+// >>> gen-npc: demo "C++: Conjure NPC" spell -> ProcgenNpc::Generate.
+#include "skyrim/procgen/ProcgenNpc.h"
+// <<< gen-npc
 
 namespace skyrim::procgen {
 
@@ -10,6 +13,9 @@ namespace {
 RE::SpellItem* g_genRoomSpell = nullptr;
 RE::SpellItem* g_conjureKeepSpell = nullptr;
 RE::SpellItem* g_rearrangeSpell = nullptr;
+// >>> gen-npc
+RE::SpellItem* g_conjureNpcSpell = nullptr;
+// <<< gen-npc
 
 // Recipe files (live under config/procgen/, copied next to the DLL post-build).
 constexpr const char* kCottageRecipe = "recipe_cottage.json";
@@ -44,6 +50,28 @@ void OnRearrange(RE::TESObjectREFR*) {
     RearrangeFurnishings(kSpellRoomKey);
 }
 
+// >>> gen-npc: demo recipe — mint a TESNPC_ from a vanilla template, rename, and
+// place in front of the caster. Tracked + co-saved by ProcgenNpc so it rebuilds
+// on reload (research/PROCGEN_NPC_FORMS.md §5/§11). The "template" is omitted so
+// ProcgenNpc's vanilla placeholder (kDefaultTemplate, a generic Bandit) is used;
+// set a "template" string here to mint from a different vanilla base.
+void OnConjureNpc(RE::TESObjectREFR* anchor) {
+    const nlohmann::json recipe = {
+        {"persist_key", "spell_conjured_npc"},
+        {"name", "C++ Conjured NPC"},
+        {"essential", true},
+        {"scale", 1.0},
+    };
+    const std::string key = npc::Generate(recipe, anchor);
+    if (key.empty()) {
+        SKSE::log::error("ProcgenSpells: ConjureNpc — generation failed");
+    } else {
+        SKSE::log::info("ProcgenSpells: ConjureNpc -> key='{}' ({} tracked)", key,
+                        npc::TrackedCount());
+    }
+}
+// <<< gen-npc
+
 // Cast handler — same shape as NpcGenerator::SpellCastHandler. We register our
 // own sink (rather than editing NpcGenerator's) so the merge stays isolated; the
 // "C++: " prefix convention keeps both handlers cooperative.
@@ -74,6 +102,11 @@ public:
             SKSE::log::info("ProcgenSpells: Rearrange Furnishings cast by {:X}",
                             anchor->GetFormID());
             OnRearrange(anchor);
+        // >>> gen-npc
+        } else if (name == "C++: Conjure NPC") {
+            SKSE::log::info("ProcgenSpells: Conjure NPC cast by {:X}", anchor->GetFormID());
+            OnConjureNpc(anchor);
+        // <<< gen-npc
         }
         return RE::BSEventNotifyControl::kContinue;
     }
@@ -125,6 +158,9 @@ void InitializeSpells() {
     CreateSpell(g_genRoomSpell, "C++: Generate Room");
     CreateSpell(g_conjureKeepSpell, "C++: Conjure Keep");
     CreateSpell(g_rearrangeSpell, "C++: Rearrange Furnishings");
+    // >>> gen-npc
+    CreateSpell(g_conjureNpcSpell, "C++: Conjure NPC");
+    // <<< gen-npc
 
     if (auto* source = RE::ScriptEventSourceHolder::GetSingleton()) {
         source->AddEventSink(ProcgenCastHandler::GetSingleton());
@@ -144,6 +180,9 @@ void GiveSpellsToPlayer() {
     AddSpell(g_genRoomSpell);
     AddSpell(g_conjureKeepSpell);
     AddSpell(g_rearrangeSpell);
+    // >>> gen-npc
+    AddSpell(g_conjureNpcSpell);
+    // <<< gen-npc
 }
 
 }  // namespace skyrim::procgen

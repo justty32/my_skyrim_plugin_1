@@ -3,6 +3,11 @@
 // >>> procgen: JSON-driven procedural-generation adapter actions.
 #include "skyrim/procgen/Procgen.h"
 // <<< procgen
+// >>> gen-npc: JSON-driven runtime NPC form generation (research/PROCGEN_NPC_FORMS.md).
+#include "skyrim/procgen/ProcgenNpc.h"
+#include <filesystem>
+#include <fstream>
+// <<< gen-npc
 
 namespace skyrim {
 
@@ -195,6 +200,89 @@ void SkyrimActions::run(const std::string& verb, const nlohmann::json& params) {
         return;
     }
     // <<< procgen
+
+    // >>> gen-npc: runtime procedural NPC form generation with co-save rebuild
+    // (research/PROCGEN_NPC_FORMS.md §1/§5/§11). Skyrim adapter-extension action
+    // (SPEC §4.4) — the richer sibling of spawn_character: it mints a brand-new
+    // TESNPC_ base from a template + recipe, places a ref near an anchor, tracks
+    // it, and co-saves the recipe so it rebuilds on reload.
+    //
+    // Recipe source (mirrors generate_interior): an inline "recipe" object, OR a
+    // "recipe"/"template" file name under config/procgen/. Anchor: `at.ref`
+    // ("player" | a character alias | a form ref); defaults to the player.
+    if (verb == "generate_npc") {
+        // Resolve the placement anchor (same shape as generate_interior).
+        RE::TESObjectREFR* anchor = player;
+        if (params.is_object() && params.contains("at")) {
+            const std::string ref = params["at"].is_object()
+                                        ? params["at"].value("ref", std::string{})
+                                        : params["at"].get<std::string>();
+            if (!ref.empty() && ref != "player") {
+                if (auto* actor = entities_.resolveCharacter(ref)) {
+                    anchor = actor;
+                } else if (auto* form = SkyrimEntities::resolveForm(ref)) {
+                    if (auto* refr = form->As<RE::TESObjectREFR>()) anchor = refr;
+                }
+            }
+        }
+        if (!anchor) {
+            SKSE::log::warn("SkyrimActions: generate_npc skipped (no anchor / player)");
+            return;
+        }
+
+        // Recipe: inline object, else load a JSON file from config/procgen/.
+        nlohmann::json recipe;
+        bool ok = false;
+        if (params.is_object() && params.contains("recipe") && params["recipe"].is_object()) {
+            recipe = params["recipe"];
+            ok = true;
+        } else {
+            std::string file;
+            if (params.is_object() && params.contains("recipe") && params["recipe"].is_string()) {
+                file = params["recipe"].get<std::string>();
+            } else if (params.is_object() && params.contains("template") &&
+                       params["template"].is_string() &&
+                       params["template"].get<std::string>().find(".json") != std::string::npos) {
+                file = params["template"].get<std::string>();
+            }
+            if (!file.empty()) {
+                if (file.find(".json") == std::string::npos) file += ".json";
+                namespace fs = std::filesystem;
+                fs::path path = fs::path("Data") / "SKSE" / "Plugins" / "Template_Plugin" /
+                                "procgen" / file;
+                if (!fs::exists(path)) {
+                    path = fs::path("Data") / "SKSE" / "Plugins" / "procgen" / file;
+                }
+                std::ifstream in(path);
+                if (in) {
+                    try {
+                        in >> recipe;
+                        ok = recipe.is_object();
+                    } catch (const std::exception& e) {
+                        SKSE::log::error("SkyrimActions: generate_npc bad recipe {}: {}",
+                                         path.string(), e.what());
+                    }
+                } else {
+                    SKSE::log::warn("SkyrimActions: generate_npc cannot open recipe {}",
+                                    path.string());
+                }
+            } else if (params.is_object()) {
+                // No "recipe"/"template" -> treat the params themselves as the
+                // recipe (e.g. {"verb":"generate_npc","name":"...","template":"0x.."}).
+                recipe = params;
+                ok = recipe.is_object();
+            }
+        }
+        if (!ok) {
+            SKSE::log::warn("SkyrimActions: generate_npc skipped (no valid recipe)");
+            return;
+        }
+
+        const std::string key = procgen::npc::Generate(recipe, anchor);
+        SKSE::log::info("SkyrimActions: generate_npc key='{}'", key);
+        return;
+    }
+    // <<< gen-npc
 
     // ---- recognised-but-deferred / high-risk verbs (DESIGN §2.2) ----
     if (verb == "start_combat" || verb == "add_shout" || verb == "teleport_player" ||

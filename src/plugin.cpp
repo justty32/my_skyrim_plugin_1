@@ -9,6 +9,9 @@
 // >>> procgen: example procedural-generation spells.
 #include "skyrim/procgen/ProcgenSpells.h"
 // <<< procgen
+// >>> gen-npc: runtime NPC form generation + co-save rebuild (research/PROCGEN_NPC_FORMS.md).
+#include "skyrim/procgen/ProcgenNpc.h"
+// <<< gen-npc
 
 void OnDataLoaded()
 {
@@ -52,6 +55,10 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 			// >>> procgen: re-add dynamic spells after a save load.
 			skyrim::procgen::GiveSpellsToPlayer();
 			// <<< procgen
+			// >>> gen-npc: rebuild co-saved NPCs on the main thread (research §5
+			// "時機": form system ready, after OnLoad staged the recipes).
+			skyrim::procgen::npc::RebuildStaged();
+			// <<< gen-npc
 		}
 		if (auto* player = RE::PlayerCharacter::GetSingleton()) {
 			SKSE::log::info("  Player: {}", player->GetName());
@@ -70,6 +77,16 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
 		SKSE::log::error("Failed to register SKSE message listener");
 		return false;
 	}
+
+	// >>> gen-npc: register the co-save (SerializationInterface) callbacks for
+	// generated-NPC recipes (research/PROCGEN_NPC_FORMS.md §5). Must happen in
+	// SKSEPluginLoad after SKSE::Init; fenced + null-checked.
+	if (auto* serialization = SKSE::GetSerializationInterface()) {
+		skyrim::procgen::npc::Register(serialization);
+	} else {
+		SKSE::log::error("gen-npc: SerializationInterface unavailable; NPC co-save disabled");
+	}
+	// <<< gen-npc
 
 	return true;
 }

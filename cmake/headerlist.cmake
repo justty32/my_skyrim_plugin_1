@@ -33,3 +33,9 @@ set(headers ${headers}
     src/skyrim/procgen/ProcgenSpells.h
 )
 # <<< procgen
+
+# >>> gen-npc (research/PROCGEN_NPC_FORMS.md) — runtime NPC form generation header.
+set(headers ${headers}
+    src/skyrim/procgen/ProcgenNpc.h
+)
+# <<< gen-npc

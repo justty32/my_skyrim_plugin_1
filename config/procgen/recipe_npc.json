@@ -1,0 +1,19 @@
+{
+  "_comment": "Runtime NPC form-generation recipe (research/PROCGEN_NPC_FORMS.md §1/§5/§11). Backs the generate_npc adapter action. ProcgenNpc mints a brand-new TESNPC_ base by Copy()ing the 'template', applies the overrides below, places a ref near the anchor, and co-saves THIS recipe + the template's plugin FormID + position so the NPC is REBUILT on reload (logical persistence, not engine stable-FormID identity — see the doc's caveats). NEVER stores the 0xFF dynamic FormID.",
+
+  "template": "0x0001327B~Skyrim.esm",
+  "_template_note": "0x0001327B is the vanilla 'Bandit' base (a complete, fully-rigged actor: race/skeleton/AI/voice/outfit), so the minted copy is immediately usable without hand-filling components. PLACEHOLDER — validate the FormID in-game and swap to a friendlier 'citizen' template if desired. Accepts '0x..~Mod.esp', a bare '0x..' absolute id, or an EditorID.",
+
+  "persist_key": "demo_generated_npc",
+  "_persist_key_note": "Stable string id = the logical identity carried across save/reload. On load the NPC is re-minted and re-tracked under this key. If omitted, ProcgenNpc auto-generates one (gen_npc_N).",
+
+  "name": "Procedural Citizen",
+  "sex": "female",
+  "essential": true,
+  "level": 10,
+  "scale": 1.0,
+
+  "_overrides_note": "name -> TESFullName::SetFullName on the minted base. sex -> kFemale ACTOR_BASE_DATA flag. essential -> kEssential flag. level -> ACTOR_BASE_DATA::level. scale -> ref-level SetScale (research §4 '體格'). Deep appearance procgen (headparts/faceData morph/tint) is inherited from the template (research §4: Copy carries the baked face) and is left as a TODO.",
+
+  "_caveats": "This recipe survives reload only as a REBUILT fresh instance (the engine never saves a runtime-minted TESNPC base — research §3). The original ref FormID, any quest alias pointing at the old base, and TESNPC::relationships do NOT carry over and would need re-linking. For 'the same logical NPC reappears' this is enough; for 'another mod references it by FormID forever' an ESP/ESL is required (research §6/§8)."
+}

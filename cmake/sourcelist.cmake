@@ -31,6 +31,13 @@ set(sources ${sources}
 )
 # <<< procgen
 
+# >>> gen-npc (research/PROCGEN_NPC_FORMS.md) — runtime NPC form generation +
+# co-save rebuild. Normal Skyrim TU (uses the PCH). Appended for a trivial merge.
+set(sources ${sources}
+    src/skyrim/procgen/ProcgenNpc.cpp
+)
+# <<< gen-npc
+
 # Portable quest-engine core (DESIGN §6). ZERO RE::/SKSE:: — kept out of the
 # forced PCH (RE/Skyrim.h) in CMakeLists.txt via SKIP_PRECOMPILE_HEADERS so the
 # core TUs stay game-agnostic.

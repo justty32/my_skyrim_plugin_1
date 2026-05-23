@@ -1,0 +1,19 @@
+{
+  "id": "test_async_message",
+  "title": "Async message — deliver_message / message_ack standard extension (SPEC §4.5)",
+  "version": 1,
+  "vars": { "acked": false },
+  "on_start": [
+    { "deliver_message": { "to": "player", "subject": "A summons", "body": "Come to Dragonsreach.", "key": "summons" } },
+    { "show_message": "(A courier was dispatched. Run: fire message_ack key summons)" }
+  ],
+  "triggers": [
+    { "on": "message_ack", "key": "summons",
+      "do": [
+        { "set_var": { "var": "acked", "value": true } },
+        { "show_message": "You read the summons. The quest advances." }
+      ] },
+    { "on": "message_ack", "key": "other_message",
+      "do": [ { "show_message": "BUG if shown: wrong message key matched" } ] }
+  ]
+}

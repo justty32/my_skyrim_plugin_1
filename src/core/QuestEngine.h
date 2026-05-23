@@ -33,6 +33,17 @@ public:
 
     QuestEngine(nlohmann::json doc, Deps deps);
 
+    // SPEC §7: offline validation pass. Walks the whole document against the
+    // CORE vocabulary and structural rules, collecting every problem (it does
+    // NOT stop at the first). Each message is prefixed with the quest id and the
+    // JSON path of the offending node/choice/action/condition. Adapter-extension
+    // verbs/conditions/events are NOT flagged (the core does not understand
+    // them; §4.4 says they are checked by the merged "effective schema").
+    // Returns the list of problems; empty == structurally valid for the core.
+    // `start()` does NOT require this to have been run, but a host SHOULD call
+    // it at load and refuse / warn on a non-empty result.
+    std::vector<std::string> validate() const;
+
     // SPEC §3.1: apply initial state, run on_start, emit quest_start.
     void start();
 
@@ -74,6 +85,7 @@ private:
     void addVar(const std::string& name, double delta);
 
     void log(const std::string& msg) const;
+    std::string questId() const;  // safe doc_ id read (tolerates a non-object doc)
 
     // One visible choice of the currently-awaited node, captured at present
     // time so submitChoice() is decoupled from re-evaluating doc_/conditions.

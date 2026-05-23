@@ -131,8 +131,12 @@ int main(int argc, char** argv) {
     CliActionRunner runner;
     CliConditionEvaluator condEval;
     qe::GlobalStore globals;
-    // SPEC §2.4: globals are declared up front (here, by the harness).
+    // SPEC §2.4: globals MUST be declared up front (here, by the harness) so a
+    // global.<name> reference can be validated (§7.6). A real adapter loads
+    // these from a manifest; the CLI hard-codes the ones the bundled quests use.
     globals.vars["whiterun_tasks_done"] = 0.0;
+    globals.vars["runs"] = 0.0;
+    globals.vars["reputation"] = 0.0;
 
     qe::QuestEngine::Deps deps;
     deps.presenter = &presenter;
@@ -143,7 +147,26 @@ int main(int argc, char** argv) {
     deps.globals = &globals;
 
     qe::QuestEngine engine(doc, deps);
-    std::cout << "== quest: " << doc.value("title", doc.value("id", "?")) << " ==\n";
+    const std::string title =
+        doc.is_object() ? doc.value("title", doc.value("id", std::string{"?"})) : std::string{"<not a JSON object>"};
+    std::cout << "== quest: " << title << " ==\n";
+
+    // SPEC §7: validate against the core vocabulary before running. The CLI is
+    // an offline validator + conformance harness, so it always reports. A real
+    // adapter would merge its extension schema first ("effective schema", §4.4);
+    // here, any leftover problem is a genuine core-level structural error.
+    const auto problems = engine.validate();
+    if (!problems.empty()) {
+        std::cerr << "validation: " << problems.size() << " problem(s):\n";
+        for (const auto& p : problems) std::cerr << "  - " << p << "\n";
+        // --strict: refuse to run a structurally invalid quest.
+        if (argc > 2 && std::string(argv[2]) == "--strict") {
+            std::cerr << "(--strict) refusing to run.\n";
+            return 2;
+        }
+        std::cerr << "(continuing anyway; pass --strict to abort)\n";
+    }
+
     engine.start();
     drainChoices(engine);  // on_start may open a dialogue immediately
 

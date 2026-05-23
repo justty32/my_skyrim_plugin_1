@@ -1,0 +1,19 @@
+{
+  "id": "test_timers",
+  "title": "Timers — schedule / timer / re-schedule / multiple-due",
+  "version": 1,
+  "vars": { "fired": 0 },
+  "on_start": [
+    { "schedule": { "after_hours": 10, "key": "a" } },
+    { "schedule": { "after_hours": 10, "key": "b" } },
+    { "schedule": { "at": 10, "key": "c" } },
+    { "schedule": { "after_hours": 5, "key": "reschedule_me" } }
+  ],
+  "triggers": [
+    { "on": "timer", "key": "a", "do": [ { "show_message": "timer A due" }, { "add_var": { "var": "fired", "value": 1 } } ] },
+    { "on": "timer", "key": "b", "do": [ { "show_message": "timer B due" }, { "add_var": { "var": "fired", "value": 1 } } ] },
+    { "on": "timer", "key": "c", "do": [ { "show_message": "timer C (absolute at=10) due" }, { "add_var": { "var": "fired", "value": 1 } } ] },
+    { "on": "timer", "key": "reschedule_me", "do": [ { "show_message": "RESCHEDULED timer fired (should be at 20h not 5h)" }, { "add_var": { "var": "fired", "value": 1 } } ] },
+    { "on": "quest_start", "do": [ { "schedule": { "after_hours": 20, "key": "reschedule_me" } } ] }
+  ]
+}

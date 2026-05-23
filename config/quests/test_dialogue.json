@@ -1,0 +1,64 @@
+{
+  "id": "test_dialogue",
+  "title": "Dialogue — branching, when-filtered choices, goto chain, end, cancel",
+  "version": 1,
+  "vars": { "trust": 0, "told_secret": false },
+  "objectives": {
+    "learn_secret": { "text": "Learn the merchant's secret", "state": "active" }
+  },
+  "on_start": [
+    { "start_dialogue": "talk" }
+  ],
+  "dialogues": {
+    "talk": {
+      "entry": "n0",
+      "nodes": {
+        "n0": {
+          "speaker": "Merchant",
+          "lines": [ "What do you want, stranger?" ],
+          "choices": [
+            { "text": "[Be friendly] Just browsing.",
+              "then": [ { "add_var": { "var": "trust", "value": 1 } } ],
+              "goto": "n1" },
+            { "text": "[Threaten] Tell me your secret or else.",
+              "goto": "n2" },
+            { "text": "[Only if trusted] So, the secret?",
+              "when": { "var_gte": { "var": "trust", "value": 1 } },
+              "goto": "secret" },
+            { "text": "Leave.", "end": true }
+          ]
+        },
+        "n1": {
+          "speaker": "Merchant",
+          "lines": [ "Hah, browsing. Sure. Take your time." ],
+          "choices": [
+            { "text": "(Ask again now that you seem friendlier)", "goto": "n0" }
+          ]
+        },
+        "n2": {
+          "speaker": "Merchant",
+          "lines": [ "Threats? I don't deal with brutes. Get out." ],
+          "end": true
+        },
+        "secret": {
+          "speaker": "Merchant",
+          "lines": [ "Fine... the gold is buried under the old oak." ],
+          "choices": [
+            { "text": "Thank you.",
+              "then": [
+                { "set_var": { "var": "told_secret", "value": true } },
+                { "complete_objective": "learn_secret" }
+              ],
+              "end": true }
+          ]
+        }
+      }
+    }
+  },
+  "triggers": [
+    { "on": "objective_completed", "objective": "learn_secret",
+      "do": [ { "show_message": "Objective complete: you learned the secret." } ] },
+    { "on": "dialogue_end", "dialogue": "talk",
+      "do": [ { "show_message": "(The merchant turns back to his wares.)" } ] }
+  ]
+}

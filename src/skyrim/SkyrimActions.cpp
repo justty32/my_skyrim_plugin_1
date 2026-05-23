@@ -1,5 +1,9 @@
 #include "SkyrimActions.h"
 
+// >>> procgen: JSON-driven procedural-generation adapter actions.
+#include "skyrim/procgen/Procgen.h"
+// <<< procgen
+
 namespace skyrim {
 
 namespace {
@@ -121,6 +125,76 @@ void SkyrimActions::run(const std::string& verb, const nlohmann::json& params) {
         SKSE::log::info("SkyrimActions: deliver_letter subject='{}' (courier deferred)", subject);
         return;
     }
+
+    // >>> procgen: generate_interior / generate_structure / rearrange_furnishings
+    // (research/PROCGEN_INTERIOR.md §8, PROCGEN_EXTERIOR.md §9). These are Skyrim
+    // adapter-extension actions (SPEC §4.4): the core does not understand them and
+    // forwards verb+params here. Same Procgen module backs the example spells.
+    //
+    // Anchor: `at.ref` ("player" | a bound character alias | a form ref); defaults
+    // to the player. Recipe: a "template" file under config/procgen/, OR an inline
+    // recipe object/array under "recipe". `persist_key` tags the tracked refs.
+    if (verb == "generate_interior" || verb == "generate_structure") {
+        // Resolve the placement anchor.
+        RE::TESObjectREFR* anchor = player;
+        if (params.is_object() && params.contains("at")) {
+            const std::string ref = params["at"].is_object()
+                                        ? params["at"].value("ref", std::string{})
+                                        : params["at"].get<std::string>();
+            if (!ref.empty() && ref != "player") {
+                if (auto* actor = entities_.resolveCharacter(ref)) {
+                    anchor = actor;
+                } else if (auto* form = SkyrimEntities::resolveForm(ref)) {
+                    if (auto* refr = form->As<RE::TESObjectREFR>()) anchor = refr;
+                }
+            }
+        }
+        if (!anchor) {
+            SKSE::log::warn("SkyrimActions: {} skipped (no anchor / player)", verb);
+            return;
+        }
+
+        // Load the recipe: a template file name, or an inline recipe doc.
+        procgen::Recipe recipe;
+        nlohmann::json clutterDoc = nlohmann::json::array();
+        bool ok = false;
+        if (params.is_object() && params.contains("template") && params["template"].is_string()) {
+            std::string file = params["template"].get<std::string>();
+            if (file.find(".json") == std::string::npos) file += ".json";  // allow bare id
+            ok = procgen::LoadRecipeFile(file, recipe);
+            // For file-driven recipes we cannot re-read the raw clutter array, so
+            // scatter falls back to authored positions (logged in Procgen).
+        } else if (params.is_object() && params.contains("recipe")) {
+            ok = procgen::ParseRecipe(params["recipe"], recipe);
+            if (params["recipe"].is_object() && params["recipe"].contains("clutter")) {
+                clutterDoc = params["recipe"]["clutter"];
+            }
+        }
+        if (!ok) {
+            SKSE::log::warn("SkyrimActions: {} skipped (no valid 'template'/'recipe')", verb);
+            return;
+        }
+
+        const std::string key = params.is_object()
+                                    ? params.value("persist_key", recipe.templateId)
+                                    : recipe.templateId;
+        if (verb == "generate_interior") {
+            procgen::GenerateInterior(recipe, anchor, key, clutterDoc);
+        } else {
+            procgen::GenerateStructure(recipe, anchor, key);
+        }
+        SKSE::log::info("SkyrimActions: {} template='{}' key='{}'", verb, recipe.templateId, key);
+        return;
+    }
+    if (verb == "rearrange_furnishings") {
+        const std::string key = params.is_object()
+                                    ? params.value("persist_key", std::string{})
+                                    : std::string{};
+        procgen::RearrangeFurnishings(key);
+        SKSE::log::info("SkyrimActions: rearrange_furnishings key='{}'", key);
+        return;
+    }
+    // <<< procgen
 
     // ---- recognised-but-deferred / high-risk verbs (DESIGN §2.2) ----
     if (verb == "start_combat" || verb == "add_shout" || verb == "teleport_player" ||

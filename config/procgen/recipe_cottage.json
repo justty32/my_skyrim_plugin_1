@@ -1,0 +1,44 @@
+{
+  "_comment": "Interior room template (PROCGEN_INTERIOR.md §8). Backs both the 'C++: Generate Room' spell and the generate_interior adapter action. base = vanilla EditorID (LookupByEditorID) or '0x..~Mod.esp' (FormUtil::Parse). pos/grid in LOCAL frame relative to the room origin (anchorDistance units in front of the caster). rot_deg in DEGREES (adapter converts to radians). motion: fixed|keyframed|dynamic. THESE EDITORIDS NEED IN-GAME VALIDATION — see TODO note at the bottom.",
+  "template_id": "small_wood_house_v1",
+  "version": 1,
+  "anchor": { "mode": "in_front_of", "ref": "player", "distance": 320.0 },
+  "grid_step": 256.0,
+  "seed": 1337,
+
+  "shell": [
+    { "_comment": "floor grid 3x2 (grid coords * grid_step). Marsh/farmhouse floor STAT. PLACEHOLDER EditorID — validate.",
+      "base": "FarmRug01", "grid": [0, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+    { "base": "FarmRug01", "grid": [1, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+    { "base": "FarmRug01", "grid": [0, 1], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+    { "base": "FarmRug01", "grid": [1, 1], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+
+    { "_comment": "walls along the floor edges (STAT). PLACEHOLDER EditorID — validate. rot_deg.z faces the wall inward.",
+      "base": "dwemerwall01", "grid": [0, 2], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+    { "base": "dwemerwall01", "grid": [1, 2], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+    { "base": "dwemerwall01", "grid": [-1, 0], "z": 0, "rot_deg": [0, 0, 90], "motion": "fixed" },
+    { "base": "dwemerwall01", "grid": [2, 0], "z": 0, "rot_deg": [0, 0, 270], "motion": "fixed" }
+  ],
+
+  "furniture_slots": [
+    { "_comment": "Bed against the back wall. CommonBed01 is a known vanilla furniture EditorID family.",
+      "slot": "bed", "base": "CommonBed01", "pos": [0, 360, 0], "rot_deg": [0, 0, 180], "motion": "fixed", "usable": true },
+    { "_comment": "Table + two chairs in the centre. CommonTableSquare01 / WoodChair01 — validate exact ids.",
+      "slot": "table", "base": "CommonTableSquare01", "pos": [0, 120, 0], "rot_deg": [0, 0, 0], "motion": "fixed", "usable": false },
+    { "slot": "chair_l", "base": "WoodChair01", "pos": [-72, 120, 0], "rot_deg": [0, 0, 90], "motion": "fixed", "usable": true },
+    { "slot": "chair_r", "base": "WoodChair01", "pos": [72, 120, 0], "rot_deg": [0, 0, 270], "motion": "fixed", "usable": true }
+  ],
+
+  "lights": [
+    { "_comment": "Candle/candlelight to brighten the room (TESObjectLIGH with model). DefaultCandleLight01NS is a known vanilla light. Validate.",
+      "base": "DefaultCandleLight01NS", "pos": [0, 120, 90], "rot_deg": [0, 0, 0], "motion": "fixed" }
+  ],
+
+  "clutter": [
+    { "_comment": "Tankards scattered on the table AABB (count + seed → deterministic scatter, JSON path only). Tankard01 is a vanilla MISC.",
+      "base": "Tankard01", "scatter_aabb": [[-60, 90, 96], [60, 150, 96]], "count": 3, "seed": 1337, "motion": "keyframed" }
+  ],
+
+  "navmesh_note": "Generated area has NO runtime navmesh; NPCs cannot path here (NAVMESH_FREE_PATHFINDING.md). Player can walk/sit/sleep on placed furniture (markers ride the NIF).",
+  "_todo": "VALIDATE EDITORIDS in-game (console 'help <name>'): FarmRug01, dwemerwall01, CommonBed01, CommonTableSquare01, WoodChair01, DefaultCandleLight01NS, Tankard01. Unknown ids log a warning and are skipped (no crash). Replace shell wall/floor with a real modular interior kit (e.g. RiverwoodHouse* or a FarmHouse* STAT family) once measured; grid_step must match that kit's piece pitch."
+}

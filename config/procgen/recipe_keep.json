@@ -1,0 +1,35 @@
+{
+  "_comment": "Exterior modular structure template (PROCGEN_EXTERIOR.md §9). Backs the 'C++: Conjure Keep' spell and the generate_structure adapter action. piece = vanilla EditorID or '0x..~Mod.esp'. at = LOCAL coords relative to the structure origin (forward units in front of the caster). rot_z in DEGREES. repeat = {axis, step, count} expands one entry into N stepped pieces (auto wall runs). anchor_ground=true snaps that piece's Z to land height (foundations/gate); other pieces use the flatten_to_max base plane. THESE EDITORIDS NEED IN-GAME VALIDATION.",
+  "template_id": "small_keep_v1",
+  "version": 1,
+  "anchor": { "mode": "in_front_of", "ref": "player", "forward": 600.0 },
+  "seed": 1337,
+  "ground": "flatten_to_max",
+  "footprint": { "cells": [3, 3], "cell_size": 1024.0 },
+  "ground_rule": { "mode": "flatten_to_max", "foundation_piece": "WRCWallStraight01" },
+
+  "pieces": [
+    { "_comment": "North wall run: 4 straight wall segments stepping +1024 along X. WRCWall* = Whiterun city wall STAT family (PLACEHOLDER — validate exact EditorID).",
+      "piece": "WRCWallStraight01", "at": [-1536, 1536, 0], "rot_z": 0, "motion": "fixed",
+      "repeat": { "axis": "x", "step": 1024, "count": 4 } },
+    { "_comment": "South wall run.",
+      "piece": "WRCWallStraight01", "at": [-1536, -1536, 0], "rot_z": 180, "motion": "fixed",
+      "repeat": { "axis": "x", "step": 1024, "count": 4 } },
+
+    { "_comment": "Four corner towers. WRCTower* PLACEHOLDER — validate.",
+      "piece": "WRCTower01", "at": [-1536, 1536, 0], "rot_z": 0, "motion": "fixed", "anchor_ground": true },
+    { "piece": "WRCTower01", "at": [1536, 1536, 0], "rot_z": 90, "motion": "fixed", "anchor_ground": true },
+    { "piece": "WRCTower01", "at": [1536, -1536, 0], "rot_z": 180, "motion": "fixed", "anchor_ground": true },
+    { "piece": "WRCTower01", "at": [-1536, -1536, 0], "rot_z": 270, "motion": "fixed", "anchor_ground": true },
+
+    { "_comment": "Gatehouse on the front (south) edge centre, ground-anchored. WRCGate* PLACEHOLDER — validate.",
+      "piece": "WRCGate01", "at": [0, -1536, 0], "rot_z": 180, "motion": "fixed", "anchor_ground": true },
+
+    { "_comment": "Central keep. WhiterunKeep / Dragonsreach exterior STAT PLACEHOLDER — validate.",
+      "piece": "WRCKeep01", "at": [0, 0, 0], "rot_z": 0, "motion": "fixed" }
+  ],
+
+  "piece_resolve": "editor_id",
+  "_known_limits": "No distant LOD (structure vanishes outside the active 5x5 grid; keep footprint <= 3x3 cells). No runtime navmesh (NPCs can't path; player can walk it). Terrain is only VISUALLY levelled via flatten_to_max + ground-anchored foundations — the heightmap is not modified (PROCGEN_EXTERIOR.md §3).",
+  "_todo": "VALIDATE EDITORIDS in-game: WRCWallStraight01, WRCTower01, WRCGate01, WRCKeep01 (the Whiterun-city/Solitude wall+tower+gate modular kit). Unknown ids log a warning and skip (no crash). Measure each piece's NIF pivot/length and adjust 'at'/'step' so segments snap edge-to-edge (PROCGEN_EXTERIOR.md §2 snap math)."
+}

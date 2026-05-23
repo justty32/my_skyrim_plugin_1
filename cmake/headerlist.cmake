@@ -26,3 +26,10 @@ set(headers ${headers}
     src/alchemy_spike/AlchemySpike.h
 )
 # <<< alchemy-spike
+
+# >>> procgen (PROCGEN_INTERIOR/EXTERIOR.md) — procedural placement module headers.
+set(headers ${headers}
+    src/skyrim/procgen/Procgen.h
+    src/skyrim/procgen/ProcgenSpells.h
+)
+# <<< procgen

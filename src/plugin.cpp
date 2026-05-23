@@ -6,6 +6,9 @@
 // >>> alchemy-spike
 #include "alchemy_spike/AlchemySpike.h"
 // <<< alchemy-spike
+// >>> procgen: example procedural-generation spells.
+#include "skyrim/procgen/ProcgenSpells.h"
+// <<< procgen
 
 void OnDataLoaded()
 {
@@ -16,6 +19,9 @@ void OnDataLoaded()
     // >>> alchemy-spike: register the F11 debug brew trigger.
     AlchemySpike::Init();
     // <<< alchemy-spike
+    // >>> procgen: create the dynamic Generate Room / Conjure Keep / Rearrange spells.
+    skyrim::procgen::InitializeSpells();
+    // <<< procgen
 }
 
 void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
@@ -31,6 +37,9 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 	case SKSE::MessagingInterface::kNewGame:
 		SKSE::log::info("kNewGame: new game started");
 		NpcGenerator::GiveSpellsToPlayer();
+		// >>> procgen: dynamic spells aren't persisted, re-add on new game.
+		skyrim::procgen::GiveSpellsToPlayer();
+		// <<< procgen
 		break;
 	case SKSE::MessagingInterface::kPreLoadGame:
 		SKSE::log::info("kPreLoadGame: save load starting");
@@ -40,6 +49,9 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 		SKSE::log::info("kPostLoadGame: save loaded (success={})", success);
 		if (success) {
 			NpcGenerator::GiveSpellsToPlayer();
+			// >>> procgen: re-add dynamic spells after a save load.
+			skyrim::procgen::GiveSpellsToPlayer();
+			// <<< procgen
 		}
 		if (auto* player = RE::PlayerCharacter::GetSingleton()) {
 			SKSE::log::info("  Player: {}", player->GetName());

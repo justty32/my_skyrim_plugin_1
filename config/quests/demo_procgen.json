@@ -1,0 +1,52 @@
+{
+  "_comment": "Demo quest proving the JSON-driven procgen path end-to-end. on_start fires generate_interior with a small INLINE recipe (no file dependency, so it exercises ParseRecipe directly). The F10 debug hotkey fires spell_cast_on{victim}, whose trigger fires generate_structure (from the recipe_keep.json file) + rearrange_furnishings. NOTE: this is loaded by SkyrimAdapter::StartDemoQuest only if you point it at this file; by default the adapter loads demo_court_wizard.json. See the test plan in the agent report for how to swap it in, OR just use the three spells (which need no quest).",
+  "id": "demo_procgen",
+  "title": "Procgen JSON 示範",
+  "version": 1,
+  "vars": { "built": false },
+  "objectives": {
+    "build_lab": { "text": "用 JSON 程序生成大法師的工作室", "state": "active" }
+  },
+  "on_start": [
+    { "show_message": "（用 JSON 在你面前生成一間小屋……）" },
+    { "generate_interior": {
+        "at": { "ref": "player", "mode": "in_front_of", "distance": 320.0 },
+        "persist_key": "demo_lab",
+        "recipe": {
+          "template_id": "demo_inline_room",
+          "grid_step": 256.0,
+          "shell": [
+            { "base": "FarmRug01", "grid": [0, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+            { "base": "FarmRug01", "grid": [1, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" }
+          ],
+          "furniture_slots": [
+            { "slot": "bed", "base": "CommonBed01", "pos": [0, 240, 0], "rot_deg": [0, 0, 180], "motion": "fixed" },
+            { "slot": "table", "base": "CommonTableSquare01", "pos": [0, 64, 0], "rot_deg": [0, 0, 0], "motion": "fixed" }
+          ],
+          "lights": [
+            { "base": "DefaultCandleLight01NS", "pos": [0, 64, 90], "rot_deg": [0, 0, 0], "motion": "fixed" }
+          ],
+          "clutter": [
+            { "base": "Tankard01", "scatter_aabb": [[-48, 40, 96], [48, 96, 96]], "count": 3, "seed": 1337, "motion": "keyframed" }
+          ]
+        }
+      } },
+    { "set_var": { "var": "built", "value": true } }
+  ],
+  "triggers": [
+    { "_comment": "F10 (debug) fires spell_cast_on{victim}; here we reuse it to build a keep from the file recipe + then rearrange the inline room's furniture.",
+      "on": "spell_cast_on", "character": "victim",
+      "do": [
+        { "show_message": "（再用 JSON 生成一座小要塞 + 重新擺設屋內家具……）" },
+        { "generate_structure": {
+            "at": { "ref": "player", "mode": "in_front_of", "forward": 600.0 },
+            "template": "recipe_keep.json",
+            "persist_key": "demo_keep",
+            "seed": 1337
+          } },
+        { "rearrange_furnishings": { "persist_key": "demo_lab" } },
+        { "complete_objective": "build_lab" }
+      ] }
+  ],
+  "dialogues": {}
+}

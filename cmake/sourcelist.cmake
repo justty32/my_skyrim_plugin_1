@@ -22,6 +22,15 @@ set(sources ${sources}
 )
 # <<< alchemy-spike
 
+# >>> procgen (PROCGEN_INTERIOR/EXTERIOR.md) — procedural placement module: the
+# Procgen core + the example spells. Normal Skyrim TUs (use the PCH). Appended so
+# a merge stays trivial.
+set(sources ${sources}
+    src/skyrim/procgen/Procgen.cpp
+    src/skyrim/procgen/ProcgenSpells.cpp
+)
+# <<< procgen
+
 # Portable quest-engine core (DESIGN §6). ZERO RE::/SKSE:: — kept out of the
 # forced PCH (RE/Skyrim.h) in CMakeLists.txt via SKIP_PRECOMPILE_HEADERS so the
 # core TUs stay game-agnostic.

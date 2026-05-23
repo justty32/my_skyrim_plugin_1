@@ -6,12 +6,16 @@
 // >>> alchemy-spike
 #include "alchemy_spike/AlchemySpike.h"
 // <<< alchemy-spike
-// >>> procgen: example procedural-generation spells.
+// >>> procgen: example procedural-generation spells + procgen co-save persistence.
+#include "skyrim/procgen/Procgen.h"
 #include "skyrim/procgen/ProcgenSpells.h"
 // <<< procgen
 // >>> gen-npc: runtime NPC form generation + co-save rebuild (research/PROCGEN_NPC_FORMS.md).
 #include "skyrim/procgen/ProcgenNpc.h"
 // <<< gen-npc
+// >>> cosave: central SerializationInterface dispatcher (ONE SetUniqueID per plugin).
+#include "skyrim/CoSave.h"
+// <<< cosave
 
 void OnDataLoaded()
 {
@@ -59,6 +63,10 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 			// "時機": form system ready, after OnLoad staged the recipes).
 			skyrim::procgen::npc::RebuildStaged();
 			// <<< gen-npc
+			// >>> procgen-persist: rebuild co-saved rooms/structures on the main
+			// thread from {recipe, origin, seed} (research §5.2 strategy B).
+			skyrim::procgen::RebuildStaged();
+			// <<< procgen-persist
 		}
 		if (auto* player = RE::PlayerCharacter::GetSingleton()) {
 			SKSE::log::info("  Player: {}", player->GetName());
@@ -78,15 +86,20 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
 		return false;
 	}
 
-	// >>> gen-npc: register the co-save (SerializationInterface) callbacks for
-	// generated-NPC recipes (research/PROCGEN_NPC_FORMS.md §5). Must happen in
-	// SKSEPluginLoad after SKSE::Init; fenced + null-checked.
+	// >>> cosave: ONE SerializationInterface registration for the whole plugin.
+	// SKSE allows only one SetUniqueID + one each Save/Load/Revert callback per
+	// plugin (last wins, silently clobbering). So each module registers a record
+	// handler with the central dispatcher (cosave::AddHandler) FIRST, then we
+	// install the single SetUniqueID + callbacks via cosave::Register. Must happen
+	// in SKSEPluginLoad after SKSE::Init; fenced + null-checked.
+	skyrim::procgen::npc::Register();  // 'GNPC' handler (generated NPCs)
+	skyrim::procgen::Register();       // 'PRGN' handler (generated rooms/structures)
 	if (auto* serialization = SKSE::GetSerializationInterface()) {
-		skyrim::procgen::npc::Register(serialization);
+		skyrim::cosave::Register(serialization);
 	} else {
-		SKSE::log::error("gen-npc: SerializationInterface unavailable; NPC co-save disabled");
+		SKSE::log::error("cosave: SerializationInterface unavailable; co-save disabled");
 	}
-	// <<< gen-npc
+	// <<< cosave
 
 	return true;
 }

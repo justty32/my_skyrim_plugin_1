@@ -8,7 +8,8 @@
 #include <SKSE/API.h>
 #include <SKSE/Interfaces.h>
 
-#include "util.h"  // FormUtil::Parse, Util::String
+#include "skyrim/CoSave.h"  // central co-save dispatcher (one SetUniqueID per plugin)
+#include "util.h"           // FormUtil::Parse, Util::String
 
 namespace skyrim::procgen::npc {
 
@@ -293,57 +294,52 @@ void OnSave(SKSE::SerializationInterface* intfc) {
     SKSE::log::info("ProcgenNpc: OnSave wrote {} generated-NPC recipes", count);
 }
 
-void OnLoad(SKSE::SerializationInterface* intfc) {
+void OnLoad(SKSE::SerializationInterface* intfc, std::uint32_t version, std::uint32_t /*length*/) {
     // OnLoad runs on the serialization thread; we MUST NOT mint/place here
-    // (research §5 "時機"). Read the recipes, remap plugin FormIDs, and stage
-    // them for RebuildStaged() on the next kPostLoadGame main-thread tick.
+    // (research §5 "時機"). The central dispatcher already consumed our record's
+    // header via GetNextRecordInfo and matched it to us by type, so we read ONLY
+    // this 'GNPC' record's payload here. Read the recipes, remap plugin FormIDs,
+    // and stage them for RebuildStaged() on the next kPostLoadGame main thread.
     g_staged.clear();
 
-    std::uint32_t type = 0, version = 0, length = 0;
-    while (intfc->GetNextRecordInfo(type, version, length)) {
-        if (type != kRecordType) {
-            SKSE::log::warn("ProcgenNpc: OnLoad skipping unknown record '{:08X}'", type);
-            continue;
-        }
-        if (version != kRecordVersion) {
-            SKSE::log::warn("ProcgenNpc: OnLoad record version {} != {} (ignored)", version,
-                            kRecordVersion);
-            continue;
-        }
-        std::uint32_t count = 0;
-        if (intfc->ReadRecordData(count) == 0) {
-            SKSE::log::error("ProcgenNpc: OnLoad failed to read count");
-            break;
-        }
-        for (std::uint32_t i = 0; i < count; ++i) {
-            StagedRecipe s;
-            if (!ReadString(intfc, s.key)) break;
-            RE::FormID storedTemplate = 0;
-            intfc->ReadRecordData(storedTemplate);
-            intfc->ReadRecordData(s.cellFormID);
-            intfc->ReadRecordData(s.worldFormID);
-            intfc->ReadRecordData(s.lastPos);
-            if (!ReadString(intfc, s.recipeJson)) break;
+    if (version != kRecordVersion) {
+        SKSE::log::warn("ProcgenNpc: OnLoad record version {} != {} (ignored)", version,
+                        kRecordVersion);
+        return;
+    }
+    std::uint32_t count = 0;
+    if (intfc->ReadRecordData(count) == 0) {
+        SKSE::log::error("ProcgenNpc: OnLoad failed to read count");
+        return;
+    }
+    for (std::uint32_t i = 0; i < count; ++i) {
+        StagedRecipe s;
+        if (!ReadString(intfc, s.key)) break;
+        RE::FormID storedTemplate = 0;
+        intfc->ReadRecordData(storedTemplate);
+        intfc->ReadRecordData(s.cellFormID);
+        intfc->ReadRecordData(s.worldFormID);
+        intfc->ReadRecordData(s.lastPos);
+        if (!ReadString(intfc, s.recipeJson)) break;
 
-            // Remap the EXISTING plugin FormIDs to this load order (research §5
-            // step 3 / SerializationInterface::ResolveFormID).
-            RE::FormID resolved = storedTemplate;
-            if (!intfc->ResolveFormID(storedTemplate, resolved)) {
-                SKSE::log::warn("ProcgenNpc: OnLoad ResolveFormID({:X}) failed; using as-is",
-                                storedTemplate);
-                resolved = storedTemplate;
-            }
-            s.templatePluginFormID = resolved;
-            if (s.cellFormID) {
-                RE::FormID rc = s.cellFormID;
-                if (intfc->ResolveFormID(s.cellFormID, rc)) s.cellFormID = rc;
-            }
-            if (s.worldFormID) {
-                RE::FormID rw = s.worldFormID;
-                if (intfc->ResolveFormID(s.worldFormID, rw)) s.worldFormID = rw;
-            }
-            g_staged.push_back(std::move(s));
+        // Remap the EXISTING plugin FormIDs to this load order (research §5
+        // step 3 / SerializationInterface::ResolveFormID).
+        RE::FormID resolved = storedTemplate;
+        if (!intfc->ResolveFormID(storedTemplate, resolved)) {
+            SKSE::log::warn("ProcgenNpc: OnLoad ResolveFormID({:X}) failed; using as-is",
+                            storedTemplate);
+            resolved = storedTemplate;
         }
+        s.templatePluginFormID = resolved;
+        if (s.cellFormID) {
+            RE::FormID rc = s.cellFormID;
+            if (intfc->ResolveFormID(s.cellFormID, rc)) s.cellFormID = rc;
+        }
+        if (s.worldFormID) {
+            RE::FormID rw = s.worldFormID;
+            if (intfc->ResolveFormID(s.worldFormID, rw)) s.worldFormID = rw;
+        }
+        g_staged.push_back(std::move(s));
     }
     SKSE::log::info("ProcgenNpc: OnLoad staged {} recipes for main-thread rebuild",
                     g_staged.size());
@@ -358,17 +354,12 @@ void OnRevert(SKSE::SerializationInterface*) {
     SKSE::log::info("ProcgenNpc: OnRevert cleared the in-memory registry");
 }
 
-bool Register(const SKSE::SerializationInterface* intfc) {
-    if (!intfc) {
-        SKSE::log::error("ProcgenNpc: Register got a null SerializationInterface");
-        return false;
-    }
-    intfc->SetUniqueID(kSerializationUniqueID);
-    intfc->SetSaveCallback(OnSave);
-    intfc->SetLoadCallback(OnLoad);
-    intfc->SetRevertCallback(OnRevert);
-    SKSE::log::info("ProcgenNpc: registered co-save callbacks (uid '{:08X}')",
-                    kSerializationUniqueID);
+bool Register() {
+    // Register a 'GNPC' handler with the central dispatcher instead of calling
+    // SetUniqueID/SetSaveCallback ourselves (CoSave.h: one SetUniqueID per plugin
+    // — doing it here would clobber procgen's 'PRGN' handler and vice versa).
+    skyrim::cosave::AddHandler({ kRecordType, &OnSave, &OnLoad, &OnRevert });
+    SKSE::log::info("ProcgenNpc: registered 'GNPC' co-save handler with dispatcher");
     return true;
 }
 

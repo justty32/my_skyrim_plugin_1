@@ -52,9 +52,11 @@ class SerializationInterface;
 
 namespace skyrim::procgen::npc {
 
-// Co-save record id ('GNPC' = Generated NPC). Unique within this plugin's
-// SerializationInterface namespace (research §5 / SKSE/Interfaces.h SetUniqueID).
-inline constexpr std::uint32_t kSerializationUniqueID = 'GNPC';
+// Co-save RECORD id ('GNPC' = Generated NPC). This is a per-module record type
+// under the plugin's ONE SerializationInterface unique id (which is owned by
+// skyrim::cosave, NOT here — see CoSave.h on the one-SetUniqueID-per-plugin
+// limit). We no longer call SetUniqueID/SetSaveCallback ourselves; we register a
+// handler with the central dispatcher (research §5 / SKSE/Interfaces.h).
 inline constexpr std::uint32_t kRecordType = 'GNPC';
 inline constexpr std::uint32_t kRecordVersion = 1;
 
@@ -76,15 +78,19 @@ inline constexpr std::uint32_t kRecordVersion = 1;
 // is stored verbatim in the registry so the load path can rebuild identically.
 std::string Generate(const nlohmann::json& recipe, RE::TESObjectREFR* anchor);
 
-// Co-save registration (research §5 step 2/3). Call ONCE from SKSEPluginLoad
-// after SKSE::Init, using SKSE::GetSerializationInterface(). Sets the unique id
-// and the save/load/revert callbacks. Returns false if the interface is null.
-bool Register(const SKSE::SerializationInterface* intfc);
+// Co-save registration (research §5 step 2/3). Call ONCE from SKSEPluginLoad,
+// BEFORE skyrim::cosave::Register. This no longer touches SetUniqueID / the
+// callbacks (the central dispatcher owns the plugin's single registration —
+// CoSave.h); it registers a 'GNPC' handler via cosave::AddHandler. Always
+// succeeds (kept returning bool for call-site symmetry).
+bool Register();
 
-// SerializationInterface callbacks (registered by Register()). Exposed for
-// clarity/testing; the engine invokes them on its serialization thread.
-void OnSave(SKSE::SerializationInterface* intfc);    // write every tracked recipe
-void OnLoad(SKSE::SerializationInterface* intfc);    // read recipes, stage rebuild
+// Co-save handler callbacks (registered with the central dispatcher). Exposed for
+// clarity/testing; the dispatcher invokes them on SKSE's serialization thread.
+void OnSave(SKSE::SerializationInterface* intfc);  // write every tracked recipe
+// OnLoad receives the record (version, length) already read by the dispatcher's
+// GetNextRecordInfo, so it reads only this 'GNPC' record's payload (no header).
+void OnLoad(SKSE::SerializationInterface* intfc, std::uint32_t version, std::uint32_t length);
 void OnRevert(SKSE::SerializationInterface* intfc);  // clear the in-memory registry
 
 // Rebuild every staged NPC from its recipe on the main thread. Call from the

@@ -5,10 +5,15 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <mutex>
 #include <random>
 #include <unordered_map>
+#include <vector>
 
-#include "util.h"  // MathUtil::Angle (DegreeToRadian), FormUtil::Parse
+#include <SKSE/Interfaces.h>
+
+#include "skyrim/CoSave.h"  // central co-save dispatcher (one SetUniqueID per plugin)
+#include "util.h"           // MathUtil::Angle (DegreeToRadian), FormUtil::Parse
 
 namespace skyrim::procgen {
 
@@ -18,12 +23,24 @@ namespace {
 // under config/procgen/, copied next to the DLL by the post-build step.
 constexpr const char* kConfigFolder = "Template_Plugin";
 
-// ---- Tracked-room registry (research §5: track refs so we can clear/rearrange;
-// in-memory only, cross-save rebuild is DEFERRED) -----------------------------
+// Which Generate* call produced a tracked entry, so the co-save rebuild path can
+// re-run the right one (research §5.2 strategy B).
+enum class Kind : std::uint8_t { kInterior = 0, kStructure = 1 };
+
+// ---- Tracked-room registry (research §5: track refs so we can clear/rearrange).
+// The non-handle fields ({kind, recipeJson, origin, baseYaw, seed, cell/world
+// plugin FormID}) are ALSO the co-save record: OnSave writes them, RebuildStaged
+// reconstructs an identical entry from them. The ObjectRefHandles are session-
+// local and are NEVER serialized (they hold dynamic 0xFF ids; research §5.2). --
 struct GeneratedRoom {
+    Kind kind = Kind::kInterior;
     std::string templateId;
-    RE::NiPoint3 origin{};         // world-space room origin
+    std::string recipeJson;        // self-contained recipe (rebuild source of truth)
+    std::uint32_t seed = 1337;     // deterministic clutter scatter seed
+    RE::NiPoint3 origin{};         // ABSOLUTE world-space room origin (as placed)
     float baseYaw = 0.f;           // anchor yaw applied to local offsets (radians)
+    RE::FormID cellFormID = 0;     // parent cell plugin FormID (0 = exterior/unknown)
+    RE::FormID worldFormID = 0;    // worldspace plugin FormID (0 = interior)
     std::vector<RE::ObjectRefHandle> shellHandles;
     std::vector<RE::ObjectRefHandle> furnitureHandles;  // parallel to furnitureSpecs
     std::vector<RE::ObjectRefHandle> otherHandles;      // lights + clutter
@@ -31,6 +48,9 @@ struct GeneratedRoom {
     int rearrangeCount = 0;        // how many times this room has been rearranged
 };
 
+// The registry is touched on the main thread (Generate*/Rearrange/Clear) AND read
+// on the serialization thread (OnSave). Guard it (mirrors ProcgenNpc's g_mutex).
+std::mutex g_mutex;
 std::unordered_map<std::string, GeneratedRoom>& Rooms() {
     static std::unordered_map<std::string, GeneratedRoom> rooms;
     return rooms;
@@ -39,6 +59,22 @@ std::string& LastRoomKey() {
     static std::string key;
     return key;
 }
+
+// One co-save record read by OnLoad, awaiting a main-thread rebuild in
+// RebuildStaged() (OnLoad runs off the main thread, so we cannot place here —
+// research §5 "時機"). Only the recipe + transform + (already-remapped) plugin
+// FormIDs are carried; the rebuild mints fresh refs.
+struct StagedRoom {
+    std::string key;
+    Kind kind = Kind::kInterior;
+    std::string recipeJson;
+    std::uint32_t seed = 1337;
+    RE::NiPoint3 origin{};
+    float baseYaw = 0.f;
+    RE::FormID cellFormID = 0;   // already ResolveFormID-remapped
+    RE::FormID worldFormID = 0;  // already ResolveFormID-remapped
+};
+std::vector<StagedRoom> g_staged;  // main-thread-only (drained in RebuildStaged)
 
 // Resolve a piece base form by EditorID or "0x..~Mod.esp" (SkyrimEntities uses
 // the same convention; we duplicate the tiny EditorID/FormUtil split here to keep
@@ -217,6 +253,66 @@ void DropRoom(GeneratedRoom& room) {
     room.furnitureSpecs.clear();
 }
 
+// Capture the parent cell / worldspace *plugin* FormIDs for the co-save (research
+// §5.2: store a remappable plugin FormID, NEVER a dynamic 0xFF id). 0 means
+// interior-without-stable-cell / exterior-without-worldspace as appropriate.
+void CaptureLocation(GeneratedRoom& room, RE::TESObjectCELL* cell, RE::TESWorldSpace* world) {
+    if (cell && cell->GetFormID() < 0xFF000000) room.cellFormID = cell->GetFormID();
+    if (world && world->GetFormID() < 0xFF000000) room.worldFormID = world->GetFormID();
+}
+
+// Core interior placement at an EXPLICIT absolute origin/yaw (no anchor math).
+// Shared by GenerateInterior (origin from anchor) and RebuildStaged (origin from
+// the co-save). Fills the handle vectors + furnitureSpecs on `room`; returns the
+// ref count placed. clutterDoc carries the scatter params (count/seed/AABB); when
+// empty, clutter falls back to its authored single positions (research §3.4).
+int PlaceInterior(const Recipe& recipe, const RE::NiPoint3& origin, float yaw,
+                  RE::TESObjectCELL* cell, RE::TESWorldSpace* world,
+                  const nlohmann::json& clutterDoc, GeneratedRoom& room) {
+    int placed = 0;
+    // research §7.2 order: floors/walls/roof (shell) -> furniture -> lights -> clutter.
+    PlaceList(recipe.shell, origin, yaw, cell, world, room.shellHandles, placed);
+    for (const auto& f : recipe.furniture) {
+        auto h = PlacePiece(f, origin, yaw, cell, world);
+        if (h.get()) {
+            room.furnitureHandles.push_back(h);
+            room.furnitureSpecs.push_back(f);
+            ++placed;
+        }
+    }
+    PlaceList(recipe.lights, origin, yaw, cell, world, room.otherHandles, placed);
+    // Clutter: if the raw JSON array is supplied (JSON-driven adapter path / the
+    // co-save-stored recipe) we scatter inside each entry's AABB (count/seed);
+    // otherwise (bare spell path) we place each clutter spec once at its authored
+    // localX/Y.
+    if (!recipe.clutter.empty()) {
+        if (clutterDoc.is_array() && !clutterDoc.empty()) {
+            PlaceClutter(recipe.clutter, clutterDoc, origin, yaw, cell, world,
+                         room.otherHandles, placed);
+        } else {
+            for (const auto& c : recipe.clutter) {
+                auto h = PlacePiece(c, origin, yaw, cell, world);
+                if (h.get()) {
+                    room.otherHandles.push_back(h);
+                    ++placed;
+                }
+            }
+        }
+    }
+    return placed;
+}
+
+// Core structure placement at an EXPLICIT absolute origin/yaw. Shared by
+// GenerateStructure and RebuildStaged. Note: flatten_to_max land sampling is done
+// by the caller (it shifts origin.z) so the SAME origin is reused on rebuild
+// rather than re-sampling (the saved origin already baked the flatten result).
+int PlaceStructure(const Recipe& recipe, const RE::NiPoint3& origin, float yaw,
+                   RE::TESObjectCELL* cell, RE::TESWorldSpace* world, GeneratedRoom& room) {
+    int placed = 0;
+    PlaceList(recipe.shell, origin, yaw, cell, world, room.shellHandles, placed);
+    return placed;
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -383,6 +479,46 @@ bool LoadRecipeFile(const std::string& fileName, Recipe& out) {
 }
 
 // ---------------------------------------------------------------------------
+// Recipe -> self-contained JSON (for the co-save). The emitted doc round-trips
+// through ParseRecipe to an equivalent Recipe (research §5.2: store the food
+// recipe, not the placed refs). Pieces are written in the canonical `at`/`rot_deg`
+// form using the ALREADY-SCALED local units in PieceSpec, so we set grid_step=1
+// to avoid re-scaling on the next ParseRecipe (interior grid math is pre-applied).
+// ---------------------------------------------------------------------------
+
+nlohmann::json RecipeToJson(const Recipe& recipe) {
+    auto pieceToJson = [](const PieceSpec& p) {
+        nlohmann::json j;
+        j["base"] = p.base;
+        j["at"] = { p.localX, p.localY, p.localZ };
+        j["rot_deg"] = { p.rotXDeg, p.rotYDeg, p.rotZDeg };
+        j["motion"] = p.motion;
+        if (!p.slot.empty()) j["slot"] = p.slot;
+        if (p.anchorGround) j["anchor_ground"] = true;
+        return j;
+    };
+    auto listToJson = [&](const std::vector<PieceSpec>& v) {
+        nlohmann::json arr = nlohmann::json::array();
+        for (const auto& p : v) arr.push_back(pieceToJson(p));
+        return arr;
+    };
+
+    nlohmann::json doc;
+    doc["template_id"] = recipe.templateId;
+    doc["grid_step"] = 1.0f;  // local units are pre-scaled (see header comment)
+    doc["seed"] = recipe.seed;
+    doc["anchor"] = { { "distance", recipe.anchorDistance } };
+    doc["ground"] = recipe.groundRule;
+    doc["footprint"] = { { "cell_size", recipe.cellSize },
+                         { "cells", { recipe.footprintCellsX, recipe.footprintCellsY } } };
+    doc["shell"] = listToJson(recipe.shell);
+    if (!recipe.furniture.empty()) doc["furniture_slots"] = listToJson(recipe.furniture);
+    if (!recipe.lights.empty()) doc["lights"] = listToJson(recipe.lights);
+    if (!recipe.clutter.empty()) doc["clutter"] = listToJson(recipe.clutter);
+    return doc;
+}
+
+// ---------------------------------------------------------------------------
 // Generation
 // ---------------------------------------------------------------------------
 
@@ -404,44 +540,29 @@ int GenerateInterior(const Recipe& recipe, RE::TESObjectREFR* anchor,
     ClearGenerated(key);
 
     GeneratedRoom room;
+    room.kind = Kind::kInterior;
     room.templateId = recipe.templateId;
+    room.seed = recipe.seed;
     room.origin = origin;
     room.baseYaw = yaw;
+    CaptureLocation(room, cell, world);
 
-    int placed = 0;
-    // research §7.2 order: floors/walls/roof (shell) -> furniture -> lights -> clutter.
-    PlaceList(recipe.shell, origin, yaw, cell, world, room.shellHandles, placed);
-    for (const auto& f : recipe.furniture) {
-        auto h = PlacePiece(f, origin, yaw, cell, world);
-        if (h.get()) {
-            room.furnitureHandles.push_back(h);
-            room.furnitureSpecs.push_back(f);
-            ++placed;
-        }
-    }
-    PlaceList(recipe.lights, origin, yaw, cell, world, room.otherHandles, placed);
-    // Clutter: if the raw JSON array is supplied (JSON-driven adapter path) we
-    // scatter inside each entry's AABB (count/seed); otherwise (spell path) we
-    // place each clutter spec once at its authored localX/Y.
-    if (!recipe.clutter.empty()) {
-        if (clutterDoc.is_array() && !clutterDoc.empty()) {
-            PlaceClutter(recipe.clutter, clutterDoc, origin, yaw, cell, world,
-                         room.otherHandles, placed);
-        } else {
-            for (const auto& c : recipe.clutter) {
-                auto h = PlacePiece(c, origin, yaw, cell, world);
-                if (h.get()) {
-                    room.otherHandles.push_back(h);
-                    ++placed;
-                }
-            }
-        }
-    }
+    // Store a self-contained recipe for the co-save rebuild. If a raw clutter doc
+    // was supplied (adapter scatter path), fold it into the stored recipe so the
+    // SAME scatter (count/seed/AABB) is reproduced on reload (research §5.2/§5.3).
+    nlohmann::json recipeDoc = RecipeToJson(recipe);
+    if (clutterDoc.is_array() && !clutterDoc.empty()) recipeDoc["clutter"] = clutterDoc;
+    room.recipeJson = recipeDoc.dump();
 
-    Rooms()[key] = std::move(room);
+    const int placed = PlaceInterior(recipe, origin, yaw, cell, world, clutterDoc, room);
+
+    {
+        std::scoped_lock lock(g_mutex);
+        Rooms()[key] = std::move(room);
+    }
     LastRoomKey() = key;
-    SKSE::log::info("Procgen: GenerateInterior '{}' key='{}' placed {} refs", recipe.templateId,
-                    key, placed);
+    SKSE::log::info("Procgen: GenerateInterior '{}' key='{}' placed {} refs (co-saved)",
+                    recipe.templateId, key, placed);
     return placed;
 }
 
@@ -465,7 +586,10 @@ int GenerateStructure(const Recipe& recipe, RE::TESObjectREFR* anchor,
 
     // flatten_to_max (EXTERIOR §2/§8 step 2): sample land height across the
     // footprint, take the max, and place the whole structure on that plane. Only
-    // pieces flagged anchor_ground (foundations) snap individually.
+    // pieces flagged anchor_ground (foundations) snap individually. We bake the
+    // result into origin.z and STORE that absolute origin, so the reload rebuild
+    // reuses it directly rather than re-sampling (land sampling needs the cell
+    // loaded; the stored origin is self-sufficient — research §5.2).
     if (recipe.groundRule == "flatten_to_max") {
         if (auto* tes = RE::TES::GetSingleton()) {
             float zMax = origin.z;
@@ -486,21 +610,36 @@ int GenerateStructure(const Recipe& recipe, RE::TESObjectREFR* anchor,
     ClearGenerated(key);
 
     GeneratedRoom room;
+    room.kind = Kind::kStructure;
     room.templateId = recipe.templateId;
+    room.seed = recipe.seed;
     room.origin = origin;
     room.baseYaw = yaw;
+    CaptureLocation(room, cell, world);
+    // Store the recipe with ground_rule forced to "none": origin.z already baked
+    // the flatten result, so the rebuild must NOT flatten again (it would re-add
+    // the offset). Per-piece anchor_ground snapping is preserved (it re-snaps to
+    // current land, which is correct on rebuild).
+    nlohmann::json recipeDoc = RecipeToJson(recipe);
+    recipeDoc["ground"] = "none";
+    room.recipeJson = recipeDoc.dump();
 
-    int placed = 0;
-    PlaceList(recipe.shell, origin, yaw, cell, world, room.shellHandles, placed);
+    const int placed = PlaceStructure(recipe, origin, yaw, cell, world, room);
 
-    Rooms()[key] = std::move(room);
+    {
+        std::scoped_lock lock(g_mutex);
+        Rooms()[key] = std::move(room);
+    }
     LastRoomKey() = key;
-    SKSE::log::info("Procgen: GenerateStructure '{}' key='{}' placed {} refs", recipe.templateId,
-                    key, placed);
+    SKSE::log::info("Procgen: GenerateStructure '{}' key='{}' placed {} refs (co-saved)",
+                    recipe.templateId, key, placed);
     return placed;
 }
 
 int RearrangeFurnishings(const std::string& persistKey) {
+    // Hold the registry lock for the whole pass: we keep a GeneratedRoom& live
+    // and OnSave may read the registry on the serialization thread (g_mutex).
+    std::scoped_lock lock(g_mutex);
     const std::string key = persistKey.empty() ? LastRoomKey() : persistKey;
     auto it = Rooms().find(key);
     if (key.empty() || it == Rooms().end()) {
@@ -573,6 +712,10 @@ int RearrangeFurnishings(const std::string& persistKey) {
 }
 
 void ClearGenerated(const std::string& persistKey) {
+    // Erasing from Rooms() also drops the corresponding co-save record: OnSave
+    // serializes the live registry, so a cleared room is not written to the next
+    // save and therefore does not reappear on the following reload (research §5).
+    std::scoped_lock lock(g_mutex);
     if (persistKey.empty()) {
         for (auto& [k, room] : Rooms()) DropRoom(room);
         Rooms().clear();
@@ -589,9 +732,208 @@ void ClearGenerated(const std::string& persistKey) {
     }
 }
 
-// TODO (DEFERRED, research §5.3 / SPEC §6.2): persist {persistKey, templateId,
-// origin, baseYaw, seed} into the SKSE co-save (SerializationInterface) and
-// rebuild on load instead of relying on session-only tracking above. The room
-// registry is intentionally in-memory for this phase.
+// ---------------------------------------------------------------------------
+// Co-save persistence (research §5.2 strategy B). Record type 'PRGN', registered
+// with the central skyrim::cosave dispatcher (no SetUniqueID of our own — CoSave.h
+// on the one-SetUniqueID-per-plugin limit). We store the recipe + absolute
+// origin/yaw/seed + cell/world *plugin* FormID and rebuild on load; we NEVER store
+// the dynamic 0xFF ref FormIDs (those are session-local and unstable).
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Length-prefixed string I/O (mirrors ProcgenNpc's WriteString/ReadString,
+// including the 1 MiB sanity cap so a corrupt length can't OOM on read).
+bool WriteString(SKSE::SerializationInterface* intfc, const std::string& s) {
+    const auto len = static_cast<std::uint32_t>(s.size());
+    if (!intfc->WriteRecordData(len)) return false;
+    if (len == 0) return true;
+    return intfc->WriteRecordData(s.data(), len);
+}
+
+bool ReadString(SKSE::SerializationInterface* intfc, std::string& out) {
+    std::uint32_t len = 0;
+    if (intfc->ReadRecordData(len) == 0) return false;
+    out.clear();
+    if (len == 0) return true;
+    if (len > (1u << 20)) {  // 1 MiB sanity cap — a corrupt length must not OOM
+        SKSE::log::error("Procgen: refusing absurd string length {}", len);
+        return false;
+    }
+    out.resize(len);
+    return intfc->ReadRecordData(out.data(), len) == len;
+}
+
+}  // namespace
+
+void OnSave(SKSE::SerializationInterface* intfc) {
+    std::scoped_lock lock(g_mutex);
+    auto& reg = Rooms();
+
+    if (!intfc->OpenRecord(kRecordType, kRecordVersion)) {
+        SKSE::log::error("Procgen: OnSave OpenRecord failed");
+        return;
+    }
+    const auto count = static_cast<std::uint32_t>(reg.size());
+    intfc->WriteRecordData(count);
+
+    for (auto& [key, room] : reg) {
+        WriteString(intfc, key);
+        const auto kind = static_cast<std::uint8_t>(room.kind);
+        intfc->WriteRecordData(kind);
+        intfc->WriteRecordData(room.seed);
+        intfc->WriteRecordData(room.origin);   // absolute world origin (as placed)
+        intfc->WriteRecordData(room.baseYaw);
+        // EXISTING plugin FormIDs only — ResolveFormID remaps them on load. NEVER
+        // the 0xFF dynamic ref ids (research §5.2).
+        intfc->WriteRecordData(room.cellFormID);
+        intfc->WriteRecordData(room.worldFormID);
+        WriteString(intfc, room.recipeJson);
+    }
+    SKSE::log::info("Procgen: OnSave wrote {} generated room/structure recipe(s)", count);
+}
+
+void OnLoad(SKSE::SerializationInterface* intfc, std::uint32_t version, std::uint32_t /*length*/) {
+    // Serialization thread: stage only, never place here (research §5 "時機").
+    // The dispatcher already matched our record by type, so we read just its
+    // payload and defer the rebuild to RebuildStaged() on kPostLoadGame.
+    g_staged.clear();
+
+    if (version != kRecordVersion) {
+        SKSE::log::warn("Procgen: OnLoad record version {} != {} (ignored)", version,
+                        kRecordVersion);
+        return;
+    }
+    std::uint32_t count = 0;
+    if (intfc->ReadRecordData(count) == 0) {
+        SKSE::log::error("Procgen: OnLoad failed to read count");
+        return;
+    }
+    for (std::uint32_t i = 0; i < count; ++i) {
+        StagedRoom s;
+        if (!ReadString(intfc, s.key)) break;
+        std::uint8_t kind = 0;
+        intfc->ReadRecordData(kind);
+        s.kind = static_cast<Kind>(kind);
+        intfc->ReadRecordData(s.seed);
+        intfc->ReadRecordData(s.origin);
+        intfc->ReadRecordData(s.baseYaw);
+        intfc->ReadRecordData(s.cellFormID);
+        intfc->ReadRecordData(s.worldFormID);
+        if (!ReadString(intfc, s.recipeJson)) break;
+
+        // Remap the EXISTING plugin FormIDs to this load order (research §5.3 /
+        // SerializationInterface::ResolveFormID). Only the cell/world plugin ids
+        // are remapped; the recipe's piece bases are EditorID/plugin strings
+        // re-resolved at rebuild time.
+        if (s.cellFormID) {
+            RE::FormID rc = s.cellFormID;
+            if (intfc->ResolveFormID(s.cellFormID, rc)) s.cellFormID = rc;
+        }
+        if (s.worldFormID) {
+            RE::FormID rw = s.worldFormID;
+            if (intfc->ResolveFormID(s.worldFormID, rw)) s.worldFormID = rw;
+        }
+        g_staged.push_back(std::move(s));
+    }
+    SKSE::log::info("Procgen: OnLoad staged {} room/structure recipe(s) for rebuild",
+                    g_staged.size());
+}
+
+void OnRevert(SKSE::SerializationInterface*) {
+    // Revert: drop the in-memory registry. The placed refs belong to the outgoing
+    // save and are torn down by the engine (research §5). We do NOT DropRoom()
+    // (that would touch RE:: on the serialization thread); the engine reclaims the
+    // forcePersist=false refs as cells detach.
+    std::scoped_lock lock(g_mutex);
+    Rooms().clear();
+    LastRoomKey().clear();
+    g_staged.clear();
+    SKSE::log::info("Procgen: OnRevert cleared the in-memory registry");
+}
+
+bool Register() {
+    // Register a 'PRGN' handler with the central dispatcher (CoSave.h: one
+    // SetUniqueID per plugin — must not call SetUniqueID/SetSaveCallback here).
+    skyrim::cosave::AddHandler({ kRecordType, &OnSave, &OnLoad, &OnRevert });
+    SKSE::log::info("Procgen: registered 'PRGN' co-save handler with dispatcher");
+    return true;
+}
+
+void RebuildStaged() {
+    // Drain the staged records into a local copy (main thread only). Each is
+    // re-run through PlaceInterior/PlaceStructure at its STORED absolute origin so
+    // the same room/castle reappears in the same place (research §5.2 strategy B).
+    std::vector<StagedRoom> staged;
+    staged.swap(g_staged);
+    if (staged.empty()) return;
+
+    {
+        std::scoped_lock lock(g_mutex);
+        Rooms().clear();  // the old session's refs are gone (research §5)
+        LastRoomKey().clear();
+    }
+
+    std::size_t rebuilt = 0;
+    for (auto& s : staged) {
+        Recipe recipe;
+        nlohmann::json doc;
+        try {
+            doc = nlohmann::json::parse(s.recipeJson);
+        } catch (const std::exception& e) {
+            SKSE::log::error("Procgen: RebuildStaged bad recipe for '{}': {}", s.key, e.what());
+            continue;
+        }
+        if (!ParseRecipe(doc, recipe)) {
+            SKSE::log::warn("Procgen: RebuildStaged could not parse recipe for '{}'", s.key);
+            continue;
+        }
+
+        // Resolve the stored cell/worldspace plugin FormIDs back to live pointers
+        // (null = let the engine pick by coordinates, as the original anchor path
+        // did). Interiors carry a cell; exteriors a worldspace.
+        RE::TESObjectCELL* cell = nullptr;
+        RE::TESWorldSpace* world = nullptr;
+        if (s.cellFormID) {
+            if (auto* f = RE::TESForm::LookupByID(s.cellFormID)) cell = f->As<RE::TESObjectCELL>();
+        }
+        if (s.worldFormID) {
+            if (auto* f = RE::TESForm::LookupByID(s.worldFormID)) {
+                world = f->As<RE::TESWorldSpace>();
+            }
+        }
+
+        GeneratedRoom room;
+        room.kind = s.kind;
+        room.templateId = recipe.templateId;
+        room.seed = s.seed;
+        room.origin = s.origin;
+        room.baseYaw = s.baseYaw;
+        room.cellFormID = s.cellFormID;
+        room.worldFormID = s.worldFormID;
+        room.recipeJson = s.recipeJson;  // keep the same self-contained recipe
+
+        int placed = 0;
+        if (s.kind == Kind::kStructure) {
+            placed = PlaceStructure(recipe, s.origin, s.baseYaw, cell, world, room);
+        } else {
+            // The stored recipe already folds in any clutter scatter params, so we
+            // pass its clutter array as the clutterDoc to reproduce the scatter.
+            const nlohmann::json clutterDoc =
+                doc.contains("clutter") ? doc["clutter"] : nlohmann::json::array();
+            placed = PlaceInterior(recipe, s.origin, s.baseYaw, cell, world, clutterDoc, room);
+        }
+
+        {
+            std::scoped_lock lock(g_mutex);
+            Rooms()[s.key] = std::move(room);
+            LastRoomKey() = s.key;
+        }
+        ++rebuilt;
+        SKSE::log::info("Procgen: rebuilt '{}' ({} refs) at ({:.0f},{:.0f},{:.0f})", s.key, placed,
+                        s.origin.x, s.origin.y, s.origin.z);
+    }
+    SKSE::log::info("Procgen: RebuildStaged rebuilt {}/{} rooms/structures", rebuilt, staged.size());
+}
 
 }  // namespace skyrim::procgen

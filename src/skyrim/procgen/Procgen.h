@@ -18,10 +18,22 @@
 // SkyrimActions::run is reached (SkyrimAdapter::OnMainThread). All RE:: pointers
 // are null-checked (MODDING_COOKBOOK §1.1).
 //
-// PERSISTENCE (research §5): generated refs are placed forcePersist=false and
-// tracked here by ObjectRefHandle in an in-memory Registry so they can be
-// cleared / rearranged within a session. Cross-save "store seed+recipe, rebuild
-// on load" (SPEC §6.2 co-save) is DEFERRED — see TODO in Procgen.cpp.
+// PERSISTENCE (research §5 / §5.2 strategy B — NOW IMPLEMENTED): generated refs
+// are placed forcePersist=false; the dynamic 0xFF ref FormIDs are NEVER stored.
+// Instead each generated room/structure records {stable key, kind, the full
+// self-contained recipe JSON, the ABSOLUTE world origin + yaw + seed actually
+// used, and the cell/worldspace *plugin* FormID (ResolveFormID-remappable)} into
+// the SKSE co-save via the central skyrim::cosave dispatcher (record type
+// 'PRGN'). On load these are staged, plugin FormIDs are remapped, and
+// RebuildStaged() (kPostLoadGame, main thread) re-runs GenerateInterior/
+// GenerateStructure at the stored origin so the same building reappears in place.
+//
+// HONEST CAVEAT — this is LOGICAL persistence, keyed by the stable string id, not
+// engine-level stable-FormID identity. The rebuilt refs are FRESH (new 0xFF ids);
+// the original placed refs are gone after a reload (the engine never saved them).
+// This is fine for "the building reappears at its spot," but NOT for anything
+// that references those refs by FormID (quest aliases, other mods, links). That
+// would require an ESP/ESL (research §5 / PROCGEN_NPC_FORMS §6/§8).
 //
 // PLACEHOLDERS: EditorIDs for kit pieces / furniture are real vanilla strings
 // where known, but several need in-game validation (see kPlaceholder notes in
@@ -33,6 +45,10 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+
+namespace SKSE {
+class SerializationInterface;
+}
 
 namespace skyrim::procgen {
 
@@ -103,7 +119,40 @@ int GenerateStructure(const Recipe& recipe, RE::TESObjectREFR* anchor,
 int RearrangeFurnishings(const std::string& persistKey = "");
 
 // Disable + mark-for-delete every tracked ref under a key (or all keys if empty)
-// and drop them from the registry, so generated content does not leak.
+// and drop them from the registry, so generated content does not leak. Also drops
+// the corresponding co-save record(s) so a cleared room does not reappear on the
+// next reload (research §5).
 void ClearGenerated(const std::string& persistKey = "");
+
+// Serialize a parsed Recipe back to a SELF-CONTAINED JSON doc (independent of the
+// original recipe file, which may not exist at load time). This is what the
+// co-save stores so RebuildStaged() can re-parse + rebuild deterministically.
+// Round-trips through ParseRecipe (the resulting doc parses back to an equivalent
+// Recipe, including clutter scatter parameters).
+nlohmann::json RecipeToJson(const Recipe& recipe);
+
+// ---- Co-save persistence (research §5.2 strategy B). Registered as record type
+// 'PRGN' with the central skyrim::cosave dispatcher (CoSave.h) — procgen does NOT
+// own a SetUniqueID of its own. ---------------------------------------------------
+
+inline constexpr std::uint32_t kRecordType = 'PRGN';  // Procgen generated content
+inline constexpr std::uint32_t kRecordVersion = 1;
+
+// Register procgen's 'PRGN' handler with the central dispatcher. Call ONCE from
+// SKSEPluginLoad, before skyrim::cosave::Register. Always succeeds.
+bool Register();
+
+// Co-save handler callbacks (invoked by the dispatcher on the serialization
+// thread). Exposed for clarity/testing.
+void OnSave(SKSE::SerializationInterface* intfc);  // write every tracked room/structure
+// OnLoad receives the record (version, length) already read by the dispatcher;
+// it reads only this 'PRGN' record's payload (no header).
+void OnLoad(SKSE::SerializationInterface* intfc, std::uint32_t version, std::uint32_t length);
+void OnRevert(SKSE::SerializationInterface* intfc);  // clear the in-memory registry
+
+// Rebuild every staged room/structure from its recipe at the stored absolute
+// origin + seed, on the main thread. Call from kPostLoadGame (research §5 "時機":
+// form system ready, after OnLoad staged the records). No-op if nothing staged.
+void RebuildStaged();
 
 }  // namespace skyrim::procgen

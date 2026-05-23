@@ -38,6 +38,14 @@ set(sources ${sources}
 )
 # <<< gen-npc
 
+# >>> cosave — central SKSE co-save (SerializationInterface) dispatcher: ONE
+# SetUniqueID + 3 callbacks per plugin, fanned out to per-record-type handlers
+# ('GNPC', 'PRGN', ...). Normal Skyrim TU (uses the PCH). Appended for trivial merge.
+set(sources ${sources}
+    src/skyrim/CoSave.cpp
+)
+# <<< cosave
+
 # Portable quest-engine core (DESIGN §6). ZERO RE::/SKSE:: — kept out of the
 # forced PCH (RE/Skyrim.h) in CMakeLists.txt via SKIP_PRECOMPILE_HEADERS so the
 # core TUs stay game-agnostic.

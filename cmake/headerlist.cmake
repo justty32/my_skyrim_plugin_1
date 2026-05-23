@@ -39,3 +39,9 @@ set(headers ${headers}
     src/skyrim/procgen/ProcgenNpc.h
 )
 # <<< gen-npc
+
+# >>> cosave — central SKSE co-save dispatcher header.
+set(headers ${headers}
+    src/skyrim/CoSave.h
+)
+# <<< cosave

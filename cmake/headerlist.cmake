@@ -20,3 +20,9 @@ set(headers ${headers}
     src/skyrim/dialogue/MessageBoxPresenter.h
 )
 # <<< quest-engine Skyrim adapter
+
+# >>> alchemy-spike
+set(headers ${headers}
+    src/alchemy_spike/AlchemySpike.h
+)
+# <<< alchemy-spike

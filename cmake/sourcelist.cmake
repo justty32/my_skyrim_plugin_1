@@ -16,6 +16,12 @@ set(sources ${sources}
 )
 # <<< quest-engine Skyrim adapter
 
+# >>> alchemy-spike (3D-physical-alchemy feasibility spike; F11 debug trigger)
+set(sources ${sources}
+    src/alchemy_spike/AlchemySpike.cpp
+)
+# <<< alchemy-spike
+
 # Portable quest-engine core (DESIGN §6). ZERO RE::/SKSE:: — kept out of the
 # forced PCH (RE/Skyrim.h) in CMakeLists.txt via SKIP_PRECOMPILE_HEADERS so the
 # core TUs stay game-agnostic.

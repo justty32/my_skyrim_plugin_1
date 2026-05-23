@@ -3,6 +3,9 @@
 // >>> quest-engine Skyrim adapter (Phase 1)
 #include "skyrim/SkyrimAdapter.h"
 // <<< quest-engine Skyrim adapter
+// >>> alchemy-spike
+#include "alchemy_spike/AlchemySpike.h"
+// <<< alchemy-spike
 
 void OnDataLoaded()
 {
@@ -10,6 +13,9 @@ void OnDataLoaded()
     // >>> quest-engine Skyrim adapter (Phase 1): load + start the demo quest.
     skyrim::SkyrimAdapter::GetSingleton()->StartDemoQuest();
     // <<< quest-engine Skyrim adapter
+    // >>> alchemy-spike: register the F11 debug brew trigger.
+    AlchemySpike::Init();
+    // <<< alchemy-spike
 }
 
 void MessageHandler(SKSE::MessagingInterface::Message* a_msg)

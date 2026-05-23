@@ -32,11 +32,17 @@
 // reload as junk. So we DO NOT rely on native persistence as the source of truth.
 // Instead, exactly like ProcgenNpc, we register a 'GITM' co-save handler that
 // stores {stableKey, template *plugin* FormID, recipe JSON} and REBUILDS each item
-// on load (re-mint + re-add to player). To avoid double-adding if a blank native
-// form lingered, the rebuild path first strips any prior tracked count of that
-// logical item from the player before re-adding the freshly minted one (best-
-// effort; see ProcgenItem.cpp RebuildStaged). We NEVER persist the 0xFF dynamic
-// FormID (research §5 step 2 / §3.1).
+// on load (re-mint + re-add to player). The vanilla codec serializes the previous
+// session's minted dynamic base into the player's inventory and restores it on
+// load, so to keep the item from ACCUMULATING by `count` on every reload, the
+// rebuild path (and a same-session re-Generate of the same key) first STRIPS the
+// prior instance before re-adding the freshly minted one: it RemoveItem()s the
+// same-session live base by pointer, and scans the player's inventory for a
+// DYNAMIC (0xFF...) base of the same form type whose name matches the recipe's
+// name and removes that too (best-effort — a nameless blank shell cannot be matched
+// and is left alone; see ProcgenItem.cpp StripPriorInstances / RebuildStaged). Net
+// result: exactly one instance per persist_key after rebuild. We NEVER persist the
+// 0xFF dynamic FormID (research §5 step 2 / §3.1).
 //
 // THREADING: Generate() runs on the main thread (called from the SkyrimActions
 // adapter path — already marshalled — and from the demo spell's TESSpellCastEvent

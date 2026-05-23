@@ -1,0 +1,48 @@
+{
+  "id": "test_reset_dialogue",
+  "title": "M1: reset_quest from a dialogue choice whose quest_start opens a DIFFERENT dialogue must NOT be wiped",
+  "version": 1,
+  "vars": { "delivered": false },
+  "on_start": [
+    { "add_var": { "var": "global.runs", "value": 1 } }
+  ],
+  "triggers": [
+    { "on": "quest_start",
+      "when": { "var_eq": { "var": "global.runs", "value": 1 } },
+      "do": [ { "start_dialogue": "menu" } ] },
+    { "on": "quest_start",
+      "when": { "var_gte": { "var": "global.runs", "value": 2 } },
+      "do": [ { "start_dialogue": "brief" } ] },
+    { "on": "dialogue_end", "dialogue": "brief",
+      "do": [ { "show_message": "BRIEF ENDED CLEANLY (activeDialogue tracked the reset-opened dialogue)." } ] }
+  ],
+  "dialogues": {
+    "menu": {
+      "entry": "m0",
+      "nodes": {
+        "m0": {
+          "speaker": "Steward",
+          "lines": [ "MENU DIALOGUE (first run)." ],
+          "choices": [
+            { "text": "Reset the quest from this choice.",
+              "then": [ { "reset_quest": true } ],
+              "end": true },
+            { "text": "Stop.", "end": true }
+          ]
+        }
+      }
+    },
+    "brief": {
+      "entry": "b0",
+      "nodes": {
+        "b0": {
+          "speaker": "Steward",
+          "lines": [ "BRIEF DIALOGUE OPENED BY RESET (must survive the choice guard)." ],
+          "choices": [
+            { "text": "Acknowledge.", "end": true }
+          ]
+        }
+      }
+    }
+  }
+}

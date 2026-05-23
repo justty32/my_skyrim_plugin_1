@@ -144,7 +144,7 @@ bool SkyrimAdapter::BuildEngine(nlohmann::json doc) {
     return true;
 }
 
-bool SkyrimAdapter::StartDemoQuest() {
+bool SkyrimAdapter::LoadDemoQuest() {
     const std::string path = ResolveQuestPath("demo_court_wizard.json");
     std::ifstream in(path);
     if (!in) {
@@ -161,18 +161,23 @@ bool SkyrimAdapter::StartDemoQuest() {
     SKSE::log::info("SkyrimAdapter: loaded quest '{}' from {}",
                     doc.value("title", doc.value("id", "?")), path);
 
-    if (!BuildEngine(std::move(doc))) return false;
+    // Build the engine ONLY (no start()). on_start side effects (intro
+    // show_message, scheduling) belong to a fresh new-game or to importProgress
+    // on a save load — NOT to kDataLoaded (main-menu time). StartNewQuest() runs
+    // start() on kNewGame; RebuildStaged() restores progress on kPostLoadGame.
+    return BuildEngine(std::move(doc));
+}
 
-    // Start the engine on the main thread (on_start may show a message / open a
-    // dialogue immediately).
+void SkyrimAdapter::StartNewQuest() {
+    // New game: run on_start now (intro message + initial schedule). Marshalled
+    // onto the main thread because on_start may show a message / open a dialogue.
     OnMainThread([]() {
         auto* self = SkyrimAdapter::GetSingleton();
         if (self->engine_) {
             self->engine_->start();
-            SKSE::log::info("SkyrimAdapter: engine started");
+            SKSE::log::info("SkyrimAdapter: engine started (new game)");
         }
     });
-    return true;
 }
 
 void SkyrimAdapter::SubmitChoice(int idx) {
@@ -259,8 +264,13 @@ void SkyrimAdapter::OnLoad(SKSE::SerializationInterface* intfc, std::uint32_t ve
 }
 
 void SkyrimAdapter::OnRevert(SKSE::SerializationInterface*) {
-    // Revert: drop any staged data and reset the engine/globals to a clean slate
-    // (the engine is reconstructed/restarted at kDataLoaded for the next session).
+    // Revert: drop any staged data and reset in-memory state ONLY (mirrors the
+    // procgen handlers' OnRevert, which just clear their registry). This runs on
+    // the serialization thread, so it must NOT touch RE:: live state nor re-run
+    // the quest: start() -> on_start would call show_message -> RE::DebugNotification
+    // off the main thread (UB/crash). resetState() clears the engine's std state
+    // WITHOUT running on_start; the real (re)start happens at kDataLoaded (build)
+    // / kNewGame (start) / kPostLoadGame (importProgress) on the main thread.
     {
         std::scoped_lock lock(g_mutex);
         g_stagedBlob.clear();
@@ -268,13 +278,8 @@ void SkyrimAdapter::OnRevert(SKSE::SerializationInterface*) {
     }
     auto* self = SkyrimAdapter::GetSingleton();
     self->globals_.vars.clear();
-    if (self->engine_) {
-        // start() re-applies the JSON-initial state (clears vars/objectives/timers
-        // /dialogue). This runs on the serialization thread but only mutates plain
-        // std state inside the core (no RE:: live state) — same safety as OnSave.
-        self->engine_->start();
-    }
-    SKSE::log::info("SkyrimAdapter: OnRevert reset engine + globals");
+    if (self->engine_) self->engine_->resetState();
+    SKSE::log::info("SkyrimAdapter: OnRevert reset engine + globals (no side effects)");
 }
 
 bool SkyrimAdapter::Register() {
@@ -289,8 +294,8 @@ bool SkyrimAdapter::Register() {
 
 void SkyrimAdapter::RebuildStaged() {
     // Drain the staged blob under the lock, then apply on the main thread. If
-    // nothing was staged (brand new game, or no 'QEST' record) this is a no-op and
-    // the freshly start()'d engine from kDataLoaded stands as the initial state.
+    // nothing was staged (brand new game, or no 'QEST' record) this is a no-op:
+    // a new game runs on_start via StartNewQuest() at kNewGame instead.
     std::string blobText;
     bool had = false;
     {

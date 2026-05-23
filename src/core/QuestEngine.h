@@ -47,6 +47,14 @@ public:
     // SPEC §3.1: apply initial state, run on_start, emit quest_start.
     void start();
 
+    // Reset the engine's in-memory state to the JSON-defined initial state
+    // (clears vars/objectives/timers/dialogue) WITHOUT running on_start or firing
+    // quest_start. This is the side-effect-free half of start(): hosts that must
+    // wipe state off the main thread (e.g. a co-save Revert) use this so no port
+    // side effect (show_message/spawn/...) runs in the wrong context. A real
+    // (re)start is start()/importProgress() on the main thread.
+    void resetState();
+
     // Drive a (core or adapter) event into the trigger machine (SPEC §3.3).
     void dispatchEvent(const std::string& on,
                        const nlohmann::json& filter = nlohmann::json::object());

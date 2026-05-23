@@ -67,6 +67,17 @@ struct PieceSpec {
     std::string motion = "fixed";  // "fixed" | "keyframed" | "dynamic"
     bool anchorGround = false;   // snap this piece's Z to land height (exterior)
     std::string slot;            // furniture slot tag (for rearrange tracking)
+
+    // Clutter scatter params (M3): clutter pieces scatter `clutterCount` copies
+    // inside the local AABB [scatterLo, scatterHi] with a deterministic seed.
+    // Carried on PieceSpec so ParseRecipe -> RecipeToJson round-trips them for the
+    // SPELL path too (the JSON-adapter path also folds in the raw clutter doc).
+    // hasScatter==false means "place once at localX/Y/Z" (no scatter).
+    bool hasScatter = false;
+    float scatterLo[3] = { 0.f, 0.f, 0.f };
+    float scatterHi[3] = { 0.f, 0.f, 0.f };
+    int clutterCount = 1;
+    std::uint32_t clutterSeed = 1337;
 };
 
 // A parsed recipe. Covers both the interior (generate_interior) and exterior

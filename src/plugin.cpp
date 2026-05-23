@@ -23,8 +23,12 @@
 void OnDataLoaded()
 {
     NpcGenerator::InitializeMagic();
-    // >>> quest-engine Skyrim adapter (Phase 1): load + start the demo quest.
-    skyrim::SkyrimAdapter::GetSingleton()->StartDemoQuest();
+    // >>> quest-engine Skyrim adapter (Phase 1): BUILD the demo quest engine here
+    // (kDataLoaded = main-menu time). on_start does NOT fire yet — a new game runs
+    // it at kNewGame (StartNewQuest), a save load restores progress at
+    // kPostLoadGame (RebuildStaged). This keeps the intro message from firing
+    // spuriously at the main menu / on every load (M2).
+    skyrim::SkyrimAdapter::GetSingleton()->LoadDemoQuest();
     // <<< quest-engine Skyrim adapter
     // >>> alchemy-spike: register the F11 debug brew trigger.
     AlchemySpike::Init();
@@ -50,6 +54,11 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 		// >>> procgen: dynamic spells aren't persisted, re-add on new game.
 		skyrim::procgen::GiveSpellsToPlayer();
 		// <<< procgen
+		// >>> qe-newgame: fresh game — run the quest's on_start now (intro message
+		// + initial schedule). Save loads take the kPostLoadGame/RebuildStaged path
+		// instead, so the intro does not re-fire on load (M2).
+		skyrim::SkyrimAdapter::GetSingleton()->StartNewQuest();
+		// <<< qe-newgame
 		break;
 	case SKSE::MessagingInterface::kPreLoadGame:
 		SKSE::log::info("kPreLoadGame: save load starting");

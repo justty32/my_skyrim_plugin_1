@@ -56,6 +56,21 @@ refute() {
     fi
 }
 
+# count_eq <label> <n> <substring> : substring MUST appear exactly <n> times in $OUT
+count_eq() {
+    local label="$1"; local want="$2"; local needle="$3"
+    local got
+    got="$(grep -cF -- "$needle" <<<"$OUT")"
+    if [ "$got" = "$want" ]; then
+        echo "PASS: $label"; PASS=$((PASS+1))
+    else
+        echo "FAIL: $label"
+        echo "      expected $want occurrence(s) of: $needle (got $got)"
+        echo "----- output -----"; echo "$OUT"; echo "------------------"
+        FAIL=$((FAIL+1))
+    fi
+}
+
 echo "== quest-engine conformance =="
 
 # ---- 1. canonical demo (byte-identical scenario from the task) ----
@@ -108,6 +123,17 @@ run "$Q/test_reset.json" 'fire objective_completed objective do_loop\nfire objec
 expect "reset: loop re-runs on_start"         "loop finished; resetting." "loop started"
 expect "reset: local var back to initial"     "local_counter=1"
 expect "reset: global counts across loops"    "global.runs=3"
+
+# ---- 5a-M1. reset_quest inside a dialogue choice whose re-start opens a DIFFERENT
+# dialogue must NOT be wiped by the post-choice guard (REVIEW_FINDINGS M1). The
+# MENU choice resets the quest; the reset's quest_start opens BRIEF; the guard must
+# preserve BRIEF (active dialogue now != the menu we were resolving). With the bug,
+# BRIEF's state is cleared so ending it fires dialogue_end with an empty id and the
+# "BRIEF ENDED CLEANLY" marker never shows.
+run "$Q/test_reset_dialogue.json" '1\n1\nstate\nquit\n'
+expect "M1: reset opens a fresh different dialogue" "BRIEF DIALOGUE OPENED BY RESET"
+expect "M1: fresh dialogue survives the choice guard" "BRIEF ENDED CLEANLY"
+expect "M1: global loop counter advanced past reset" "global.runs=2"
 
 # ---- 5b. termination: complete_quest stops the chain AND all triggers (§3.1.3) ----
 run "$Q/test_termination.json" 'fire ping\ntime 100\nstate\nquit\n'
@@ -164,6 +190,14 @@ expect "persist: global survives reload+reset" "global.whiterun_tasks_done=1"
 # 8c. globals round-trip independently of any quest var of the same shape.
 run "$Q/test_reset.json" 'fire objective_completed objective do_loop\nsave\nreload\nstate\nquit\n'
 expect "persist: global value restored"       "global.runs=2"
+# 8d-M2. Restoring saved progress must NOT re-fire on_start side effects: the
+# engine starts ONCE (intro message), then a save+reload RECONSTRUCTS the engine
+# and importProgress()-restores progress WITHOUT re-running on_start. So the demo
+# intro show_message appears EXACTLY ONCE across a save+reload, not twice
+# (REVIEW_FINDINGS M2 — the adapter mirrors this by building at kDataLoaded,
+# start() only on kNewGame, importProgress on kPostLoadGame).
+run "$Q/demo_court_wizard.json" 'save\nreload\nstate\nquit\n'
+count_eq "M2: intro on_start fires once (not re-fired by importProgress)" 1 "（你成為白漫的客座大法師，回去等候領主差遣。）"
 
 echo
 echo "== $PASS passed, $FAIL failed =="

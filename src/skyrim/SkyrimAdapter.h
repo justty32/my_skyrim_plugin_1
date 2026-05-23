@@ -39,10 +39,17 @@ class SkyrimAdapter {
 public:
     static SkyrimAdapter* GetSingleton();
 
-    // Load the demo quest JSON from the config dir and start the engine. Safe to
-    // call from kDataLoaded; the heavy work is marshalled onto the main thread.
+    // Load the demo quest JSON from the config dir and BUILD the engine (no
+    // start() — on_start side effects belong to a fresh new game or to restored
+    // progress, not to main-menu/kDataLoaded time). Safe to call from kDataLoaded.
     // Returns false if the quest file could not be loaded/parsed.
-    bool StartDemoQuest();
+    bool LoadDemoQuest();
+
+    // Run the engine's on_start (intro message + initial schedule) for a brand
+    // new game. Call from kNewGame; marshalled onto the main thread. On a save
+    // load this is skipped — RebuildStaged() restores saved progress instead, so
+    // the intro message does not re-fire spuriously (see M2).
+    void StartNewQuest();
 
     // Resume a dialogue after the player picks (from the MessageBox callback).
     void SubmitChoice(int idx);
@@ -83,8 +90,9 @@ public:
     static void OnRevert(SKSE::SerializationInterface* intfc);
 
     // Apply the staged blob (progress + globals) onto the live engine on the MAIN
-    // thread. Call from kPostLoadGame (after StartDemoQuest built the engine at
-    // kDataLoaded). No-op if nothing was staged by OnLoad (e.g. a brand new game).
+    // thread. Call from kPostLoadGame (after LoadDemoQuest built the engine at
+    // kDataLoaded). No-op if nothing was staged by OnLoad (e.g. a brand new game,
+    // which runs on_start via StartNewQuest at kNewGame instead).
     static void RebuildStaged();
 
 private:

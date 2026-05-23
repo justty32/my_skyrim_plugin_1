@@ -200,13 +200,15 @@ void PlaceClutter(const std::vector<PieceSpec>& clutter, const nlohmann::json& c
                   const RE::NiPoint3& origin, float yaw, RE::TESObjectCELL* cell,
                   RE::TESWorldSpace* world, std::vector<RE::ObjectRefHandle>& out,
                   int& placedCount) {
-    // clutterDoc is the raw "clutter" array so we can read scatter_aabb/count/seed
-    // without bloating PieceSpec; clutter[i] mirrors clutterDoc[i] base/motion.
+    // clutterDoc is the raw "clutter" array (scatter_aabb/count/seed); clutter[i]
+    // mirrors clutterDoc[i] base/motion. For the spell path the caller derives this
+    // array from RecipeToJson, which now re-emits the spec's scatter params (M3).
     for (std::size_t i = 0; i < clutter.size() && i < clutterDoc.size(); ++i) {
         const auto& spec = clutter[i];
         const auto& jc = clutterDoc[i];
         int count = jc.value("count", 1);
         std::uint32_t seed = jc.value("seed", 1337u);
+        bool hasAABB = false;
         RE::NiPoint3 lo{ 0, 0, 0 }, hi{ 0, 0, 0 };
         if (jc.contains("scatter_aabb") && jc["scatter_aabb"].is_array() &&
             jc["scatter_aabb"].size() == 2) {
@@ -215,7 +217,21 @@ void PlaceClutter(const std::vector<PieceSpec>& clutter, const nlohmann::json& c
             if (a.is_array() && a.size() == 3 && b.is_array() && b.size() == 3) {
                 lo = { a[0].get<float>(), a[1].get<float>(), a[2].get<float>() };
                 hi = { b[0].get<float>(), b[1].get<float>(), b[2].get<float>() };
+                hasAABB = true;
             }
+        }
+        // No scatter_aabb -> a single authored-position clutter piece (M3): place
+        // `count` copies at the spec's authored localX/Y/Z, NOT a degenerate
+        // {0,0,0} scatter that would dump it at the room origin.
+        if (!hasAABB) {
+            for (int n = 0; n < count; ++n) {
+                auto h = PlacePiece(spec, origin, yaw, cell, world);
+                if (h.get()) {
+                    out.push_back(h);
+                    ++placedCount;
+                }
+            }
+            continue;
         }
         std::mt19937 rng(seed);  // deterministic (research §5.3 / SPEC §8)
         std::uniform_real_distribution<float> dx(lo.x, hi.x);
@@ -359,6 +375,24 @@ PieceSpec ParsePiece(const nlohmann::json& j, float gridStep) {
     } else {
         p.rotZDeg = jnum(j, "rot_z", 0.f);
     }
+
+    // Clutter scatter params (M3): kept on the spec so the spell path persists +
+    // restores them through RecipeToJson, exactly like the JSON-adapter path. Only
+    // meaningful for clutter entries; harmless (hasScatter=false) elsewhere.
+    if (j.contains("scatter_aabb") && j["scatter_aabb"].is_array() &&
+        j["scatter_aabb"].size() == 2) {
+        const auto& a = j["scatter_aabb"][0];
+        const auto& b = j["scatter_aabb"][1];
+        if (a.is_array() && a.size() == 3 && b.is_array() && b.size() == 3) {
+            p.hasScatter = true;
+            for (int i = 0; i < 3; ++i) {
+                p.scatterLo[i] = a[i].get<float>();
+                p.scatterHi[i] = b[i].get<float>();
+            }
+            p.clutterCount = j.value("count", 1);
+            p.clutterSeed = j.value("seed", 1337u);
+        }
+    }
     return p;
 }
 
@@ -495,6 +529,15 @@ nlohmann::json RecipeToJson(const Recipe& recipe) {
         j["motion"] = p.motion;
         if (!p.slot.empty()) j["slot"] = p.slot;
         if (p.anchorGround) j["anchor_ground"] = true;
+        // Clutter scatter params (M3): re-emit so a spell-generated room's clutter
+        // scatter (AABB/count/seed) survives the co-save round-trip and lands at
+        // the authored positions on rebuild instead of collapsing to the origin.
+        if (p.hasScatter) {
+            j["scatter_aabb"] = { { p.scatterLo[0], p.scatterLo[1], p.scatterLo[2] },
+                                  { p.scatterHi[0], p.scatterHi[1], p.scatterHi[2] } };
+            j["count"] = p.clutterCount;
+            j["seed"] = p.clutterSeed;
+        }
         return j;
     };
     auto listToJson = [&](const std::vector<PieceSpec>& v) {
@@ -554,7 +597,17 @@ int GenerateInterior(const Recipe& recipe, RE::TESObjectREFR* anchor,
     if (clutterDoc.is_array() && !clutterDoc.empty()) recipeDoc["clutter"] = clutterDoc;
     room.recipeJson = recipeDoc.dump();
 
-    const int placed = PlaceInterior(recipe, origin, yaw, cell, world, clutterDoc, room);
+    // Effective clutter doc to scatter NOW: prefer the explicit adapter-supplied
+    // doc; otherwise (spell path) use the recipe's own clutter (which now carries
+    // the scatter params via RecipeToJson — M3). This makes the FIRST generation
+    // and the rebuild produce the SAME scatter instead of the spell path collapsing
+    // clutter to the origin.
+    const nlohmann::json effClutterDoc =
+        (clutterDoc.is_array() && !clutterDoc.empty())
+            ? clutterDoc
+            : (recipeDoc.contains("clutter") ? recipeDoc["clutter"] : nlohmann::json::array());
+
+    const int placed = PlaceInterior(recipe, origin, yaw, cell, world, effClutterDoc, room);
 
     {
         std::scoped_lock lock(g_mutex);

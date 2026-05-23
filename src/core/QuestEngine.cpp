@@ -142,6 +142,12 @@ void QuestEngine::start() {
     runStart();
 }
 
+void QuestEngine::resetState() {
+    // Side-effect-free reset: the same state wipe start() does, WITHOUT runStart()
+    // (no on_start, no quest_start). For hosts resetting off the main thread.
+    applyInitialState();
+}
+
 // ---- triggers (SPEC §3.3) ----
 
 void QuestEngine::dispatchEvent(const std::string& on, const nlohmann::json& filter) {
@@ -497,10 +503,19 @@ void QuestEngine::submitChoice(int idx) {
 
     // A choice action may have ended the quest (complete/fail_quest) or reset it
     // (reset_quest clears st_, including activeDialogue, and re-emits quest_start).
-    // Either lifecycle change supersedes the dialogue: just ensure it's cleared.
+    // Either lifecycle change supersedes the OLD dialogue, so we stop driving it.
+    // BUT: reset_quest's on_start (or a dialogue_end/quest_start trigger) may have
+    // opened a BRAND NEW dialogue, which already set st_.activeDialogue (to a
+    // non-empty id != dlgId) and called presentCurrentNode() (rebuilding pending_/
+    // awaitingChoice_). We must NOT clobber that freshly-started dialogue.
     if (st_.terminated || st_.activeDialogue != dlgId) {
-        st_.activeDialogue.clear();
-        st_.currentNode.clear();
+        // Only clear the dialogue position when nothing fresh is in progress:
+        // terminated, or the old dialogue ended without a replacement (empty). If
+        // a new dialogue is active, leave its state intact.
+        if (st_.terminated || st_.activeDialogue.empty()) {
+            st_.activeDialogue.clear();
+            st_.currentNode.clear();
+        }
         return;
     }
 

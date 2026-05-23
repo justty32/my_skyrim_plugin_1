@@ -164,10 +164,16 @@ RE::TESObjectWEAP* MintWeapon(RE::TESObjectWEAP* tmpl) {
     static_cast<RE::TESEnchantableForm*>(w)->CopyComponent(
         static_cast<RE::TESEnchantableForm*>(tmpl));
     // Type-specific raw data: DNAM (speed/reach/skill/anim type/flags), attack
-    // damage, and crit. These are plain PODs on the form (no owned heap besides
-    // weaponData.rangedData, which only ranged weapons use; a melee template
-    // leaves it null — fine for a melee demo). Memberwise copy from the template.
+    // damage, and crit. These are plain PODs on the form EXCEPT weaponData.rangedData,
+    // which is an OWNED heap pointer (RangedData*) used by ranged weapons (bows/
+    // crossbows). The memberwise copy below aliases that pointer, so a ranged
+    // template would share one RangedData between the minted weapon and the vanilla
+    // template (double-free / shared-edit). Deep-copy it after the struct copy so
+    // the minted weapon owns its own RangedData; null stays null (melee templates).
     w->weaponData = tmpl->weaponData;
+    if (tmpl->weaponData.rangedData) {
+        w->weaponData.rangedData = new RE::TESObjectWEAP::RangedData(*tmpl->weaponData.rangedData);
+    }
     w->criticalData = tmpl->criticalData;
     static_cast<RE::TESAttackDamageForm*>(w)->attackDamage =
         static_cast<RE::TESAttackDamageForm*>(tmpl)->attackDamage;
@@ -301,6 +307,60 @@ RE::TESBoundObject* MintItem(RE::TESForm* tmpl, Kind kind, const nlohmann::json&
     return obj;
 }
 
+// The vanilla FormType minted for each Kind (used by the dedup strip below).
+RE::FormType FormTypeOf(Kind k) {
+    switch (k) {
+        case Kind::kWeapon: return RE::FormType::Weapon;
+        case Kind::kArmor: return RE::FormType::Armor;
+        case Kind::kMisc: return RE::FormType::Misc;
+        default: return RE::FormType::None;
+    }
+}
+
+// Strip prior instances of a generated item from the player so each persist_key
+// ends up with EXACTLY ONE instance after a re-Generate / rebuild (header §35-38).
+// We remove (best-effort):
+//   * the live tracked base from THIS session, if any (RemoveItem by pointer), and
+//   * any DYNAMIC (0xFF...) base of the same form type whose name matches the
+//     recipe's name — these are the prior session's minted base that the vanilla
+//     codec serialized into the player's inventory and restored on load. We match
+//     on the dynamic-id range + form type + name so we never strip a plugin item
+//     or another mod's dynamic item of a different name.
+// `live` may be null/stale across a reload (the registry is cleared on revert);
+// the inventory scan covers the cross-reload case, the pointer covers same-session
+// re-Generate. Counts are capped to what we are about to (re)add so we never go
+// negative on a partially-consumed stack.
+void StripPriorInstances(RE::PlayerCharacter* player, Kind kind, const std::string& name,
+                         RE::TESBoundObject* live, std::int32_t count) {
+    if (!player || count <= 0) return;
+    const RE::FormType ft = FormTypeOf(kind);
+
+    // 1) Same-session: remove the previously minted live base directly.
+    if (live && live->GetFormType() == ft) {
+        player->RemoveItem(live, count, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+    }
+
+    // 2) Cross-reload: remove the codec-restored prior dynamic base(s). Only match
+    //    DYNAMIC ids of the same form type whose name equals the recipe name (when
+    //    a name override exists — a blank shell with no name is left alone, as the
+    //    header's persistence note documents we cannot reliably match it).
+    if (name.empty()) return;
+    auto inv = player->GetInventory([ft](RE::TESBoundObject& obj) {
+        return obj.GetFormType() == ft && obj.GetFormID() >= 0xFF000000;
+    });
+    for (auto& [obj, data] : inv) {
+        if (!obj || obj == live) continue;  // live already handled above
+        const char* objName = obj->GetName();
+        if (!objName || name != objName) continue;
+        const std::int32_t have = data.first;
+        if (have <= 0) continue;
+        const std::int32_t toRemove = have < count ? have : count;
+        player->RemoveItem(obj, toRemove, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+        SKSE::log::info("ProcgenItem: stripped {} prior '{}' (dynamic base {:X}) before rebuild",
+                        toRemove, objName, obj->GetFormID());
+    }
+}
+
 // ---- co-save blob (de)serialization helpers (mirrors ProcgenNpc) ----
 
 bool WriteString(SKSE::SerializationInterface* intfc, const std::string& s) {
@@ -355,12 +415,23 @@ std::string Generate(const nlohmann::json& recipe) {
     std::int32_t count = recipe.value("count", 1);
     if (count <= 0) count = 1;
 
+    std::string key = recipe.value("persist_key", std::string{});
+    if (key.empty()) key = "gen_item_" + std::to_string(AutoKeyCounter()++);
+
+    // If this key was already generated this session, strip the prior live base
+    // first so a re-Generate of the same key leaves exactly one instance (no
+    // accumulation — header §35-38).
+    {
+        std::scoped_lock lock(g_mutex);
+        if (auto it = Registry().find(key); it != Registry().end()) {
+            StripPriorInstances(player, it->second.kind, recipe.value("name", std::string{}),
+                                it->second.live, it->second.count);
+        }
+    }
+
     // Add the minted base to the player's inventory (NpcGenerator / alchemy
     // convention — TESObjectREFR::AddObjectToContainer, vfunc 5A).
     player->AddObjectToContainer(obj, nullptr, count, nullptr);
-
-    std::string key = recipe.value("persist_key", std::string{});
-    if (key.empty()) key = "gen_item_" + std::to_string(AutoKeyCounter()++);
 
     TrackedItem t;
     t.key = key;
@@ -475,12 +546,14 @@ void RebuildStaged() {
     }
 
     // PERSISTENCE NOTE (research §3.2 / ALCHEMY_SPIKE_FINDINGS §2): the vanilla
-    // codec MAY have serialized a blank shell of the previous session's dynamic
-    // item base (form type only, no name/model). We cannot reliably match that
-    // blank back to our recipe, so we treat the co-save recipe as the SOURCE OF
-    // TRUTH and re-mint fresh. We do NOT attempt to dedupe the (possibly absent)
-    // blank native form here — see the header's documented persistence decision.
-    // The registry is cleared because the old session's minted bases are gone.
+    // codec MAY have serialized the previous session's dynamic item base into the
+    // player's inventory (as a real form, or a blank shell with form type only).
+    // We treat the co-save recipe as the SOURCE OF TRUTH and re-mint fresh — but to
+    // avoid the item ACCUMULATING by `count` on every reload, we strip the prior
+    // restored instance (by recipe name + dynamic form type) BEFORE re-adding, so
+    // each persist_key ends up with exactly one instance (header §35-38). A nameless
+    // blank shell cannot be matched and is left alone (documented limitation).
+    // The registry is cleared because the old session's minted-base pointers are gone.
     {
         std::scoped_lock lock(g_mutex);
         Registry().clear();
@@ -509,6 +582,11 @@ void RebuildStaged() {
             continue;
         }
         std::int32_t count = s.count > 0 ? s.count : 1;
+        // Strip the prior restored instance (the registry was cleared, so there is
+        // no live pointer — the inventory scan by recipe name + dynamic form type
+        // catches the codec-restored base) before re-adding, so it does not
+        // accumulate by `count` on every reload (header §35-38, H1).
+        StripPriorInstances(player, s.kind, recipe.value("name", std::string{}), nullptr, count);
         player->AddObjectToContainer(obj, nullptr, count, nullptr);
 
         TrackedItem t;

@@ -64,6 +64,27 @@ public:
     bool terminated() const { return st_.terminated; }
     const QuestState& state() const { return st_; }
 
+    // SPEC §6: serialize this quest's in-progress runtime state into a versioned,
+    // self-describing JSON blob — quest vars, objective states, the current
+    // dialogue node (if one is in progress), the terminated flag, and pending
+    // timers (key -> ABSOLUTE due game-hours, §6/§8). Globals are NOT included
+    // here: they live at the system level (§2.4) and are persisted separately via
+    // the free serializeGlobals()/restoreGlobals() helpers below. Pure data — no
+    // pointers, no game/runtime ids (§6 stable-string-id rule). Never throws.
+    nlohmann::json exportProgress() const;
+
+    // SPEC §6: restore a blob produced by exportProgress() onto this engine. The
+    // host MUST have reloaded the quest DEFINITION (constructed the engine from
+    // the same JSON) first; this layers the saved PROGRESS on top (§6 "定義與進度
+    // 分離"). Fully tolerant: a missing/wrong-typed/extra field is ignored and
+    // never throws, so a save written by an older/newer/partly-corrupt build
+    // still loads as far as it can (degrade, don't crash). If a dialogue was in
+    // progress it is re-presented so the presenter shows the saved node again and
+    // awaitingChoice()/the pending-choice list are rebuilt (§6 resumable dialogue,
+    // §4.5 unacked message still awaiting). Returns true if the blob was an object
+    // it could read (even partially); false if it was not a usable object.
+    bool importProgress(const nlohmann::json& blob);
+
 private:
     void applyInitialState();
     void runStart();  // on_start + quest_start (shared by start() and reset_quest)
@@ -102,5 +123,17 @@ private:
     bool awaitingChoice_ = false;
     std::vector<PendingChoice> pending_;     // choices for the awaited node
 };
+
+// SPEC §6: system-level globals (§2.4) are persisted SEPARATELY from any single
+// quest's progress (reset_quest must not wipe them, and two quests share them).
+// These free helpers (re)build a JSON object of {name -> scalar value} for the
+// host to drop into the same co-save blob. restoreGlobals() is tolerant: a
+// non-object, a missing key, or a non-scalar entry is skipped and never throws.
+// To keep a global's declared TYPE stable across reload, restoreGlobals() only
+// overwrites a value when the stored type matches an already-declared global's
+// type (the host declares globals up front, §2.4/§7.6); unknown globals in the
+// blob are still imported so a later-declared global isn't silently dropped.
+nlohmann::json serializeGlobals(const GlobalStore& globals);
+void restoreGlobals(GlobalStore& globals, const nlohmann::json& blob);
 
 }  // namespace qe

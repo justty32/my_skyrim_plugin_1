@@ -67,6 +67,11 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 			// thread from {recipe, origin, seed} (research §5.2 strategy B).
 			skyrim::procgen::RebuildStaged();
 			// <<< procgen-persist
+			// >>> qe-persist: apply the staged 'QEST' progress blob (quest vars,
+			// objectives, dialogue node, pending timers) + system globals onto the
+			// engine built at kDataLoaded. Main-thread; no-op if nothing staged.
+			skyrim::SkyrimAdapter::RebuildStaged();
+			// <<< qe-persist
 		}
 		if (auto* player = RE::PlayerCharacter::GetSingleton()) {
 			SKSE::log::info("  Player: {}", player->GetName());
@@ -94,6 +99,9 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
 	// in SKSEPluginLoad after SKSE::Init; fenced + null-checked.
 	skyrim::procgen::npc::Register();  // 'GNPC' handler (generated NPCs)
 	skyrim::procgen::Register();       // 'PRGN' handler (generated rooms/structures)
+	// >>> qe-persist: 'QEST' handler (quest-engine progress + system globals, SPEC §6).
+	skyrim::SkyrimAdapter::Register();
+	// <<< qe-persist
 	if (auto* serialization = SKSE::GetSerializationInterface()) {
 		skyrim::cosave::Register(serialization);
 	} else {

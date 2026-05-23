@@ -9,11 +9,14 @@
 //   cast                    fire spell_cast_on {character: victim}
 //   fire <on> [k v]         fire an arbitrary event with one optional filter
 //   state                   dump vars / objectives / globals / clock
+//   save                    snapshot progress+globals into a co-save blob (§6)
+//   reload                  reconstruct the engine from the definition + the blob
 //   quit | exit | <EOF>     leave
 // Dialogue choices are read (1-based) from the same stdin.
 
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -146,16 +149,24 @@ int main(int argc, char** argv) {
     deps.condEval = &condEval;
     deps.globals = &globals;
 
-    qe::QuestEngine engine(doc, deps);
+    // Held by unique_ptr so the `reload` command can DESTROY + RECONSTRUCT it
+    // from the same definition (proving SPEC §6 "定義與進度分離": reload the JSON
+    // definition fresh, then layer the saved progress blob on top).
+    auto enginePtr = std::make_unique<qe::QuestEngine>(doc, deps);
     const std::string title =
         doc.is_object() ? doc.value("title", doc.value("id", std::string{"?"})) : std::string{"<not a JSON object>"};
     std::cout << "== quest: " << title << " ==\n";
+
+    // A single round-trip co-save buffer (mirrors the Skyrim adapter's 'QEST'
+    // record): {progress blob} + {globals}. `save` captures it; `reload` rebuilds
+    // the engine from the definition and re-applies it.
+    json savedBlob;
 
     // SPEC §7: validate against the core vocabulary before running. The CLI is
     // an offline validator + conformance harness, so it always reports. A real
     // adapter would merge its extension schema first ("effective schema", §4.4);
     // here, any leftover problem is a genuine core-level structural error.
-    const auto problems = engine.validate();
+    const auto problems = enginePtr->validate();
     if (!problems.empty()) {
         std::cerr << "validation: " << problems.size() << " problem(s):\n";
         for (const auto& p : problems) std::cerr << "  - " << p << "\n";
@@ -167,11 +178,11 @@ int main(int argc, char** argv) {
         std::cerr << "(continuing anyway; pass --strict to abort)\n";
     }
 
-    engine.start();
-    drainChoices(engine);  // on_start may open a dialogue immediately
+    enginePtr->start();
+    drainChoices(*enginePtr);  // on_start may open a dialogue immediately
 
     std::string line;
-    std::cout << "\n(cmd: time N | cast | fire <on> [k v] | state | quit)\n> " << std::flush;
+    std::cout << "\n(cmd: time N | cast | fire <on> [k v] | state | save | reload | quit)\n> " << std::flush;
     while (std::getline(std::cin, line)) {
         std::istringstream ss(line);
         std::string cmd;
@@ -184,23 +195,43 @@ int main(int argc, char** argv) {
             double h = 0;
             ss >> h;
             clock.hours += h;
-            engine.checkTimers();
+            enginePtr->checkTimers();
         } else if (cmd == "cast") {
             json f;
             f["character"] = "victim";
-            engine.dispatchEvent("spell_cast_on", f);
+            enginePtr->dispatchEvent("spell_cast_on", f);
         } else if (cmd == "fire") {
             std::string on, k, v;
             ss >> on;
             json f = json::object();
             if (ss >> k >> v) f[k] = v;
-            engine.dispatchEvent(on, f);
+            enginePtr->dispatchEvent(on, f);
         } else if (cmd == "state") {
-            dumpState(engine, globals, clock);
+            dumpState(*enginePtr, globals, clock);
+        } else if (cmd == "save") {
+            // SPEC §6: snapshot progress + system-level globals into one blob
+            // (what the Skyrim adapter writes into its 'QEST' co-save record).
+            savedBlob = json::object();
+            savedBlob["progress"] = enginePtr->exportProgress();
+            savedBlob["globals"] = qe::serializeGlobals(globals);
+            std::cout << "  [save] " << savedBlob.dump() << "\n";
+        } else if (cmd == "reload") {
+            // Simulate a save -> reload: tear the engine down, reconstruct it from
+            // the SAME definition (a real reload re-parses the JSON), restore the
+            // system globals, then layer the saved progress (§6 split). The clock
+            // is left as-is (game time persists in the real save).
+            if (savedBlob.is_null()) {
+                std::cout << "  [reload] nothing saved yet\n";
+            } else {
+                enginePtr = std::make_unique<qe::QuestEngine>(doc, deps);
+                qe::restoreGlobals(globals, savedBlob.value("globals", json::object()));
+                enginePtr->importProgress(savedBlob.value("progress", json::object()));
+                std::cout << "  [reload] restored from save\n";
+            }
         } else {
             std::cout << "  ? unknown command: " << cmd << "\n";
         }
-        drainChoices(engine);  // an event may have opened a dialogue
+        drainChoices(*enginePtr);  // an event may have opened a dialogue
         std::cout << "> " << std::flush;
     }
     std::cout << "\nbye.\n";

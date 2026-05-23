@@ -144,6 +144,27 @@ expect "malformed: node missing choices/end"  "node needs either 'choices' or 'e
 run "$Q/test_malformed.json" 'quit\n' --strict
 expect "malformed: --strict refuses to run"   "(--strict) refusing to run."
 
+# ---- 8. co-save persistence (SPEC §6): export -> reconstruct engine -> import ----
+# 8a. pending timers survive a reload at ABSOLUTE due time (§6/§8). Save right
+# after start (a/b/c due at 10h, reschedule_me at 20h), reload into a FRESH
+# engine, then advance: the staged timers must still fire after the reload.
+run "$Q/test_timers.json" 'save\nreload\ntime 10\nstate\ntime 10\nstate\nquit\n'
+expect "persist: blob carries absolute timer due times" '"timers":{"a":10.0,"b":10.0,"c":10.0,"reschedule_me":20.0}'
+expect "persist: timers fire after reload"    "timer A due" "timer B due" "timer C (absolute at=10) due"
+expect "persist: re-scheduled timer survives reload" "RESCHEDULED timer fired"
+expect "persist: fired counter restored + advanced" "fired=4"
+# 8b. quest vars + objective state survive a reload; the quest then continues
+# from the restored state (cast completes the restored-active objective, the
+# thanks dialogue rewards + reset_quest fires, and the GLOBAL survives the reset).
+run "$Q/demo_court_wizard.json" 'time 48\n1\nsave\nreload\nstate\ncast\n1\nstate\nquit\n'
+expect "persist: objective state in blob"     '"objectives":{"lift_curse":"active"}' '"delivered":true'
+expect "persist: state restored after reload" "delivered=true" "lift_curse=active"
+expect "persist: quest continues post-reload" "詛咒已解！" "[adapter action] give_gold"
+expect "persist: global survives reload+reset" "global.whiterun_tasks_done=1"
+# 8c. globals round-trip independently of any quest var of the same shape.
+run "$Q/test_reset.json" 'fire objective_completed objective do_loop\nsave\nreload\nstate\nquit\n'
+expect "persist: global value restored"       "global.runs=2"
+
 echo
 echo "== $PASS passed, $FAIL failed =="
 [ "$FAIL" = 0 ]

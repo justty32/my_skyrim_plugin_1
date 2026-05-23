@@ -19,6 +19,13 @@ Value jsonToValue(const nlohmann::json& j) {
     return std::string{};  // tolerant fallback
 }
 
+// SPEC §6 (de)serialization: a Value -> a JSON scalar of the SAME type, so a
+// round-trip (export -> import) preserves bool vs number vs string (variant
+// equality and var_eq are type-aware, §4.1). The inverse is jsonToValue above.
+nlohmann::json valueToJson(const Value& v) {
+    return std::visit([](auto&& x) -> nlohmann::json { return x; }, v);
+}
+
 bool isGlobal(const std::string& name) {
     return name.rfind(kGlobalPrefix, 0) == 0;
 }
@@ -510,6 +517,140 @@ void QuestEngine::endDialogue(const std::string& id) {
     nlohmann::json f;
     f["dialogue"] = id;
     fireTriggers("dialogue_end", f);  // may start a new dialogue (state now clear)
+}
+
+// ---- progress (de)serialization (SPEC §6) ----
+//
+// The blob is a flat, self-describing JSON object so a host can drop it straight
+// into a co-save (the Skyrim adapter length-prefixes it as a string). It carries
+// a "_v" schema version for migration (§6 "blob 內含 schema/格式版本"). Globals
+// live at the system level and are handled by serializeGlobals/restoreGlobals
+// below — NOT in here, so reset_quest semantics and cross-quest sharing hold.
+
+namespace {
+// Bump if the progress layout changes incompatibly. importProgress tolerates a
+// different value (it reads field-by-field, defaulting anything absent), so this
+// is informational/diagnostic rather than a hard gate.
+constexpr int kProgressBlobVersion = 1;
+}  // namespace
+
+nlohmann::json QuestEngine::exportProgress() const {
+    nlohmann::json blob = nlohmann::json::object();
+    blob["_v"] = kProgressBlobVersion;
+    blob["quest_id"] = questId();  // diagnostic; the host keys by quest id anyway
+
+    nlohmann::json vars = nlohmann::json::object();
+    for (const auto& [k, v] : st_.vars) vars[k] = valueToJson(v);
+    blob["vars"] = std::move(vars);
+
+    nlohmann::json objs = nlohmann::json::object();
+    for (const auto& [k, s] : st_.objectives) objs[k] = s;
+    blob["objectives"] = std::move(objs);
+
+    // Current dialogue node (if a dialogue is in progress, §6). On import we
+    // re-present this node, which rebuilds the pending-choice list + awaiting
+    // flag from the (re-loaded) definition — so we only persist the *position*,
+    // not the volatile PendingChoice cache.
+    blob["active_dialogue"] = st_.activeDialogue;
+    blob["current_node"] = st_.currentNode;
+
+    blob["terminated"] = st_.terminated;
+
+    // Pending timers: key -> ABSOLUTE due game-hours (§6/§8 "以絕對遊戲時間存").
+    nlohmann::json timers = nlohmann::json::object();
+    for (const auto& [k, due] : timers_) timers[k] = due;
+    blob["timers"] = std::move(timers);
+
+    return blob;
+}
+
+bool QuestEngine::importProgress(const nlohmann::json& blob) {
+    if (!blob.is_object()) {
+        log(questId() + ": importProgress got a non-object blob -> ignored");
+        return false;
+    }
+
+    // Diagnostic only: read but do not gate on the version (we degrade per-field).
+    if (const nlohmann::json* v = jsonAt(blob, "_v"); v && v->is_number_integer() &&
+        v->get<int>() != kProgressBlobVersion) {
+        log(questId() + ": importProgress blob version " + std::to_string(v->get<int>()) +
+            " != " + std::to_string(kProgressBlobVersion) + " (loading field-by-field)");
+    }
+
+    // Layer onto a CLEAN initial state so a partial blob can't leave stale
+    // entries from a prior start()/import. applyInitialState() also clears
+    // timers_, pending_ and awaitingChoice_ (§6 "定義與進度分離").
+    applyInitialState();
+
+    if (const nlohmann::json* vars = jsonAt(blob, "vars"); vars && vars->is_object()) {
+        for (auto& [k, v] : vars->items()) {
+            if (v.is_number() || v.is_boolean() || v.is_string())
+                st_.vars[k] = jsonToValue(v);  // overrides the JSON-default initial value
+        }
+    }
+
+    if (const nlohmann::json* objs = jsonAt(blob, "objectives"); objs && objs->is_object()) {
+        for (auto& [k, s] : objs->items())
+            if (s.is_string()) st_.objectives[k] = s.get<std::string>();
+    }
+
+    if (const nlohmann::json* t = jsonAt(blob, "terminated"); t && t->is_boolean())
+        st_.terminated = t->get<bool>();
+
+    if (const nlohmann::json* timers = jsonAt(blob, "timers"); timers && timers->is_object()) {
+        for (auto& [k, due] : timers->items())
+            if (due.is_number()) timers_[k] = due.get<double>();
+    }
+
+    // Restore dialogue position last. We re-present the node so the presenter
+    // shows it again and pending_/awaitingChoice_ are rebuilt from the reloaded
+    // definition (§6 resumable dialogue / §4.5 still-awaiting message). Guard the
+    // node against a definition that changed under it (presentCurrentNode logs +
+    // ends safely if the node went missing — §8 safe abort, no crash).
+    std::string activeDlg, curNode;
+    if (const nlohmann::json* a = jsonAt(blob, "active_dialogue"); a && a->is_string())
+        activeDlg = a->get<std::string>();
+    if (const nlohmann::json* c = jsonAt(blob, "current_node"); c && c->is_string())
+        curNode = c->get<std::string>();
+    if (!st_.terminated && !activeDlg.empty()) {
+        const nlohmann::json* dialogues = jsonAt(doc_, "dialogues");
+        if (dialogues && dialogues->contains(activeDlg)) {
+            st_.activeDialogue = activeDlg;
+            st_.currentNode = curNode;
+            presentCurrentNode();  // rebuilds pending_/awaitingChoice_, or ends safely
+        } else {
+            log(questId() + ": importProgress saved dialogue '" + activeDlg +
+                "' no longer exists in the definition -> dialogue dropped");
+        }
+    }
+    return true;
+}
+
+// ---- system-level globals (SPEC §2.4 / §6, persisted apart from quest progress) ----
+
+nlohmann::json serializeGlobals(const GlobalStore& globals) {
+    nlohmann::json out = nlohmann::json::object();
+    for (const auto& [k, v] : globals.vars) out[k] = valueToJson(v);
+    return out;
+}
+
+void restoreGlobals(GlobalStore& globals, const nlohmann::json& blob) {
+    if (!blob.is_object()) return;  // tolerant: nothing to restore
+    for (auto& [k, v] : blob.items()) {
+        if (!(v.is_number() || v.is_boolean() || v.is_string())) continue;
+        auto it = globals.vars.find(k);
+        if (it != globals.vars.end()) {
+            // Keep the host-declared TYPE stable across reload (§7.6): only take
+            // the stored value if it matches the declared alternative's type;
+            // otherwise leave the declared default in place.
+            const Value incoming = jsonToValue(v);
+            if (incoming.index() == it->second.index()) it->second = incoming;
+        } else {
+            // Not declared by the host (yet) — import it anyway so a global the
+            // host adds later isn't silently lost from an existing save.
+            globals.vars[k] = jsonToValue(v);
+        }
+    }
 }
 
 // ---- offline validation (SPEC §7) ----

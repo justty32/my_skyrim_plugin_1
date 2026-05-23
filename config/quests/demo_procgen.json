@@ -15,13 +15,14 @@
         "recipe": {
           "template_id": "demo_inline_room",
           "grid_step": 256.0,
+          "_recipe_note": "Verified vanilla FormIDs (Skyrim.esm), cross-checked against the eldersouls furnishing console-code guide; mirrors config/procgen/recipe_cottage.json. EditorIDs (DefaultCandleLight01NS / Tankard01) are MEDIUM confidence and skip-with-warning if absent.",
           "shell": [
-            { "base": "FarmRug01", "grid": [0, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
-            { "base": "FarmRug01", "grid": [1, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" }
+            { "base": "0x000B7E3E~Skyrim.esm", "grid": [0, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+            { "base": "0x000B7E3E~Skyrim.esm", "grid": [1, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" }
           ],
           "furniture_slots": [
-            { "slot": "bed", "base": "CommonBed01", "pos": [0, 240, 0], "rot_deg": [0, 0, 180], "motion": "fixed" },
-            { "slot": "table", "base": "CommonTableSquare01", "pos": [0, 64, 0], "rot_deg": [0, 0, 0], "motion": "fixed" }
+            { "slot": "bed", "base": "0x000FEDBF~Skyrim.esm", "pos": [0, 240, 0], "rot_deg": [0, 0, 180], "motion": "fixed" },
+            { "slot": "table", "base": "0x000C29DE~Skyrim.esm", "pos": [0, 64, 0], "rot_deg": [0, 0, 0], "motion": "fixed" }
           ],
           "lights": [
             { "base": "DefaultCandleLight01NS", "pos": [0, 64, 90], "rot_deg": [0, 0, 0], "motion": "fixed" }

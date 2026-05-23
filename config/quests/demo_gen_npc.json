@@ -12,7 +12,7 @@
     { "generate_npc": {
         "at": { "ref": "player", "mode": "in_front_of", "distance": 150.0 },
         "recipe": {
-          "template": "0x0001327B~Skyrim.esm",
+          "template": "0x0001BCD8~Skyrim.esm",
           "persist_key": "demo_quest_npc",
           "name": "JSON 生成的居民",
           "sex": "female",

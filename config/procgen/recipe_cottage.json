@@ -1,5 +1,5 @@
 {
-  "_comment": "Interior room template (PROCGEN_INTERIOR.md §8). Backs both the 'C++: Generate Room' spell and the generate_interior adapter action. base = vanilla EditorID (LookupByEditorID) or '0x..~Mod.esp' (FormUtil::Parse). pos/grid in LOCAL frame relative to the room origin (anchorDistance units in front of the caster). rot_deg in DEGREES (adapter converts to radians). motion: fixed|keyframed|dynamic. THESE EDITORIDS NEED IN-GAME VALIDATION — see TODO note at the bottom.",
+  "_comment": "Interior room template (PROCGEN_INTERIOR.md §8). Backs both the 'C++: Generate Room' spell and the generate_interior adapter action. base = '0x..~Skyrim.esm' (FormUtil::Parse, deterministic) or a vanilla EditorID (LookupByEditorID). pos/grid in LOCAL frame relative to the room origin (anchorDistance units in front of the caster). rot_deg in DEGREES (adapter converts to radians). motion: fixed|keyframed|dynamic. STRATEGY (per PROCGEN_INTERIOR.md): vanilla interior SHELL kits only snap precisely in the CK, so this recipe leans on REAL freestanding furniture + clutter + flat rug 'floor' pieces rather than a perfectly-snapped wall shell. Every FormID is a real vanilla form; unknown/mistyped ids log a warning and are skipped (no crash). Exact placement (overlap/float/sit-marker reachability) still needs in-game tuning.",
   "template_id": "small_wood_house_v1",
   "version": 1,
   "anchor": { "mode": "in_front_of", "ref": "player", "distance": 320.0 },
@@ -7,38 +7,39 @@
   "seed": 1337,
 
   "shell": [
-    { "_comment": "floor grid 3x2 (grid coords * grid_step). Marsh/farmhouse floor STAT. PLACEHOLDER EditorID — validate.",
-      "base": "FarmRug01", "grid": [0, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
-    { "base": "FarmRug01", "grid": [1, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
-    { "base": "FarmRug01", "grid": [0, 1], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
-    { "base": "FarmRug01", "grid": [1, 1], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
-
-    { "_comment": "walls along the floor edges (STAT). PLACEHOLDER EditorID — validate. rot_deg.z faces the wall inward.",
-      "base": "dwemerwall01", "grid": [0, 2], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
-    { "base": "dwemerwall01", "grid": [1, 2], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
-    { "base": "dwemerwall01", "grid": [-1, 0], "z": 0, "rot_deg": [0, 0, 90], "motion": "fixed" },
-    { "base": "dwemerwall01", "grid": [2, 0], "z": 0, "rot_deg": [0, 0, 270], "motion": "fixed" }
+    { "_comment": "Flat rugs used as a visible 'floor' footprint (2x2 grid). Rugs are flat STATs that need no precise edge-snap, so they read as a room floor without a CK-snapped shell. 0x000B7E3E = long green rug (VERIFIED console code, eldersouls furnishing guide). grid coords * grid_step (256) -> local units.",
+      "base": "0x000B7E3E~Skyrim.esm", "grid": [0, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+    { "base": "0x000B7E3E~Skyrim.esm", "grid": [1, 0], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+    { "_comment": "0x00095498 = round green rug (VERIFIED console code, eldersouls). A second rug style breaks up the floor.",
+      "base": "0x00095498~Skyrim.esm", "grid": [0, 1], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" },
+    { "base": "0x00095498~Skyrim.esm", "grid": [1, 1], "z": 0, "rot_deg": [0, 0, 0], "motion": "fixed" }
   ],
 
   "furniture_slots": [
-    { "_comment": "Bed against the back wall. CommonBed01 is a known vanilla furniture EditorID family.",
-      "slot": "bed", "base": "CommonBed01", "pos": [0, 360, 0], "rot_deg": [0, 0, 180], "motion": "fixed", "usable": true },
-    { "_comment": "Table + two chairs in the centre. CommonTableSquare01 / WoodChair01 — validate exact ids.",
-      "slot": "table", "base": "CommonTableSquare01", "pos": [0, 120, 0], "rot_deg": [0, 0, 0], "motion": "fixed", "usable": false },
-    { "slot": "chair_l", "base": "WoodChair01", "pos": [-72, 120, 0], "rot_deg": [0, 0, 90], "motion": "fixed", "usable": true },
-    { "slot": "chair_r", "base": "WoodChair01", "pos": [72, 120, 0], "rot_deg": [0, 0, 270], "motion": "fixed", "usable": true }
+    { "_comment": "Common bed against the back of the room. 0x000FEDBF = common bed (VERIFIED console code, eldersouls 'Common' bed). Has a sleep marker (rides the NIF), so the player can sleep in it. usable=true.",
+      "slot": "bed", "base": "0x000FEDBF~Skyrim.esm", "pos": [0, 360, 0], "rot_deg": [0, 0, 180], "motion": "fixed", "usable": true },
+    { "_comment": "Noble round table in the centre. 0x000C29DE = noble round table (VERIFIED console code, eldersouls 'Noble (round)' table).",
+      "slot": "table", "base": "0x000C29DE~Skyrim.esm", "pos": [0, 120, 0], "rot_deg": [0, 0, 0], "motion": "fixed", "usable": false },
+    { "_comment": "Two wooden chairs flanking the table. 0x0003B46F = standard wooden chair (VERIFIED console code, eldersouls 'Standard wooden' chair). Has a sit marker; the player can sit. _todo: chair facing/offset vs the round table needs in-game nudging.",
+      "slot": "chair_l", "base": "0x0003B46F~Skyrim.esm", "pos": [-72, 120, 0], "rot_deg": [0, 0, 90], "motion": "fixed", "usable": true },
+    { "slot": "chair_r", "base": "0x0003B46F~Skyrim.esm", "pos": [72, 120, 0], "rot_deg": [0, 0, 270], "motion": "fixed", "usable": true },
+    { "_comment": "A farmhouse bench by the wall for variety. 0x000A4AD6 = farm bench (VERIFIED console code, eldersouls 'farm' bench).",
+      "slot": "bench", "base": "0x000A4AD6~Skyrim.esm", "pos": [180, 120, 0], "rot_deg": [0, 0, 270], "motion": "fixed", "usable": true }
   ],
 
   "lights": [
-    { "_comment": "Candle/candlelight to brighten the room (TESObjectLIGH with model). DefaultCandleLight01NS is a known vanilla light. Validate.",
-      "base": "DefaultCandleLight01NS", "pos": [0, 120, 90], "rot_deg": [0, 0, 0], "motion": "fixed" }
+    { "_comment": "Candlelight to brighten the room. PREFERRED here is a light-EMITTING form: DefaultCandleLight01NS is a known vanilla TESObjectLIGH EditorID that carries a light (research/PROCGEN_INTERIOR.md §3.3 / §8). Confidence MEDIUM — EditorID not 100% verifiable from web; resolves via LookupByEditorID and is SKIPPED with a warning if absent (no crash).",
+      "base": "DefaultCandleLight01NS", "pos": [0, 120, 90], "rot_deg": [0, 0, 0], "motion": "fixed" },
+    { "_comment": "Backup visible light: 0x000B9FAD = tall white candle STATIC (VERIFIED console code, eldersouls). This is a model with a candle flame; it adds a visible candle even if the light-emitting EditorID above misses. Placed on the table.",
+      "base": "0x000B9FAD~Skyrim.esm", "pos": [0, 120, 95], "rot_deg": [0, 0, 0], "motion": "fixed" }
   ],
 
   "clutter": [
-    { "_comment": "Tankards scattered on the table AABB (count + seed → deterministic scatter, JSON path only). Tankard01 is a vanilla MISC.",
+    { "_comment": "Tankards scattered on the table AABB (count + seed -> deterministic scatter, JSON-driven path). Tankard01 is a known vanilla MISC EditorID (research §3.2). Confidence MEDIUM — EditorID; resolves via LookupByEditorID, skipped with a warning if absent. AABB is centred over the table top (~z=96).",
       "base": "Tankard01", "scatter_aabb": [[-60, 90, 96], [60, 150, 96]], "count": 3, "seed": 1337, "motion": "keyframed" }
   ],
 
-  "navmesh_note": "Generated area has NO runtime navmesh; NPCs cannot path here (NAVMESH_FREE_PATHFINDING.md). Player can walk/sit/sleep on placed furniture (markers ride the NIF).",
-  "_todo": "VALIDATE EDITORIDS in-game (console 'help <name>'): FarmRug01, dwemerwall01, CommonBed01, CommonTableSquare01, WoodChair01, DefaultCandleLight01NS, Tankard01. Unknown ids log a warning and are skipped (no crash). Replace shell wall/floor with a real modular interior kit (e.g. RiverwoodHouse* or a FarmHouse* STAT family) once measured; grid_step must match that kit's piece pitch."
+  "navmesh_note": "Generated area has NO runtime navmesh; NPCs cannot path here (NAVMESH_FREE_PATHFINDING.md). The player can walk and use placed furniture (sit/sleep markers ride the NIF).",
+  "_confidence": "VERIFIED (console-tested codes, eldersouls furnishing guide cross-checked): rugs 0x000B7E3E / 0x00095498, bed 0x000FEDBF, table 0x000C29DE, chair 0x0003B46F, bench 0x000A4AD6, candle 0x000B9FAD. MEDIUM (EditorID, not web-verifiable, skipped-if-absent): DefaultCandleLight01NS, Tankard01.",
+  "_todo": "IN-GAME VALIDATION still needed: (1) exact chair/bench offsets vs the round table (overlap/float); (2) confirm the bed's sleep marker is reachable; (3) confirm DefaultCandleLight01NS / Tankard01 EditorIDs resolve (console 'help Tankard' / 'help CandleLight'), else swap to a verified FormID. No perfectly-snapped wall shell is attempted by design (PROCGEN_INTERIOR.md: vanilla interior kits snap only in the CK)."
 }

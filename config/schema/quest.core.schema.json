@@ -113,8 +113,9 @@
       "type": "object",
       "required": ["var", "value"],
       "additionalProperties": false,
+      "$comment": "var MAY be a quest var or a 'global.<name>' reference (SPEC §2.4). var_eq/var_neq compare same-type (a bool var never equals a number value); a type mismatch between var and value is a validation error (SPEC §8) the core's validate() reports.",
       "properties": {
-        "var": { "type": "string" },
+        "var": { "type": "string", "minLength": 1 },
         "value": { "$ref": "#/$defs/value" }
       }
     },
@@ -122,8 +123,9 @@
       "type": "object",
       "required": ["var", "value"],
       "additionalProperties": false,
+      "$comment": "Number-only operand. Used by var_gte/var_lte (compare) and add_var (delta). var MAY be 'global.<name>' (SPEC §2.4).",
       "properties": {
-        "var": { "type": "string" },
+        "var": { "type": "string", "minLength": 1 },
         "value": { "type": "number" }
       }
     },
@@ -150,6 +152,7 @@
           "type": "object",
           "required": ["chance"],
           "additionalProperties": false,
+          "$comment": "RESERVED but NOT YET IMPLEMENTED. The deterministic PRF is undefined (SPEC §9.1), so the reference core evaluates 'random' to false and logs. Schema-valid, but do not author content that relies on it until the PRF is pinned in SPEC appendix B.",
           "properties": {
             "chance": { "type": "number", "minimum": 0, "maximum": 1 },
             "key": { "type": "string" }

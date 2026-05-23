@@ -1,0 +1,33 @@
+{
+  "id": "test_malformed",
+  "vars": { "n": 5 },
+  "objectives": { "obj1": { "text": "valid objective", "state": "bogus_state" } },
+  "on_start": [
+    { "set_var": { "var": "n", "value": "string_into_number_var" } },
+    { "set_var": { "value": 1 } },
+    { "complete_objective": "ghost_objective" },
+    { "start_dialogue": "ghost_dialogue" },
+    { "schedule": { "key": "k" } },
+    { "two_verbs": 1, "in_one_action": 2 }
+  ],
+  "triggers": [
+    { "do": [ { "show_message": "trigger missing 'on'" } ] },
+    { "on": "objective_completed", "objective": "ghost_obj2", "do": [ { "show_message": "x" } ] }
+  ],
+  "dialogues": {
+    "d1": {
+      "entry": "missing_entry_node",
+      "nodes": {
+        "n0": {
+          "speaker": "NPC",
+          "choices": [
+            { "text": "go nowhere", "goto": "nonexistent_node" },
+            { "text": "no goto and no end" },
+            { "text": "bad cond", "when": { "var_eq": { "var": "undeclared", "value": 1 } }, "end": true }
+          ]
+        },
+        "n1": { "speaker": "NPC" }
+      }
+    }
+  }
+}

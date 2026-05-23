@@ -1,0 +1,22 @@
+{
+  "id": "test_reset",
+  "title": "reset_quest — quest vars reset to initial, globals survive (SPEC §3.1/§4.2)",
+  "version": 1,
+  "vars": { "local_counter": 0 },
+  "objectives": {
+    "do_loop": { "text": "Repeat the loop", "state": "inactive" }
+  },
+  "on_start": [
+    { "set_objective_active": "do_loop" },
+    { "add_var": { "var": "local_counter", "value": 1 } },
+    { "add_var": { "var": "global.runs", "value": 1 } },
+    { "show_message": "loop started (local_counter set to 1, global.runs incremented)" }
+  ],
+  "triggers": [
+    { "on": "objective_completed", "objective": "do_loop",
+      "do": [
+        { "show_message": "loop finished; resetting." },
+        { "reset_quest": true }
+      ] }
+  ]
+}

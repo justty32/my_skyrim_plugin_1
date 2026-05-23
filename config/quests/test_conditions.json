@@ -1,0 +1,57 @@
+{
+  "id": "test_conditions",
+  "title": "Conditions — nested all/any/not, var_*, objective_state, globals, type-aware eq",
+  "version": 1,
+  "vars": {
+    "count": 3,
+    "flag": true,
+    "name": "alduin"
+  },
+  "objectives": {
+    "obj_a": { "text": "objective A", "state": "active" },
+    "obj_b": { "text": "objective B", "state": "inactive" }
+  },
+  "triggers": [
+    { "on": "quest_start",
+      "when": { "all": [
+        { "var_eq": { "var": "count", "value": 3 } },
+        { "var_gte": { "var": "count", "value": 1 } },
+        { "var_lte": { "var": "count", "value": 5 } },
+        { "var_eq": { "var": "flag", "value": true } },
+        { "var_eq": { "var": "name", "value": "alduin" } }
+      ] },
+      "do": [ { "show_message": "ALL passed (count==3, 1<=count<=5, flag, name)" } ] },
+
+    { "on": "quest_start",
+      "when": { "any": [
+        { "var_eq": { "var": "count", "value": 999 } },
+        { "var_eq": { "var": "flag", "value": false } },
+        { "objective_state": { "objective": "obj_a", "state": "active" } }
+      ] },
+      "do": [ { "show_message": "ANY passed (obj_a is active)" } ] },
+
+    { "on": "quest_start",
+      "when": { "not": { "var_eq": { "var": "count", "value": 0 } } },
+      "do": [ { "show_message": "NOT(count==0) passed" } ] },
+
+    { "on": "quest_start",
+      "when": { "all": [
+        { "not": { "any": [
+          { "objective_state": { "objective": "obj_b", "state": "done" } },
+          { "var_gte": { "var": "count", "value": 100 } }
+        ] } },
+        { "var_neq": { "var": "name", "value": "miraak" } }
+      ] },
+      "do": [ { "show_message": "nested NOT(ANY(...)) AND var_neq passed" } ] },
+
+    { "on": "quest_start",
+      "when": { "var_eq": { "var": "flag", "value": 1 } },
+      "do": [ { "show_message": "BUG if shown: flag(bool true) should NOT equal 1(number)" } ] },
+
+    { "on": "quest_start",
+      "when": { "all": [
+        { "var_eq": { "var": "global.runs", "value": 0 } }
+      ] },
+      "do": [ { "show_message": "global.runs == 0 passed" } ] }
+  ]
+}

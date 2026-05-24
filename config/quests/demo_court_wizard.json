@@ -1,20 +1,20 @@
 {
   "id": "demo_court_wizard",
-  "title": "宮廷大法師 — Phase 0 demo",
+  "title": "Court Wizard — Phase 0 demo",
   "version": 1,
   "vars": { "delivered": false },
   "objectives": {
-    "lift_curse": { "text": "對受詛咒的侍從施法解咒", "state": "inactive" }
+    "lift_curse": { "text": "Cast a spell on the cursed servant to lift the curse", "state": "inactive" }
   },
   "on_start": [
-    { "show_message": "（你成為白漫的客座大法師，回去等候領主差遣。）" },
+    { "show_message": "(You are now Whiterun's guest Court Wizard. Await the Jarl's summons.)" },
     { "schedule": { "after_hours": 48, "key": "wr_summon" } }
   ],
   "triggers": [
     { "on": "timer", "key": "wr_summon",
       "when": { "var_eq": { "var": "delivered", "value": false } },
       "do": [
-        { "show_message": "一封來自龍臨堡的信送到了。" },
+        { "show_message": "A letter has arrived from Dragonsreach." },
         { "set_var": { "var": "delivered", "value": true } },
         { "start_dialogue": "court_brief" }
       ] },
@@ -31,29 +31,29 @@
       "entry": "n0",
       "nodes": {
         "n0": {
-          "speaker": "領主巴爾古夫",
-          "lines": [ "大法師，府上一名侍從中了詛咒，群醫束手。", "你能解此厄嗎？" ],
+          "speaker": "Jarl Balgruuf",
+          "lines": [ "Court Wizard, a servant of my household is afflicted by a curse no healer can mend.", "Can you lift this affliction?" ],
           "choices": [
-            { "text": "讓我看看那名侍從。",
+            { "text": "Let me see the servant.",
               "then": [
-                { "spawn_character": { "name": "受詛咒的侍從" } },
+                { "spawn_character": { "name": "Cursed Servant" } },
                 { "set_objective_active": "lift_curse" }
               ],
               "goto": "n1" },
-            { "text": "恕難從命。", "end": true }
+            { "text": "I must decline.", "end": true }
           ]
         },
-        "n1": { "speaker": "領主巴爾古夫", "lines": [ "善。她就在偏廳，速去吧。" ], "end": true }
+        "n1": { "speaker": "Jarl Balgruuf", "lines": [ "Good. She waits in the side hall — go to her at once." ], "end": true }
       }
     },
     "thanks": {
       "entry": "m0",
       "nodes": {
         "m0": {
-          "speaker": "領主巴爾古夫",
-          "lines": [ "詛咒已解！白漫感念你的相助。" ],
+          "speaker": "Jarl Balgruuf",
+          "lines": [ "The curse is lifted! Whiterun thanks you for your aid." ],
           "choices": [
-            { "text": "舉手之勞。",
+            { "text": "Think nothing of it.",
               "then": [
                 { "give_gold": { "amount": 500 } },
                 { "add_var": { "var": "global.whiterun_tasks_done", "value": 1 } },

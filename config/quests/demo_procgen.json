@@ -1,14 +1,14 @@
 {
   "_comment": "Demo quest proving the JSON-driven procgen path end-to-end. on_start fires generate_interior with a small INLINE recipe (no file dependency, so it exercises ParseRecipe directly). The F10 debug hotkey fires spell_cast_on{victim}, whose trigger fires generate_structure (from the recipe_keep.json file) + rearrange_furnishings. NOTE: this is loaded by SkyrimAdapter::StartDemoQuest only if you point it at this file; by default the adapter loads demo_court_wizard.json. See the test plan in the agent report for how to swap it in, OR just use the three spells (which need no quest).",
   "id": "demo_procgen",
-  "title": "Procgen JSON 示範",
+  "title": "Procgen JSON demo",
   "version": 1,
   "vars": { "built": false },
   "objectives": {
-    "build_lab": { "text": "用 JSON 程序生成大法師的工作室", "state": "active" }
+    "build_lab": { "text": "Procedurally generate the wizard's workshop via JSON", "state": "active" }
   },
   "on_start": [
-    { "show_message": "（用 JSON 在你面前生成一間小屋……）" },
+    { "show_message": "(Generating a small cottage in front of you via JSON...)" },
     { "generate_interior": {
         "at": { "ref": "player", "mode": "in_front_of", "distance": 320.0 },
         "persist_key": "demo_lab",
@@ -38,7 +38,7 @@
     { "_comment": "F10 (debug) fires spell_cast_on{victim}; here we reuse it to build a keep from the file recipe + then rearrange the inline room's furniture.",
       "on": "spell_cast_on", "character": "victim",
       "do": [
-        { "show_message": "（再用 JSON 生成一座小要塞 + 重新擺設屋內家具……）" },
+        { "show_message": "(Generating a small keep via JSON + rearranging the cottage furniture...)" },
         { "generate_structure": {
             "at": { "ref": "player", "mode": "in_front_of", "forward": 600.0 },
             "template": "recipe_keep.json",

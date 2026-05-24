@@ -1,20 +1,20 @@
 {
   "_comment": "Demo quest proving the JSON-driven generate_npc path (research/PROCGEN_NPC_FORMS.md §11). on_start fires generate_npc with an INLINE recipe (no file dependency, exercises ProcgenNpc::Generate directly). The minted TESNPC_ + ref are tracked and co-saved by ProcgenNpc, so after save/reload the NPC is REBUILT at its spot (logical persistence — see the doc's caveats: a fresh base/ref, old ref FormID/aliases/relationships do not carry over). NOTE: SkyrimAdapter::StartDemoQuest loads demo_court_wizard.json by default; point it at this file to run this demo, OR just cast the 'C++: Conjure NPC' spell (needs no quest).",
   "id": "demo_gen_npc",
-  "title": "generate_npc JSON 示範",
+  "title": "generate_npc JSON demo",
   "version": 1,
   "vars": { "generated": false },
   "objectives": {
-    "make_npc": { "text": "用 JSON 在執行期程序生成一個 NPC", "state": "active" }
+    "make_npc": { "text": "Procedurally generate an NPC at runtime via JSON", "state": "active" }
   },
   "on_start": [
-    { "show_message": "（用 JSON 在你面前鑄造一個全新的 NPC base form……）" },
+    { "show_message": "(Minting a brand-new NPC base form in front of you via JSON...)" },
     { "generate_npc": {
         "at": { "ref": "player", "mode": "in_front_of", "distance": 150.0 },
         "recipe": {
           "template": "0x0001BCD8~Skyrim.esm",
           "persist_key": "demo_quest_npc",
-          "name": "JSON 生成的居民",
+          "name": "JSON-Generated Resident",
           "sex": "female",
           "essential": true,
           "level": 10,

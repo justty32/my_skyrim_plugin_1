@@ -78,8 +78,7 @@
             "I'm told you know your magic. Have you the means to lift such a curse?"
           ],
           "choices": [
-            { "text": "Let me see the retainer. (I have learned the spell to turn the undead.)",
-              "when": { "player_has_spell": { "form": "0x000211EF" } },
+            { "text": "Let me see the retainer.",
               "then": [
                 { "play_idle": { "form": "0x00013452", "character": "jarl" } },
                 { "spawn_character": { "character": "victim", "name": "Afflicted Retainer" } },
@@ -101,7 +100,6 @@
           ],
           "choices": [
             { "text": "(Back to the matter.) Then let me see the retainer.",
-              "when": { "player_has_spell": { "form": "0x000211EF" } },
               "then": [
                 { "play_idle": { "form": "0x00013452", "character": "jarl" } },
                 { "spawn_character": { "character": "victim", "name": "Afflicted Retainer" } },

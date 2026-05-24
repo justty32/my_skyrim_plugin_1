@@ -29,6 +29,16 @@
 > **測試工作流**（使用者習慣）：`cmake --build build/release-clang-cl-linux` → `./scripts/pack_env.sh`（讀 `PLUGIN_DIST_PATH=/home/lorkhan/skyrim_mods`，產 `TemplatePlugin-0.0.1.zip`，乾淨 MO2 格式 `Data/SKSE/Plugins/`）→ 使用者開 MO2 安裝 → 進遊戲。log 在 `~/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/TemplatePlugin.log`。**注意 `dist/CourtWizardSuite-*.zip` 多一層包裹資料夾 + 文件，不適合直接 MO2 安裝；實測用 pack_env.sh 那個包。**
 > **CMake 專案名仍是 `TemplatePlugin`**（DLL 檔名）、config 資料夾仍是 `Template_Plugin`（C++ 寫死路徑，**勿改**）。
 
+## ✅ cw_whiterun_summons 核心流程實機驗證（2026-05-24）
+
+**整條 quest engine 管線在遊戲裡跑通**：`F7`（強制觸發計時器）→ 信件 `deliver_letter` → MessageBox 對話 `court_brief` → 選項 `then` → `spawn_character`（Afflicted Retainer）+ `teleport_player` + `set_objective_active` → 對她**施任一法術** → 真實 `spell_cast_on` hook（`TESMagicEffectApplyEvent`）→ `complete_objective` → `curse_lifted` 獎勵對話。A/B/C（冒煙 / 發法術 / Conjure Item 存讀不累加）也一併再確認通過。
+
+- **安裝管道（務必照走，別手動 cp）**：改 repo `config/` → `./scripts/pack.sh --output-dir ~/skyrim_mods`（= `pack_env.sh`，產 `~/skyrim_mods/TemplatePlugin-0.0.1.zip`）→ 使用者在 MO2 **重裝該 zip** → **完全重啟遊戲**。Quest JSON 在 **kDataLoaded（遊戲啟動）** 讀取，讀存檔不重讀。**直接改 `mods/TemplatePlugin/` 沒用**——任何從（舊）zip 重裝都會蓋回去（本 session 因此白繞三圈）。
+- **移除 `player_has_spell` 接任務閘門**：console `player.addspell 0004B146`（Turn Lesser Undead）後 `player->HasSpell()` 仍判 false，閘門連擋三輪測試 → 直接拿掉，「Let me see the retainer」改無條件出現。要恢復「需會某法術」的設計時再加回 + 專查 HasSpell 對 console-added spell 的偵測。
+- **發現待修（不影響核心）**：① spawn 出的 retainer **敵對**——`victim` 模板 `0x0001BCD8` 是土匪、繼承敵對陣營 → 換非敵對 NPC 模板即可（免重編）；② `MessageBoxPresenter.cpp:66` speaker/台詞間用了**全形冒號 `：`(U+FF1A)** → 無 CJK 字型時顯示成方塊（需重編 DLL）；③ 占位 FormID：地圖標記 `0x00018A52`、附魔物賞 `0x0001CB36`、龍吼 `0x00013E22`、音效 `0x0003EB4E`、Jarl idle `0x00013452`（皆 skip-with-warning，不崩）。
+- **3 個 demo quest（demo_court_wizard/procgen/gen_npc）display 字串轉英文**（雖非實際載入的 quest，但避免日後切換時方塊）；`TESTING_GUIDE.md` step 3 改寫對齊 `cw_whiterun_summons` 真實流程 + 熱鍵（F9→F7、F10→真實施法）。
+- **還沒實機測**：獎勵實際發放（金幣路徑 OK；附魔物/龍吼是占位）、QEST 任務進度存讀持久化、procgen 法術（Generate Room / Conjure Keep / Conjure NPC）、煉藥 F11。
+
 ## 對話內容 authoring（2026-05-24，未 commit）
 
 寫出第一支**真正的宮廷大法師對話 quest**：`config/quests/cw_whiterun_summons.json`（可重複召喚迴圈，分支 + 條件選項 + 領賞/升職進程），並把遊戲端載入切到它（取代 demo）。

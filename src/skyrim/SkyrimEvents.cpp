@@ -38,6 +38,50 @@ private:
     SkyrimEntities* entities_;
 };
 
+// Real `spell_cast_on` detection (research/spell_cast_on_hook.md): a magic effect
+// was applied to a target. TESMagicEffectApplyEvent carries BOTH the caster and
+// the target (TESSpellCastEvent has only the caster — that is why NpcGenerator has
+// to read the crosshair separately), fires for player casts INCLUDING non-damaging
+// effects (the demo's "cast a cure on the cursed retainer" case, which a hit event
+// would miss), and needs no trampoline / RELOCATION_ID.
+//
+// We fire ONLY when the caster is the player AND the target maps to a tracked
+// alias. Magic-effect applies are far more frequent than activations (weapon
+// enchants, self-buffs, per-tick concentration effects), so — unlike ActivateSink
+// — we do NOT emit a FormID fallback for untracked targets: an untracked target is
+// silently ignored to avoid spurious fires and log spam. The engine's trigger
+// filter still discriminates the specific {character}, so a non-victim alias is a
+// harmless no-op. (Player ref is FormID 0x14; TESObjectREFR has no IsPlayerRef().)
+class SkyrimEvents::MagicEffectSink : public RE::BSTEventSink<RE::TESMagicEffectApplyEvent> {
+public:
+    MagicEffectSink(EventSink* sink, SkyrimEntities* entities)
+        : sink_(sink), entities_(entities) {}
+
+    RE::BSEventNotifyControl ProcessEvent(
+        const RE::TESMagicEffectApplyEvent* a_event,
+        RE::BSTEventSource<RE::TESMagicEffectApplyEvent>*) override {
+        if (!a_event || !sink_ || !*sink_ || !entities_) return RE::BSEventNotifyControl::kContinue;
+        auto* caster = a_event->caster.get();
+        auto* target = a_event->target.get();
+        if (!caster || !target) return RE::BSEventNotifyControl::kContinue;
+        // Only the player casting ON someone else (skip self-applied effects).
+        if (caster->GetFormID() != 0x14 || target->GetFormID() == 0x14) {
+            return RE::BSEventNotifyControl::kContinue;
+        }
+        const std::string alias = entities_->aliasForFormID(target->GetFormID());
+        if (alias.empty()) return RE::BSEventNotifyControl::kContinue;  // untracked target
+
+        nlohmann::json filter;
+        filter["character"] = alias;
+        (*sink_)("spell_cast_on", filter);
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+private:
+    EventSink* sink_;
+    SkyrimEntities* entities_;
+};
+
 void SkyrimEvents::install(EventSink sink, SkyrimEntities& entities) {
     sink_ = std::move(sink);
 
@@ -52,17 +96,15 @@ void SkyrimEvents::install(EventSink sink, SkyrimEntities& entities) {
         SKSE::log::info("SkyrimEvents: TESActivateEvent sink installed");
     }
 
-    // TODO (open issue, progress.md / DESIGN §6): `spell_cast_on` detection.
-    // TESSpellCastEvent (already used by NpcGenerator) reports only the CASTER
-    // and spell, not the target the spell lands on, so it cannot by itself say
-    // "a spell was cast ON <victim>". Candidate approaches to evaluate later:
-    //   1. A magic-effect-applied hook (Actor::MagicTarget / ActiveEffect::OnAdd)
-    //      filtered to the curse effect, reading the effect's target actor.
-    //   2. On the caster's TESSpellCastEvent, read the player's crosshair/target
-    //      ref (RE::CrosshairPickData, as NpcGenerator does) as the "victim".
-    //   3. A trampoline hook on the spell-delivery / hit routine.
-    // All are R&D, not a proven recipe — NOT wired here to avoid a risky hook.
-    // For now the demo fires it manually via fireManual()/the debug hotkey.
+    // `spell_cast_on` detection (research/spell_cast_on_hook.md): a magic effect
+    // applied to a target. Carries caster + target, fires for player casts incl.
+    // non-damaging effects, zero RELOCATION_ID. Replaces the F10 debug fake (kept
+    // as a test fallback until verified in-game).
+    if (!magicSink_) {
+        magicSink_ = new MagicEffectSink(&sink_, &entities);
+        holder->AddEventSink<RE::TESMagicEffectApplyEvent>(magicSink_);
+        SKSE::log::info("SkyrimEvents: TESMagicEffectApplyEvent sink installed (spell_cast_on)");
+    }
 }
 
 void SkyrimEvents::uninstall() {
@@ -70,13 +112,19 @@ void SkyrimEvents::uninstall() {
     if (holder && activateSink_) {
         holder->RemoveEventSink<RE::TESActivateEvent>(activateSink_);
     }
+    if (holder && magicSink_) {
+        holder->RemoveEventSink<RE::TESMagicEffectApplyEvent>(magicSink_);
+    }
     delete activateSink_;
     activateSink_ = nullptr;
+    delete magicSink_;
+    magicSink_ = nullptr;
 }
 
 // Temporary debug input sink (DESIGN: "even a temporary debug hotkey"): lets a
-// tester drive the loop in-game before real detection hooks exist. REMOVE once
-// spell_cast_on / world triggers are wired.
+// tester drive the loop in-game. F10 still force-fires spell_cast_on{victim} as a
+// fallback now that the real TESMagicEffectApplyEvent sink is wired (install()) —
+// keep it until the real sink is confirmed in-game, then this can be removed.
 class SkyrimEvents::DebugInputSink : public RE::BSTEventSink<RE::InputEvent*> {
 public:
     DebugInputSink(SkyrimEvents* owner, std::function<void()> onTimers,

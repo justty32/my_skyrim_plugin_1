@@ -8,10 +8,12 @@
 // so this class never touches the engine directly: it calls a sink callback
 // (set by the adapter) which marshals onto the main thread via AddTask.
 //
-// Scaffolded now (low-risk): TESActivateEvent -> "activate" {character}.
-// UNRESOLVED open issue (progress.md / DESIGN §6): how to detect "a spell was
-// cast ON a given target" for the `spell_cast_on` trigger — see notes in the
-// .cpp. NOT hooked here; the demo drives it via FireManual() for now.
+// Wired (low-risk): TESActivateEvent -> "activate" {character}, and
+// TESMagicEffectApplyEvent -> "spell_cast_on" {character} (research/
+// spell_cast_on_hook.md: that event carries BOTH the caster AND the target —
+// unlike TESSpellCastEvent which has only the caster — fires for player casts
+// including non-damaging effects, and needs zero RELOCATION_ID). The F10 debug
+// hotkey is kept as a test fallback until the real sink is verified in-game.
 
 #include <functional>
 #include <string>
@@ -55,9 +57,11 @@ public:
 
 private:
     EventSink sink_;
-    class ActivateSink;   // defined in the .cpp
-    class DebugInputSink;  // defined in the .cpp
+    class ActivateSink;       // defined in the .cpp
+    class MagicEffectSink;    // defined in the .cpp
+    class DebugInputSink;     // defined in the .cpp
     ActivateSink* activateSink_ = nullptr;
+    MagicEffectSink* magicSink_ = nullptr;
     DebugInputSink* debugSink_ = nullptr;
 };
 

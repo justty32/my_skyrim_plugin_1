@@ -33,19 +33,19 @@
 5. **Customize NPC 改到玩家**：`RaceSexMenu` 在 Skyrim 只能編輯玩家。修：移除 RaceSexMenu，直接改目標 actor base 的 weight+height + `DoReset3D`。
 6. **Lower Terrain 無感**：只在準星有目標時動、無目標靜默。修：補 no-target 警告（對齊 RaiseTerrain）。
 
-**目前熱鍵**：**F7=強制(重)啟動劇情+force-fire 所有計時器（測劇情用這個）**、F8=輪詢到期計時器、F10=觸發 spell_cast_on（解咒）、F11=煉藥。
+**目前熱鍵**：**F7=強制(重)啟動劇情+force-fire 所有計時器（測劇情用這個）**、F8=輪詢到期計時器、F10=觸發 spell_cast_on（解咒，**現已有真實 hook，F10 留作 fallback 待驗證**）、F11=煉藥。
 
 **待清理 / 已知債**：
 - ~~`ProcgenNpc.cpp` 的 `RunWhenPlayerReady`/`StripPriorActorNow`/`ScheduleStripPriorActor` 死碼~~ ✅ 已清（2026-05-24，連同孤兒 `<functional>` include，重編綠燈）。
-- **跨 session crash 未解**：完全關遊戲重開後，讀「含 `C++: Spawn NPC`（NpcGenerator，無 co-save）或召喚 NPC」的存檔，動態 base 跨 session 不存在 → Skyrim 還原 .ess 動態 actor 時 crash（log 停在 OnRevert 後、無 OnLoad）。**根治需 `kPreSaveGame` 鉤子：存檔前移除動態 actor**（這條還沒做）。within-session 已用 readopt 繞過。
+- **跨 session crash 未解（已研究、決定先不做）**：完全關遊戲重開後，讀「含 `C++: Spawn NPC`（NpcGenerator，無 co-save）或召喚 NPC」的存檔，動態 base 跨 session 不存在 → Skyrim 還原 .ess 動態 actor 時 crash（log 停在 OnRevert 後、無 OnLoad）。within-session 已用 readopt 繞過。**研究結論（`research/kpresavegame_dynamic_cleanup.md`）：本 SKSE 根本沒有 `kPreSaveGame`，只有 `kSaveGame`，而它晚於 `.ess` 寫入。** 方案 B（`kSaveGame`→`AddTask` 主執行緒 strip）只能讓「下一次」存檔乾淨，且會讓召喚 NPC/房/背包物品「存檔後從世界/背包消失（讀檔才靠 rebuild 重現）」=退步 → **2026-05-24 決定先不做**。當次根治需方案 C（trampoline hook `BGSSaveLoadManager::Save`，需 SE/AE RELOCATION_ID，目前沒有、`src/hook` 是空殼）→ 留 TODO。
 - ~~F7/劇情主線對話、conjure NPC within-session 不 crash —— 待人類驗證~~ ✅ 已驗證（2026-05-24）。
 
 ## 下一步（依 in-game 測試結果決定）
 
 1. ~~驗證本輪修法 + 清死碼~~ ✅ 完成（2026-05-24，F7/F10/conjure NPC 皆 OK，死碼已清、重編綠燈）。**剩：把這批 in-game 修法 + 死碼清理 commit**（HEAD 仍 `1b2a37b`，工作樹 11 檔未提交）。
-2. **`kPreSaveGame` 清理鉤子**根治跨 session crash（移除動態 actor / 召喚物再存檔）。
+2. ~~`kPreSaveGame` 清理鉤子根治跨 session crash~~ → **已研究、決定先不做**（無 `kPreSaveGame`；方案 B 會讓召喚內容存檔後消失；當次根治的方案 C 需 address ID）。見上「待清理/已知債」與 `research/kpresavegame_dynamic_cleanup.md`。
 3. **in-game 才現形的待修**（可能項）：MessageBox 按鈕索引對應、procgen 佔位 FormID（`WRWallMainGate`/`Tankard01`/Tree`0x38432`/Rock`0x1B983` resolve 不到，用 console `help` 換真 ID）、煉藥 ingredient `00034D2C` 解析不到。
-4. **未做的功能**：煉藥藥水的 co-save；`spell_cast_on` 真實 hook（現用 F10 debug 鍵替代，候選在 `SkyrimEvents.cpp` 註解）；adapter 高風險動詞仍 stub；原生對話選單 spike；`random`/PRF。
+4. **未做的功能**：煉藥藥水的 co-save；~~`spell_cast_on` 真實 hook~~ ✅ **已實作**（2026-05-24，`TESMagicEffectApplyEvent` sink，過濾 caster=玩家 + target 有別名才 fire；見 `research/spell_cast_on_hook.md`；**F10 fallback 留著、待 in-game 驗證真 hook 後再移除**）；adapter 高風險動詞仍 stub；~~原生對話選單 spike~~ ✅ **已評估**：維持 MessageBox（原生需 trampoline 注入 + 自管語音字幕，高風險低回報；`research/native_dialogue_spike.md`）；`random`/PRF。
 
 ## 多 agent 編排教訓（重要，見 memory `feedback_worktree_agents`）
 

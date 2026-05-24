@@ -73,6 +73,10 @@ public:
 
         nlohmann::json filter;
         filter["character"] = alias;
+        // Log the real fire — without this the sink is silent and a quest advance
+        // leaves no trace in the log (this gap once made verification ambiguous).
+        SKSE::log::info("SkyrimEvents: player cast on '{}' (target {:08X}, effect {:08X}) "
+                        "-> spell_cast_on", alias, target->GetFormID(), a_event->magicEffect);
         (*sink_)("spell_cast_on", filter);
         return RE::BSEventNotifyControl::kContinue;
     }
@@ -98,8 +102,8 @@ void SkyrimEvents::install(EventSink sink, SkyrimEntities& entities) {
 
     // `spell_cast_on` detection (research/spell_cast_on_hook.md): a magic effect
     // applied to a target. Carries caster + target, fires for player casts incl.
-    // non-damaging effects, zero RELOCATION_ID. Replaces the F10 debug fake (kept
-    // as a test fallback until verified in-game).
+    // non-damaging effects, zero RELOCATION_ID. Replaced the F10 debug fake, which
+    // was removed after this sink was verified in-game (2026-05-24).
     if (!magicSink_) {
         magicSink_ = new MagicEffectSink(&sink_, &entities);
         holder->AddEventSink<RE::TESMagicEffectApplyEvent>(magicSink_);
@@ -122,9 +126,10 @@ void SkyrimEvents::uninstall() {
 }
 
 // Temporary debug input sink (DESIGN: "even a temporary debug hotkey"): lets a
-// tester drive the loop in-game. F10 still force-fires spell_cast_on{victim} as a
-// fallback now that the real TESMagicEffectApplyEvent sink is wired (install()) —
-// keep it until the real sink is confirmed in-game, then this can be removed.
+// tester drive the quest loop in-game without waiting on real game state. F7
+// force-fires scheduled timers, F8 polls due timers. (The old F10 spell_cast_on
+// fake was removed once the real TESMagicEffectApplyEvent sink was verified
+// in-game, 2026-05-24.)
 class SkyrimEvents::DebugInputSink : public RE::BSTEventSink<RE::InputEvent*> {
 public:
     DebugInputSink(SkyrimEvents* owner, std::function<void()> onTimers,
@@ -147,12 +152,6 @@ public:
                 case 0x42:  // F8 — poll DUE timers (F9 conflicts with Quick Load)
                     if (onTimers_) onTimers_();
                     break;
-                case 0x44: {  // F10
-                    nlohmann::json f;
-                    f["character"] = "victim";
-                    owner_->fireManual("spell_cast_on", f);
-                    break;
-                }
                 default:
                     break;
             }
@@ -177,7 +176,7 @@ void SkyrimEvents::installDebugHotkeys(std::function<void()> onTimers,
         debugSink_ = new DebugInputSink(this, std::move(onTimers), std::move(onForceFire));
         idm->AddEventSink(debugSink_);
         SKSE::log::info("SkyrimEvents: debug hotkeys installed "
-                        "(F7=force-fire timers, F8=poll timers, F10=spell_cast_on)");
+                        "(F7=force-fire timers, F8=poll timers)");
     }
 }
 

@@ -33,7 +33,7 @@
 5. **Customize NPC 改到玩家**：`RaceSexMenu` 在 Skyrim 只能編輯玩家。修：移除 RaceSexMenu，直接改目標 actor base 的 weight+height + `DoReset3D`。
 6. **Lower Terrain 無感**：只在準星有目標時動、無目標靜默。修：補 no-target 警告（對齊 RaiseTerrain）。
 
-**目前熱鍵**：**F7=強制(重)啟動劇情+force-fire 所有計時器（測劇情用這個）**、F8=輪詢到期計時器、F10=觸發 spell_cast_on（解咒，**現已有真實 hook，F10 留作 fallback 待驗證**）、F11=煉藥。
+**目前熱鍵**：**F7=強制(重)啟動劇情+force-fire 所有計時器（測劇情用這個）**、F8=輪詢到期計時器、F11=煉藥。（**F10 spell_cast_on 假觸發已移除** —— 真 hook 2026-05-24 in-game 驗證通過；解咒現在靠「對 victim 施任何法術」自動觸發。）
 
 **待清理 / 已知債**：
 - ~~`ProcgenNpc.cpp` 的 `RunWhenPlayerReady`/`StripPriorActorNow`/`ScheduleStripPriorActor` 死碼~~ ✅ 已清（2026-05-24，連同孤兒 `<functional>` include，重編綠燈）。
@@ -45,7 +45,7 @@
 1. ~~驗證本輪修法 + 清死碼~~ ✅ 完成（2026-05-24，F7/F10/conjure NPC 皆 OK，死碼已清、重編綠燈）。**剩：把這批 in-game 修法 + 死碼清理 commit**（HEAD 仍 `1b2a37b`，工作樹 11 檔未提交）。
 2. ~~`kPreSaveGame` 清理鉤子根治跨 session crash~~ → **已研究、決定先不做**（無 `kPreSaveGame`；方案 B 會讓召喚內容存檔後消失；當次根治的方案 C 需 address ID）。見上「待清理/已知債」與 `research/kpresavegame_dynamic_cleanup.md`。
 3. **in-game 才現形的待修**（可能項）：MessageBox 按鈕索引對應、procgen 佔位 FormID（`WRWallMainGate`/`Tankard01`/Tree`0x38432`/Rock`0x1B983` resolve 不到，用 console `help` 換真 ID）、煉藥 ingredient `00034D2C` 解析不到。
-4. **未做的功能**：煉藥藥水的 co-save；~~`spell_cast_on` 真實 hook~~ ✅ **已實作**（2026-05-24，`TESMagicEffectApplyEvent` sink，過濾 caster=玩家 + target 有別名才 fire；見 `research/spell_cast_on_hook.md`；**F10 fallback 留著、待 in-game 驗證真 hook 後再移除**）；adapter 高風險動詞仍 stub；~~原生對話選單 spike~~ ✅ **已評估**：維持 MessageBox（原生需 trampoline 注入 + 自管語音字幕，高風險低回報；`research/native_dialogue_spike.md`）；`random`/PRF。
+4. **未做的功能**：煉藥藥水的 co-save；~~`spell_cast_on` 真實 hook~~ ✅ **已實作 + in-game 驗證通過**（2026-05-24，`TESMagicEffectApplyEvent` sink，過濾 caster=玩家 + target 有別名才 fire；見 `research/spell_cast_on_hook.md`；log 實證：對 victim `FF000C5A` 施 Customize NPC → 自動 give_gold 500、非別名目標不誤觸；**F10 fallback 已移除**、sink 加了 fire-log）；adapter 高風險動詞仍 stub；~~原生對話選單 spike~~ ✅ **已評估**：維持 MessageBox（原生需 trampoline 注入 + 自管語音字幕，高風險低回報；`research/native_dialogue_spike.md`）；`random`/PRF。
 
 ## 多 agent 編排教訓（重要，見 memory `feedback_worktree_agents`）
 

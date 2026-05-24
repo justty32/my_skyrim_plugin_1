@@ -12,8 +12,8 @@
 // TESMagicEffectApplyEvent -> "spell_cast_on" {character} (research/
 // spell_cast_on_hook.md: that event carries BOTH the caster AND the target —
 // unlike TESSpellCastEvent which has only the caster — fires for player casts
-// including non-damaging effects, and needs zero RELOCATION_ID). The F10 debug
-// hotkey is kept as a test fallback until the real sink is verified in-game.
+// including non-damaging effects, and needs zero RELOCATION_ID). Verified in-game
+// 2026-05-24; the old F10 spell_cast_on debug fake has been removed.
 
 #include <functional>
 #include <string>
@@ -36,19 +36,20 @@ public:
     void uninstall();
 
     // Manually inject an event into the engine — testability hook for triggers
-    // whose real game detection isn't wired yet (e.g. spell_cast_on). Routed via
-    // the same sink, so it lands on the main thread.
+    // whose real game detection isn't wired yet. Routed via the same sink, so it
+    // lands on the main thread. (Still a general injector even though spell_cast_on
+    // now has a real sink — kept for the next trigger that lacks one.)
     void fireManual(const std::string& on, const nlohmann::json& filter);
 
     EventSink& sink() { return sink_; }
 
-    // Install a temporary debug hotkey sink so the whole loop is testable in-game
-    // before real detection (e.g. spell_cast_on) is wired. Keys (DX scancodes):
+    // Install a temporary debug hotkey sink so the quest loop stays testable in
+    // game without waiting on real state. Keys (DX scancodes):
     //   F7  -> force-fire ALL scheduled timers now (start the quest first if
     //          needed) — drives the demo's after_hours:48 summon without waiting
     //   F8  -> CheckTimers poll       (advance DUE timers after waiting in-game)
-    //   F10 -> fireManual("spell_cast_on", {"character":"victim"})
-    // (F9 is intentionally avoided — it is Skyrim's Quick Load.)
+    // (F9 is intentionally avoided — it is Skyrim's Quick Load. The old F10
+    //  spell_cast_on fake was removed once the real sink was verified in-game.)
     // `onTimers` is called for F8 (routed to QuestEngine::checkTimers); `onForceFire`
     // is called for F7 (routed to SkyrimAdapter::DebugForceFireTimers).
     void installDebugHotkeys(std::function<void()> onTimers,

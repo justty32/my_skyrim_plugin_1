@@ -1,19 +1,24 @@
 # 進度 / 接續筆記（宮廷大法師 mod + Quest Engine）
 
 > 交接用 scratch 檔。冷啟動看這份就能接續。
-> 分支：`feature/court-wizard`　最後更新：2026-05-24（in-game 測試中）
+> 分支：`feature/court-wizard`　最後更新：2026-05-24（焦點在 ModForge：It.7 gameplay-complete 全線完成，見下節）
 
 ## ⚠️ 2026-05-24 重大轉向 → 新專案 ModForge（本 repo 工作暫擱置）
 
 原生對話的執行期注入實測不可行（改清單會被引擎還原、改 form 在 say-flow 被重設、且改共用 vanilla form 危險），於是**轉向做一個獨立的 AI mod-authoring 工具鏈**。本 court-wizard / quest-engine 工作**先擱置**（程式碼仍在 `feature/court-wizard`，未 commit 的工作樹改動原樣保留）。
 
-**新專案：`/home/lorkhan/repo/ModForge`**（獨立 git repo，C#/.NET/Mutagen，14 commits）。一句話：**描述內容 → 生合法 `.esp`/`.esl`（+ 編 Papyrus + 打包），外加翻譯插件文字**。Linux 全自動、不開 CK GUI。
+**新專案：`/home/lorkhan/repo/ModForge`**（獨立 git repo，C#/.NET/Mutagen，18 commits）。一句話：**描述內容 → 生合法 `.esp`/`.esl`（+ 編 Papyrus + 打包），外加翻譯插件文字**。Linux 全自動、不開 CK GUI。
 - 看 `ModForge/FOR_AGENT.md`（給 agent 的操作手冊）、`SPEC.md`（spec 欄位）、`NOTES.md`（迭代進度/接續錨點）。
-- CLI 9 指令:`build`/`package`/`compile`/`validate`/`dump`/`extract`/`apply`/`applyloc`/`gen`。
-- 已完成 It.1–It.6b + CJK 翻譯（`applyloc`，UTF-8 `_chinese.STRINGS`，由使用者官方漢化 mod 解開）+ It.7a `dump`。
+- CLI 10 指令:`build`/`package`/`compile`/`validate`/`dump`/`find`/`extract`/`apply`/`applyloc`/`gen`。
+- 已完成 It.1–It.6b + CJK 翻譯（`applyloc`，UTF-8 `_chinese.STRINGS`，由使用者官方漢化 mod 解開）+ **It.7 gameplay-complete 全線**：
+  - **7a** `dump`（讀回驗證）、**7a+/7b** `find <Skyrim.esm> <query> [type]` 讀 vanilla FormID + 外部 `"<master>:0xFORMID"` ref（→ npc race/class/outfit/factions、keywords；master 寫檔自動加）。
+  - **7c** 武器傷害/速度/觸及、armor 類型+裝備部位、spell/potion **magic effects**（MagicEffect ref + magnitude/area/duration）。
+  - **7d-p1** 新建內部 cell + 放置 NPC/物件（PlacedNpc/PlacedObject，`coc <editorId>` 可到）。**7d-p2** 放進 **vanilla interior cell**（手動 override、只加 ref 零膨脹；雷：`GetOrAddAsOverride` 會 deep-copy localized Name → 撞 plugins.txt，改手動建同 FormKey override 繞過）。
+  - **7e** leveled list（LVLI/LVLN）、container 內容、spell cast-type。
+  - 全部 `validate`/`dump` 涵蓋、sample round-trip + 負向測試通過、Mutagen API 全 ilspy 查證。**皆未實機測**（需 Proton）。
 - **CJK 暫停**（2026-05-24）:使用者尚未裝 CJK 字體 → CJK 內容/實機測試先停;`applyloc` 程式碼已完成且位元組驗證過。
-- **下一步**:It.7b 外部/vanilla form 參照（`Skyrim.esm:0x...`）→ npc race/class（NPC 要能運作）、keywords、效果;It.6c 接真 LLM API（卡使用者 key）。實機確認（CJK 顯示 / 對話 Proton 測試）待人類。
-- 細節見 memory `project_authoring_toolchain_roadmap` + `project_native_dialogue_esp`。
+- **下一步**:It.7d-**phase 3** = exterior/worldspace cell 放置（需 worldspace block+grid 結構，較難）;實機測試（生成內容 / vanilla cell 放置 / CJK 顯示，Proton 待人類）;It.6c 接真 LLM API（卡使用者 key）。其餘多為「照 pattern 加欄位」小事。
+- 細節見 ModForge `NOTES.md`（It.7c/7d/7e 完整實作筆記）+ memory `project_authoring_toolchain_roadmap`、`project_native_dialogue_esp`。
 
 ---
 

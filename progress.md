@@ -1,11 +1,14 @@
 # 進度 / 接續筆記（宮廷大法師 mod + Quest Engine）
 
 > 交接用 scratch 檔。冷啟動看這份就能接續。
-> 分支：`feature/court-wizard`　最後更新：2026-05-23
+> 分支：`feature/court-wizard`　最後更新：2026-05-24（in-game 測試中）
 
 ## 一句話現況
 
-**完整功能集已整合 + 過一輪 QA 修復**（branch `feature/court-wizard` @ `7488252`）：可攜 core（audit 強化 + validate + 防 crash + SPEC §6 進度持久化）+ Skyrim adapter 六埠 + 可恢復式 MessageBox 對話 + 煉藥 spike + **四種 runtime 程序生成（NPC / 物品 / 室內房間 / 室外城堡）** + 中央 `'TPL1'` co-save 持久化，全部編進**一個 cross-compile DLL**（1.72MB PE32+）。**整包尚未 in-game 測試**（Linux 交叉編譯）。下一步＝**人類照 `TESTING_GUIDE.md` 進遊戲實測**。成果包：`dist/CourtWizardSuite-0.0.1.zip`。
+**真機 in-game 測試本輪修法全數驗證通過 ✅**（Proton/Wine + MO2，分支 `feature/court-wizard`）。冒煙、co-save 來回、H1 物品不累加、procgen（NPC/物品/房/城堡）生成與重建都實測通過。測試中發現多個 in-game-only bug，已逐一改修並重編。**2026-05-24 使用者回報：`F7`→劇情信件 MessageBox 對話→`F10` 解咒 OK、conjure NPC within-session 存讀不再 crash（readopt）也 OK。** 隨即**清掉 `ProcgenNpc.cpp` readopt 取代的死碼**（`RunWhenPlayerReady`/`StripPriorActorNow`/`ScheduleStripPriorActor` + 孤兒 `<functional>` include）並重編綠燈。**改動仍未 commit，HEAD 仍是 `1b2a37b`** —— 下一步就是把這批 in-game 修法 + 死碼清理 commit 起來。
+
+> **測試工作流**（使用者習慣）：`cmake --build build/release-clang-cl-linux` → `./scripts/pack_env.sh`（讀 `PLUGIN_DIST_PATH=/home/lorkhan/skyrim_mods`，產 `TemplatePlugin-0.0.1.zip`，乾淨 MO2 格式 `Data/SKSE/Plugins/`）→ 使用者開 MO2 安裝 → 進遊戲。log 在 `~/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/TemplatePlugin.log`。**注意 `dist/CourtWizardSuite-*.zip` 多一層包裹資料夾 + 文件，不適合直接 MO2 安裝；實測用 pack_env.sh 那個包。**
+> **CMake 專案名仍是 `TemplatePlugin`**（DLL 檔名）、config 資料夾仍是 `Template_Plugin`（C++ 寫死路徑，**勿改**）。
 
 ## 本次自主 session 成果（2026-05-23，全部 commit + 整合，HEAD `7488252`）
 
@@ -18,12 +21,31 @@
 - **文件**：`research/` 9 份（含 3 procgen 可行性 + 2 spike 發現 + audit + review）；`TESTING_GUIDE.md`（逐步 in-game 測試手冊）；`使用說明書.md`（中文成品說明）。
 - **成果包** `dist/CourtWizardSuite-0.0.1.zip`：DLL + config 樹 + 9 research + 3 design-docs + 使用說明書 + 測試手冊。
 
+## In-game 測試 session（2026-05-24，未 commit，工作樹改動）
+
+**實測通過 ✅**：冒煙（plugin/quest 載入、4 個 co-save handler）、co-save 4-record 完整來回、**H1 物品不累加**（log 明確 `stripped 1 prior ... before rebuild`）、Conjure Item/Keep/Room/NPC 生成、結構重複施放清除舊的、Rearrange/Lower（有準星目標時）、多次存讀重建 NPC+房+物品。
+
+**發現的 in-game-only bug + 修法**（皆已改碼+重編，未 commit）：
+1. **F9 衝突 Skyrim Quick Load** → debug 熱鍵 F9→**F8**（DX scancode 0x42）。
+2. **F8/F10 全無反應 = 劇情引擎根本沒啟動**：`on_start`（排 48h `wr_summon`）只在 kNewGame 跑；讀既有存檔走 kPostLoadGame→importProgress，從不 start。改：①引擎加 `started_` 並持久化進 blob、讀檔若未啟動就 `start()`；②新增 **F7 熱鍵**強制觸發計時器。**但仍卡**：使用者存檔是「started=true 但 timers 空」的殘留態 → F7 fire 0。**最終修法：F7 改成無條件 `start()`+force-fire**（debug 鍵每按重測一輪），繞開 started 旗標歷史包袱。✅**已驗證**：F7→跳出信件 MessageBox 對話、F10→解咒，in-game OK。
+3. **Conjure NPC 存讀後複製一份**：codec 還原舊 actor + RebuildStaged 又 mint 新的＝2。**先試「刪舊+mint新」→ crash**（`Disable()/SetDelete()` codec-還原 actor 在 kPostLoadGame 窗口致命，延遲到 `Is3DLoaded` 也沒用，因 within-session 快速讀檔玩家已載入、延遲幾乎即時）。**最終修法：改成「重新接管還原的 actor、不 mint、不刪」**（`ProcgenNpc::RebuildStaged` readopt 分支；舊 ref 不在才 mint）。GNPC co-save record version 1→2。✅**已驗證**：within-session 存讀不再 crash、不再複製。
+4. **Conjure Item 存讀後丟失手持狀態**：重建 strip 舊的 + 加新的到背包但沒重裝備。修：strip 前記錄裝備槽，重建後 `ActorEquipManager::EquipObject` 重裝；**且重裝延遲到 `Is3DLoaded`**（同步在載入窗口裝備會 crash）。item 這條實測 OK、不 crash。
+5. **Customize NPC 改到玩家**：`RaceSexMenu` 在 Skyrim 只能編輯玩家。修：移除 RaceSexMenu，直接改目標 actor base 的 weight+height + `DoReset3D`。
+6. **Lower Terrain 無感**：只在準星有目標時動、無目標靜默。修：補 no-target 警告（對齊 RaiseTerrain）。
+
+**目前熱鍵**：**F7=強制(重)啟動劇情+force-fire 所有計時器（測劇情用這個）**、F8=輪詢到期計時器、F10=觸發 spell_cast_on（解咒）、F11=煉藥。
+
+**待清理 / 已知債**：
+- ~~`ProcgenNpc.cpp` 的 `RunWhenPlayerReady`/`StripPriorActorNow`/`ScheduleStripPriorActor` 死碼~~ ✅ 已清（2026-05-24，連同孤兒 `<functional>` include，重編綠燈）。
+- **跨 session crash 未解**：完全關遊戲重開後，讀「含 `C++: Spawn NPC`（NpcGenerator，無 co-save）或召喚 NPC」的存檔，動態 base 跨 session 不存在 → Skyrim 還原 .ess 動態 actor 時 crash（log 停在 OnRevert 後、無 OnLoad）。**根治需 `kPreSaveGame` 鉤子：存檔前移除動態 actor**（這條還沒做）。within-session 已用 readopt 繞過。
+- ~~F7/劇情主線對話、conjure NPC within-session 不 crash —— 待人類驗證~~ ✅ 已驗證（2026-05-24）。
+
 ## 下一步（依 in-game 測試結果決定）
 
-1. **先做**：照 `TESTING_GUIDE.md` 進遊戲測（最小集：①冒煙 ②生成物品+多次存讀不累加 ③劇情對話含按鈕對應）。把「過/不過 + log 尾段 + 截圖」回報。
-2. **in-game 才現形的待修**（可能項）：MessageBox 按鈕索引對應、procgen snap 幾何/浮空、佔位 FormID resolve 不到（用 console `help` 換真 ID 進 recipe）、co-save 重建路徑是否真重現、煉藥數值是否等於 vanilla 選單。
-3. **未做的功能**：煉藥藥水的 co-save；`spell_cast_on` 真實 hook（現用 F10 debug 鍵替代，候選方案在 `SkyrimEvents.cpp` 註解）；adapter 高風險動詞仍 stub（start_combat/add_shout/teleport_player…）；原生對話選單 spike；`random`/PRF。
-4. **debug 熱鍵**：F9 輪詢計時器、F10 觸發 spell_cast_on、F11 煉藥（正式化時移除）。
+1. ~~驗證本輪修法 + 清死碼~~ ✅ 完成（2026-05-24，F7/F10/conjure NPC 皆 OK，死碼已清、重編綠燈）。**剩：把這批 in-game 修法 + 死碼清理 commit**（HEAD 仍 `1b2a37b`，工作樹 11 檔未提交）。
+2. **`kPreSaveGame` 清理鉤子**根治跨 session crash（移除動態 actor / 召喚物再存檔）。
+3. **in-game 才現形的待修**（可能項）：MessageBox 按鈕索引對應、procgen 佔位 FormID（`WRWallMainGate`/`Tankard01`/Tree`0x38432`/Rock`0x1B983` resolve 不到，用 console `help` 換真 ID）、煉藥 ingredient `00034D2C` 解析不到。
+4. **未做的功能**：煉藥藥水的 co-save；`spell_cast_on` 真實 hook（現用 F10 debug 鍵替代，候選在 `SkyrimEvents.cpp` 註解）；adapter 高風險動詞仍 stub；原生對話選單 spike；`random`/PRF。
 
 ## 多 agent 編排教訓（重要，見 memory `feedback_worktree_agents`）
 

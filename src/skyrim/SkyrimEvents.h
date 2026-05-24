@@ -42,10 +42,15 @@ public:
 
     // Install a temporary debug hotkey sink so the whole loop is testable in-game
     // before real detection (e.g. spell_cast_on) is wired. Keys (DX scancodes):
-    //   F9  -> CheckTimers poll       (advance due timers after waiting in-game)
+    //   F7  -> force-fire ALL scheduled timers now (start the quest first if
+    //          needed) — drives the demo's after_hours:48 summon without waiting
+    //   F8  -> CheckTimers poll       (advance DUE timers after waiting in-game)
     //   F10 -> fireManual("spell_cast_on", {"character":"victim"})
-    // `onTimers` is called for F9 (the adapter routes it to QuestEngine::checkTimers).
-    void installDebugHotkeys(std::function<void()> onTimers);
+    // (F9 is intentionally avoided — it is Skyrim's Quick Load.)
+    // `onTimers` is called for F8 (routed to QuestEngine::checkTimers); `onForceFire`
+    // is called for F7 (routed to SkyrimAdapter::DebugForceFireTimers).
+    void installDebugHotkeys(std::function<void()> onTimers,
+                             std::function<void()> onForceFire);
     void uninstallDebugHotkeys();
 
 private:

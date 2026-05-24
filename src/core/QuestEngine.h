@@ -62,12 +62,31 @@ public:
     // Fire any timers whose due time has passed (SPEC §4.2). Needs the clock.
     void checkTimers();
 
+    // DEBUG/TEST ONLY: force-fire EVERY currently-scheduled timer immediately,
+    // ignoring its due game-time. Runs the same per-timer logic checkTimers()
+    // runs (erase the timer, then fireTriggers("timer", {key})), but for all
+    // pending timers regardless of the clock. Lets a tester drive a long-delay
+    // timer (e.g. the demo's after_hours:48 summon) without sleeping in-game.
+    // Resumable-dialogue aware: a fired timer may start_dialogue (display-only,
+    // non-blocking), so this only kicks off the flow — it does not assume the
+    // dialogue completes synchronously. No-op on a terminated quest (§3.1.3).
+    void debugFireAllTimers();
+
     // Resumable dialogue (SPEC §3.2): presentNode is display-only, so the
     // adapter feeds the player's pick here once the UI callback fires. idx is
     // 0-based into the choices last presented; idx<0 (or out of range) cancels.
     void submitChoice(int idx);
     // True while a choice node is presented and waiting for submitChoice().
     bool awaitingChoice() const { return awaitingChoice_; }
+
+    // True once on_start has actually executed via start()/reset_quest. This is a
+    // PERSISTED property (exportProgress/importProgress carry it), NOT merely "a
+    // progress blob was imported": a save written BEFORE on_start ever ran comes
+    // back hasStarted()==false, so the host can run start() on it. resetState()
+    // (the side-effect-free wipe) clears it; an old save with no stored flag
+    // defaults to false. The host (SkyrimAdapter) uses this as the single source
+    // of truth for "should I run on_start", replacing any session-only bool.
+    bool hasStarted() const { return started_; }
 
     bool terminated() const { return st_.terminated; }
     const QuestState& state() const { return st_; }
@@ -130,6 +149,12 @@ private:
     std::map<std::string, double> timers_;  // key -> due game-hours (this quest)
     bool awaitingChoice_ = false;
     std::vector<PendingChoice> pending_;     // choices for the awaited node
+    // True once on_start has run (set at the end of runStart(), i.e. by start()
+    // and reset_quest). applyInitialState() clears it, so resetState() leaves the
+    // quest un-started; exportProgress() persists it and importProgress() restores
+    // it (defaulting false when absent — old saves / a pre-start save). See
+    // hasStarted().
+    bool started_ = false;
 };
 
 // SPEC §6: system-level globals (§2.4) are persisted SEPARATELY from any single

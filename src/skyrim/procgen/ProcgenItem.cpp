@@ -1,15 +1,27 @@
 #include "skyrim/procgen/ProcgenItem.h"
 
+#include <functional>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <SKSE/API.h>
 #include <SKSE/Interfaces.h>
 
+#include <RE/A/ActorEquipManager.h>
+#include <RE/B/BGSDefaultObjectManager.h>
+#include <RE/B/BGSEquipSlot.h>
+#include <RE/I/InventoryEntryData.h>
+
 #include "skyrim/CoSave.h"  // central co-save dispatcher (one SetUniqueID per plugin)
 #include "util.h"           // FormUtil::Parse, Util::String
+
+// <windows.h> (pulled in via the PCH) defines an object-like macro
+// `GetObject` -> `GetObjectW` (GDI), which mangles the call to CommonLib's
+// BGSDefaultObjectManager::GetObject<T>() in HandSlot() below. Drop it.
+#undef GetObject
 
 namespace skyrim::procgen::item {
 
@@ -317,6 +329,37 @@ RE::FormType FormTypeOf(Kind k) {
     }
 }
 
+// ---- equip-state capture / restore (preserve in-hand state across rebuild) ----
+// SAVE→LOAD problem (header §37, this fix): on load RebuildStaged STRIPS the prior
+// conjured item and re-adds a freshly minted base to inventory UNEQUIPPED, so an
+// item the player had IN HAND came back sitting in the backpack. We fix that by
+// capturing the prior instance's equip state right before we strip it, then
+// re-equipping the rebuilt base into the same hand/slot after we re-add it.
+//
+// What we can robustly detect (verified against CommonLibSSE-NG):
+//   * worn-or-not via InventoryEntryData::IsWorn() (any item kind), and
+//   * which HAND a WEAP was in via Actor::GetEquippedObject(leftHand) pointer
+//     compared against the matched prior base (Actor.h:541). A weapon can be in
+//     the right hand, the left hand, or both (dual-wield of the same base).
+// Armor/misc: we only record "was worn"; re-equipping a freshly-minted ARMO base
+// into the correct biped slot is left to the engine's default slot (EquipObject
+// with a null slot uses the form's own equip slot), which is the safe path.
+struct CapturedEquip {
+    bool found = false;      // a prior instance was located in inventory
+    bool wasWorn = false;    // it was equipped/worn at all
+    bool rightHand = false;  // (weapons) was in the right hand
+    bool leftHand = false;   // (weapons) was in the left hand
+};
+
+// The well-known right/left-hand equip-slot singletons (BGSDefaultObjectManager
+// kRightHandEquip / kLeftHandEquip — BGSDefaultObjectManager.h:32-33). Null-safe.
+RE::BGSEquipSlot* HandSlot(bool leftHand) {
+    auto* dom = RE::BGSDefaultObjectManager::GetSingleton();
+    if (!dom) return nullptr;
+    return dom->GetObject<RE::BGSEquipSlot>(leftHand ? RE::DEFAULT_OBJECTS::kLeftHandEquip
+                                                     : RE::DEFAULT_OBJECTS::kRightHandEquip);
+}
+
 // Strip prior instances of a generated item from the player so each persist_key
 // ends up with EXACTLY ONE instance after a re-Generate / rebuild (header §35-38).
 // We remove (best-effort):
@@ -330,13 +373,43 @@ RE::FormType FormTypeOf(Kind k) {
 // the inventory scan covers the cross-reload case, the pointer covers same-session
 // re-Generate. Counts are capped to what we are about to (re)add so we never go
 // negative on a partially-consumed stack.
+//
+// `outEquip` (optional) is populated with the prior instance's equip state BEFORE
+// it is removed, so the caller can re-equip the rebuilt base into the same hand/
+// slot (preserve in-hand state across save→load — see CapturedEquip above). We
+// capture from BOTH match paths: the same-session live pointer (1) and the
+// cross-reload inventory match (2).
 void StripPriorInstances(RE::PlayerCharacter* player, Kind kind, const std::string& name,
-                         RE::TESBoundObject* live, std::int32_t count) {
+                         RE::TESBoundObject* live, std::int32_t count,
+                         CapturedEquip* outEquip = nullptr) {
     if (!player || count <= 0) return;
     const RE::FormType ft = FormTypeOf(kind);
 
+    // Capture the equip state of a matched prior base before it is stripped. For
+    // weapons we resolve the hand via GetEquippedObject pointer-compare; for any
+    // kind we fall back to the worn flag from its inventory entry.
+    const auto capture = [&](RE::TESBoundObject* obj, const RE::InventoryEntryData* entry) {
+        if (!outEquip || !obj) return;
+        outEquip->found = true;
+        const auto* right = player->GetEquippedObject(false);
+        const auto* left = player->GetEquippedObject(true);
+        if (right == obj) {
+            outEquip->wasWorn = true;
+            outEquip->rightHand = true;
+        }
+        if (left == obj) {
+            outEquip->wasWorn = true;
+            outEquip->leftHand = true;
+        }
+        // Armor / misc (and any weapon the hand-compare missed): trust the worn flag.
+        if (!outEquip->wasWorn && entry && entry->IsWorn()) {
+            outEquip->wasWorn = true;
+        }
+    };
+
     // 1) Same-session: remove the previously minted live base directly.
     if (live && live->GetFormType() == ft) {
+        capture(live, nullptr);  // no entry handy here; hand-compare still works
         player->RemoveItem(live, count, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
     }
 
@@ -354,11 +427,126 @@ void StripPriorInstances(RE::PlayerCharacter* player, Kind kind, const std::stri
         if (!objName || name != objName) continue;
         const std::int32_t have = data.first;
         if (have <= 0) continue;
+        capture(obj, data.second.get());  // data.second = InventoryEntryData (IsWorn)
         const std::int32_t toRemove = have < count ? have : count;
         player->RemoveItem(obj, toRemove, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
         SKSE::log::info("ProcgenItem: stripped {} prior '{}' (dynamic base {:X}) before rebuild",
                         toRemove, objName, obj->GetFormID());
     }
+}
+
+// Run fn() once the player's 3D is loaded, OFF the fragile save-load window.
+// Re-queues on the SKSE task queue until the player becomes ready; a retry cap
+// prevents an infinite loop if the player never becomes ready (e.g. main-menu
+// load that never settles). fn() runs on the main thread and MUST re-resolve any
+// forms by FormID — a TESBoundObject* must NOT be captured across frames.
+//
+// WHY THIS EXISTS (crash fix): calling ActorEquipManager::EquipObject on the
+// player SYNCHRONOUSLY inside the kPostLoadGame rebuild task is a classic SKSE
+// crash — during the save-load window the player's process manager / animation
+// graph / 3D is not settled, so an equip there triggers a deferred crash. Equip
+// must wait until Is3DLoaded() reports the player is ready.
+void RunWhenPlayerReady(std::function<void()> fn, int retriesLeft = 240) {
+    auto* task = SKSE::GetTaskInterface();
+    if (!task) {  // no task interface (very early / shutdown) — best-effort run now
+        fn();
+        return;
+    }
+    task->AddTask([fn = std::move(fn), retriesLeft]() mutable {
+        auto* pc = RE::PlayerCharacter::GetSingleton();
+        if (pc && pc->Is3DLoaded()) {
+            fn();
+            return;
+        }
+        if (retriesLeft > 0) RunWhenPlayerReady(std::move(fn), retriesLeft - 1);
+    });
+}
+
+// Perform the actual re-equip of the rebuilt base into the hand/slot the prior
+// instance occupied. Must run on the main thread once the player's 3D is loaded
+// (see RunWhenPlayerReady — equipping in the unsettled save-load window crashes).
+// `obj` must be a base the player now owns (we always re-add before equipping).
+// EquipObject with a null slot uses the form's own equip slot, which is the safe
+// default for armor/misc; weapons get the explicit right/left hand slot.
+void DoEquip(RE::PlayerCharacter* player, RE::TESBoundObject* obj, Kind kind,
+             const CapturedEquip& cap) {
+    if (!player || !obj || !cap.wasWorn) return;
+    auto* eqMgr = RE::ActorEquipManager::GetSingleton();
+    if (!eqMgr) {
+        SKSE::log::warn("ProcgenItem: no ActorEquipManager; cannot restore equip state");
+        return;
+    }
+
+    if (kind == Kind::kWeapon && (cap.rightHand || cap.leftHand)) {
+        // A weapon can be dual-wielded (same base in both hands). Equip each hand
+        // that was occupied, with that hand's explicit equip slot. count=1 per hand.
+        if (cap.rightHand) {
+            eqMgr->EquipObject(player, obj, nullptr, 1, HandSlot(false));
+        }
+        if (cap.leftHand) {
+            eqMgr->EquipObject(player, obj, nullptr, 1, HandSlot(true));
+        }
+        SKSE::log::info(
+            "ProcgenItem: prior item was equipped ({}{}); re-equipped rebuilt item '{}'",
+            cap.rightHand ? "rightHand" : "", cap.leftHand ? (cap.rightHand ? "+leftHand" : "leftHand") : "",
+            obj->GetName());
+        return;
+    }
+
+    // Armor / misc, or a worn weapon whose hand we could not resolve: let the
+    // engine pick the form's own equip slot (null slot). For armor this lands it
+    // in its biped slot; for an unresolved weapon it defaults to the right hand.
+    eqMgr->EquipObject(player, obj, nullptr, 1, nullptr);
+    SKSE::log::info("ProcgenItem: prior item was worn (default slot); re-equipped rebuilt item '{}'",
+                    obj->GetName());
+}
+
+// Re-equip a freshly minted base into the hand/slot the prior instance occupied,
+// DEFERRED until the player's 3D is loaded. The minted base's dynamic 0xFF FormID
+// is stable for the session, and the item is already in the player's inventory by
+// the time the deferred task fires, so we capture only the FormID + Kind +
+// CapturedEquip BY VALUE and re-resolve the base via TESForm::LookupByID inside
+// the task — we never carry a raw TESBoundObject* across frames.
+//
+// Both call sites (RebuildStaged on load, Generate on same-session re-Generate)
+// route through here for uniformity. The load path MUST be deferred (equipping in
+// the unsettled kPostLoadGame window crashes); deferring the gameplay-time
+// Generate path too is harmless (the readiness gate passes on the next tick).
+void RestoreEquip(RE::PlayerCharacter* player, RE::TESBoundObject* obj, Kind kind,
+                  const CapturedEquip& cap) {
+    if (!player || !obj || !cap.wasWorn) return;
+    const RE::FormID baseID = obj->GetFormID();  // stable for the session
+    RunWhenPlayerReady([baseID, kind, cap]() {
+        auto* pc = RE::PlayerCharacter::GetSingleton();
+        if (!pc) return;
+        // Re-resolve the base by FormID (never a stale pointer). The item is in the
+        // player's inventory by now, so the form is alive. As<TESBoundObject> is NOT
+        // a valid target (TESForm::As is a form-TYPE switch over CONCRETE classes —
+        // FormTraits.h:146 — and TESBoundObject is an abstract base), so cast via the
+        // concrete per-Kind class (each derives from TESBoundObject) like the mint path.
+        auto* base = RE::TESForm::LookupByID(baseID);
+        RE::TESBoundObject* bound = nullptr;
+        if (base) {
+            switch (kind) {
+                case Kind::kWeapon:
+                    bound = static_cast<RE::TESBoundObject*>(base->As<RE::TESObjectWEAP>());
+                    break;
+                case Kind::kArmor:
+                    bound = static_cast<RE::TESBoundObject*>(base->As<RE::TESObjectARMO>());
+                    break;
+                case Kind::kMisc:
+                    bound = static_cast<RE::TESBoundObject*>(base->As<RE::TESObjectMISC>());
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (!bound) {
+            SKSE::log::warn("ProcgenItem: deferred re-equip could not resolve base {:X}", baseID);
+            return;
+        }
+        DoEquip(pc, bound, kind, cap);
+    });
 }
 
 // ---- co-save blob (de)serialization helpers (mirrors ProcgenNpc) ----
@@ -420,18 +608,22 @@ std::string Generate(const nlohmann::json& recipe) {
 
     // If this key was already generated this session, strip the prior live base
     // first so a re-Generate of the same key leaves exactly one instance (no
-    // accumulation — header §35-38).
+    // accumulation — header §35-38). Capture its equip state so a re-Generate of
+    // an in-hand item re-equips the replacement (same fix as the save→load path).
+    CapturedEquip cap;
     {
         std::scoped_lock lock(g_mutex);
         if (auto it = Registry().find(key); it != Registry().end()) {
             StripPriorInstances(player, it->second.kind, recipe.value("name", std::string{}),
-                                it->second.live, it->second.count);
+                                it->second.live, it->second.count, &cap);
         }
     }
 
     // Add the minted base to the player's inventory (NpcGenerator / alchemy
     // convention — TESObjectREFR::AddObjectToContainer, vfunc 5A).
     player->AddObjectToContainer(obj, nullptr, count, nullptr);
+    // Restore the prior instance's hand/slot if it was equipped (no-op otherwise).
+    RestoreEquip(player, obj, kind, cap);
 
     TrackedItem t;
     t.key = key;
@@ -585,9 +777,16 @@ void RebuildStaged() {
         // Strip the prior restored instance (the registry was cleared, so there is
         // no live pointer — the inventory scan by recipe name + dynamic form type
         // catches the codec-restored base) before re-adding, so it does not
-        // accumulate by `count` on every reload (header §35-38, H1).
-        StripPriorInstances(player, s.kind, recipe.value("name", std::string{}), nullptr, count);
+        // accumulate by `count` on every reload (header §35-38, H1). Capture its
+        // equip state first so an in-hand item is re-equipped after re-add (the
+        // save→load lost-equip fix) rather than dropped into the backpack.
+        CapturedEquip cap;
+        StripPriorInstances(player, s.kind, recipe.value("name", std::string{}), nullptr, count, &cap);
         player->AddObjectToContainer(obj, nullptr, count, nullptr);
+        // Re-equip into the same hand/slot the prior instance occupied. If the prior
+        // was a nameless blank shell we could not match (cap.found stays false), or it
+        // simply was not worn, this is a no-op and the item stays in inventory.
+        RestoreEquip(player, obj, s.kind, cap);
 
         TrackedItem t;
         t.key = s.key;

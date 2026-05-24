@@ -42,6 +42,14 @@ struct TrackedNpc {
     RE::NiPoint3 lastPos{};           // last known world position (for rebuild)
     RE::FormID cellFormID = 0;        // parent cell plugin FormID (0 = exterior/unknown)
     RE::FormID worldFormID = 0;       // worldspace plugin FormID (0 = interior)
+    // The placed actor ref's CURRENT (dynamic 0xFF) FormID at save time. Unlike a
+    // minted BASE form, a runtime-placed REF that the player has seen gets a
+    // changeform in the .ess and IS restored by the vanilla codec on load — and
+    // SKSE's ResolveFormID remaps that dynamic ref id to the one the engine
+    // re-created it under (research §5 "對「持久身分」" caveat). We persist it so the
+    // load path can find + delete that engine-restored actor before re-minting,
+    // preventing the duplicate (one conjured NPC -> two after load). 0 = no live ref.
+    RE::FormID priorRefFormID = 0;
 };
 
 // Registry guarded by a mutex: OnSave/OnLoad/OnRevert run on the serialization
@@ -61,6 +69,7 @@ struct StagedRecipe {
     RE::NiPoint3 lastPos;
     RE::FormID cellFormID;
     RE::FormID worldFormID;
+    RE::FormID priorRefFormID = 0;  // prior placed ref id, already remapped by ResolveFormID
 };
 std::vector<StagedRecipe> g_staged;
 
@@ -251,11 +260,29 @@ std::string Generate(const nlohmann::json& recipe, RE::TESObjectREFR* anchor) {
         key = "gen_npc_" + std::to_string(AutoKeyCounter()++);
     }
 
+    // Same-session re-cast of an existing key: tear down the prior live ref before
+    // we overwrite the registry entry, so re-casting the same key leaves exactly one
+    // conjured NPC instead of leaking the previous one (mirrors ProcgenItem's
+    // strip-on-re-Generate; the live handle is valid this session so no ResolveFormID
+    // is needed here — the cross-reload case is handled in RebuildStaged).
+    {
+        std::scoped_lock lock(g_mutex);
+        if (auto it = Registry().find(key); it != Registry().end()) {
+            if (auto refr = it->second.ref.get(); refr && refr.get() != actor) {
+                refr->Disable();
+                refr->SetDelete(true);
+                SKSE::log::info("ProcgenNpc: stripped 1 prior conjured NPC (ref {:X}) on re-cast of '{}'",
+                                refr->GetFormID(), key);
+            }
+        }
+    }
+
     TrackedNpc t;
     t.key = key;
     t.templatePluginFormID = templatePluginFormID;
     t.recipeJson = recipe.dump();
     t.ref = RE::ObjectRefHandle(actor);  // Actor* -> TESObjectREFR handle (BSPointerHandle)
+    t.priorRefFormID = actor->GetFormID();  // dynamic ref id; remapped on load (see struct)
     CaptureLocation(t, actor);
 
     {
@@ -283,10 +310,13 @@ void OnSave(SKSE::SerializationInterface* intfc) {
     intfc->WriteRecordData(count);
 
     for (auto& [key, t] : reg) {
-        // Refresh the saved position from the live ref if it's still valid, so a
-        // reload restores it where the player last left it (research §5 step 2).
+        // Refresh the saved position + the live ref's CURRENT FormID if the ref is
+        // still valid, so a reload restores it where the player last left it
+        // (research §5 step 2) and so the prior-ref id we persist matches the one
+        // the vanilla codec is about to changeform into this same .ess.
         if (auto refr = t.ref.get()) {
             t.lastPos = refr->GetPosition();
+            t.priorRefFormID = refr->GetFormID();
         }
         WriteString(intfc, key);
         // Store the EXISTING template plugin FormID — ResolveFormID remaps it on
@@ -295,6 +325,11 @@ void OnSave(SKSE::SerializationInterface* intfc) {
         intfc->WriteRecordData(t.cellFormID);
         intfc->WriteRecordData(t.worldFormID);
         intfc->WriteRecordData(t.lastPos);
+        // The prior placed ref's dynamic id. This IS a 0xFF id, but unlike a minted
+        // base it is a REF the engine changeforms into the .ess, and ResolveFormID
+        // remaps it on load to the engine-restored actor (see TrackedNpc). We store
+        // it so the load path can delete that restored actor before re-minting.
+        intfc->WriteRecordData(t.priorRefFormID);
         WriteString(intfc, t.recipeJson);
     }
     SKSE::log::info("ProcgenNpc: OnSave wrote {} generated-NPC recipes", count);
@@ -326,6 +361,8 @@ void OnLoad(SKSE::SerializationInterface* intfc, std::uint32_t version, std::uin
         intfc->ReadRecordData(s.cellFormID);
         intfc->ReadRecordData(s.worldFormID);
         intfc->ReadRecordData(s.lastPos);
+        RE::FormID storedPriorRef = 0;
+        intfc->ReadRecordData(storedPriorRef);
         if (!ReadString(intfc, s.recipeJson)) break;
 
         // Remap the EXISTING plugin FormIDs to this load order (research §5
@@ -344,6 +381,20 @@ void OnLoad(SKSE::SerializationInterface* intfc, std::uint32_t version, std::uin
         if (s.worldFormID) {
             RE::FormID rw = s.worldFormID;
             if (intfc->ResolveFormID(s.worldFormID, rw)) s.worldFormID = rw;
+        }
+        // Remap the prior placed-ref id to the actor the engine restored from this
+        // .ess's changeform. If the remap fails (ref not restored / no changeform)
+        // we leave priorRefFormID at 0 so RebuildStaged skips the strip safely
+        // rather than deleting an unrelated form (research §5 step 3).
+        if (storedPriorRef) {
+            RE::FormID rr = storedPriorRef;
+            if (intfc->ResolveFormID(storedPriorRef, rr)) {
+                s.priorRefFormID = rr;
+            } else {
+                SKSE::log::warn("ProcgenNpc: OnLoad ResolveFormID(priorRef {:X}) failed; "
+                                "won't strip (may leave a stale conjured NPC)",
+                                storedPriorRef);
+            }
         }
         g_staged.push_back(std::move(s));
     }
@@ -393,6 +444,7 @@ void RebuildStaged() {
     }
 
     std::size_t rebuilt = 0;
+    std::size_t readopted = 0;
     for (auto& s : staged) {
         nlohmann::json recipe;
         try {
@@ -400,6 +452,40 @@ void RebuildStaged() {
         } catch (const std::exception& e) {
             SKSE::log::error("ProcgenNpc: RebuildStaged bad recipe for '{}': {}", s.key, e.what());
             continue;
+        }
+
+        // DEDUP (save/load-duplicate fix, take 2): the vanilla codec already restored
+        // the previously-conjured actor from this .ess changeform. The earlier fix
+        // (delete the restored actor + mint a fresh one) CRASHED — Disable()/SetDelete()
+        // on a codec-restored actor during/just after kPostLoadGame is fatal even when
+        // deferred a tick (an in-session quick-load has the player already 3D-loaded, so
+        // the deferred teardown still lands in the fragile window). So we no longer
+        // delete anything: if the prior ref is still a live dynamic actor, we RE-ADOPT it
+        // (re-track, no mint) — exactly one NPC, zero teardown, no crash. We only mint a
+        // fresh actor when the prior ref is GONE (e.g. a cross-session load where the
+        // dynamic base didn't survive — that case has no live actor to duplicate).
+        if (s.priorRefFormID != 0) {
+            auto* priorForm = RE::TESForm::LookupByID(s.priorRefFormID);
+            auto* priorRef = priorForm ? priorForm->As<RE::TESObjectREFR>() : nullptr;
+            if (priorRef && priorRef->GetFormID() >= 0xFF000000 && priorRef->As<RE::Actor>()) {
+                TrackedNpc t;
+                t.key = s.key;
+                t.templatePluginFormID = s.templatePluginFormID;
+                t.recipeJson = s.recipeJson;
+                t.ref = RE::ObjectRefHandle(priorRef);
+                t.priorRefFormID = priorRef->GetFormID();
+                t.cellFormID = s.cellFormID;
+                t.worldFormID = s.worldFormID;
+                t.lastPos = s.lastPos;
+                {
+                    std::scoped_lock lock(g_mutex);
+                    Registry()[s.key] = std::move(t);
+                }
+                ++readopted;
+                SKSE::log::info("ProcgenNpc: re-adopted restored conjured NPC '{}' -> ref {:X} "
+                                "(no mint, no duplicate)", s.key, priorRef->GetFormID());
+                continue;  // do NOT mint a second one
+            }
         }
 
         RE::FormID tplFormID = s.templatePluginFormID;
@@ -430,6 +516,9 @@ void RebuildStaged() {
         t.templatePluginFormID = tplFormID;
         t.recipeJson = s.recipeJson;
         t.ref = RE::ObjectRefHandle(actor);  // Actor* -> TESObjectREFR handle
+        // Track THIS rebuild's fresh ref id so the NEXT save persists it and the
+        // following load strips it — keeps repeated save/load cycles at one NPC.
+        t.priorRefFormID = actor->GetFormID();
         t.cellFormID = s.cellFormID;
         t.worldFormID = s.worldFormID;
         t.lastPos = s.lastPos;
@@ -441,8 +530,9 @@ void RebuildStaged() {
         SKSE::log::info("ProcgenNpc: rebuilt '{}' -> ref {:X} at ({:.0f},{:.0f},{:.0f})", s.key,
                         actor->GetFormID(), s.lastPos.x, s.lastPos.y, s.lastPos.z);
     }
-    SKSE::log::info("ProcgenNpc: RebuildStaged rebuilt {}/{} generated NPCs", rebuilt,
-                    staged.size());
+    SKSE::log::info(
+        "ProcgenNpc: RebuildStaged {} re-adopted + {} minted of {} staged generated NPC(s)",
+        readopted, rebuilt, staged.size());
 }
 
 std::size_t TrackedCount() {

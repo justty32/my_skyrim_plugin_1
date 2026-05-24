@@ -101,19 +101,32 @@ namespace NpcGenerator
     void CustomizeNpc(RE::Actor* a_target)
     {
         if (!a_target) return;
+        // NOTE: We deliberately do NOT open RaceSexMenu here. In Skyrim the
+        // RaceSexMenu can only ever edit the PLAYER character, so invoking it
+        // would silently customize the player instead of the targeted NPC.
+        // Instead we mutate the target's own actor base (weight + height),
+        // which is directly applicable to this NPC, then refresh its 3D.
         auto* npcBase = a_target->GetActorBase();
-        if (npcBase) {
-            float currentWeight = npcBase->weight;
-            float newWeight = (currentWeight >= 100.0f) ? 0.0f : currentWeight + 20.0f;
-            npcBase->weight = newWeight;
-            a_target->DoReset3D(true);
-            SKSE::log::info("CustomizeNpc: Target weight set to {}", newWeight);
+        if (!npcBase) {
+            SKSE::log::warn("CustomizeNpc: Target {:X} has no actor base", a_target->GetFormID());
+            return;
         }
-        auto* uiQueue = RE::UIMessageQueue::GetSingleton();
-        if (uiQueue) {
-            uiQueue->AddMessage(RE::RaceSexMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kShow, nullptr);
-            SKSE::log::info("CustomizeNpc: RaceSexMenu requested");
-        }
+
+        float oldWeight = npcBase->weight;
+        float newWeight = (oldWeight >= 100.0f) ? 0.0f : oldWeight + 20.0f;
+        npcBase->weight = newWeight;
+
+        // Height is a clearly-visible base attribute (default 1.0). Cycle it
+        // so the change is obvious in-game on the targeted NPC.
+        float oldHeight = npcBase->height;
+        float newHeight = (oldHeight >= 1.2f) ? 0.8f : oldHeight + 0.1f;
+        npcBase->height = newHeight;
+
+        // Refresh the targeted actor's 3D so the change shows immediately.
+        a_target->DoReset3D(true);
+
+        SKSE::log::info("CustomizeNpc: Customized NPC {:X} (weight {} -> {}, height {} -> {})",
+            a_target->GetFormID(), oldWeight, newWeight, oldHeight, newHeight);
     }
 
     void RaiseTerrain(RE::TESObjectREFR* a_anchor)
@@ -145,9 +158,13 @@ namespace NpcGenerator
         auto* target = GetCrosshairTarget();
         if (target) {
             auto pos = target->GetPosition();
-            pos.z -= 50.0f;
+            pos.z -= 50.0f; // Mirror of Raise's +50 magnitude for consistency.
             target->SetPosition(pos);
             SKSE::log::info("Lower: Moved object {:X} down to {}", target->GetFormID(), pos.z);
+        } else {
+            // Mirror RaiseTerrain's no-target feedback so the player understands
+            // why nothing moved (previously this path was silent / "did nothing").
+            SKSE::log::warn("Lower: No crosshair target to move down (aim directly at a movable object)");
         }
     }
 

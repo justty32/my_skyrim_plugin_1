@@ -44,6 +44,23 @@
 // result: exactly one instance per persist_key after rebuild. We NEVER persist the
 // 0xFF dynamic FormID (research §5 step 2 / §3.1).
 //
+// EQUIP-STATE PRESERVATION (save→load in-hand fix): because the rebuild strips the
+// prior instance and re-adds a fresh base to inventory, an item the player had IN
+// HAND would otherwise come back unequipped (sitting in the backpack). So, right
+// before stripping the matched prior base, StripPriorInstances captures its equip
+// state (CapturedEquip): worn-or-not via InventoryEntryData::IsWorn(), and — for
+// weapons — which hand via Actor::GetEquippedObject(leftHand) pointer-compare
+// (right / left / both for a dual-wielded same-base weapon). After the rebuilt base
+// is re-added, RestoreEquip re-equips it via ActorEquipManager::EquipObject into the
+// captured hand (explicit BGSDefaultObjectManager kRightHandEquip/kLeftHandEquip
+// slot) or — for armor/misc and unresolved-hand weapons — the form's own default
+// equip slot (null slot). BEST-EFFORT CAVEAT: this relies on the vanilla codec
+// restoring the prior dynamic base's equip linkage on load; if a reloaded instance
+// comes back un-worn (the §3.2 "blank shell" case) the capture finds nothing to
+// restore and the item simply stays in inventory — same documented limitation as
+// the nameless-shell strip. Re-equip never destabilizes the rebuild: it is a no-op
+// whenever no worn prior instance was matched.
+//
 // THREADING: Generate() runs on the main thread (called from the SkyrimActions
 // adapter path — already marshalled — and from the demo spell's TESSpellCastEvent
 // sink — already main-thread). OnSave/OnLoad/OnRevert run on SKSE's serialization

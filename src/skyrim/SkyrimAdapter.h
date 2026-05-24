@@ -48,8 +48,18 @@ public:
     // Run the engine's on_start (intro message + initial schedule) for a brand
     // new game. Call from kNewGame; marshalled onto the main thread. On a save
     // load this is skipped — RebuildStaged() restores saved progress instead, so
-    // the intro message does not re-fire spuriously (see M2).
+    // the intro message does not re-fire spuriously (see M2). Gated on
+    // engine_->hasStarted() (the persisted lifecycle flag) so on_start runs exactly
+    // once: the kNewGame initial load does not fire kPostLoadGame, but even if both
+    // paths ran, hasStarted() suppresses the second start().
     void StartNewQuest();
+
+    // DEBUG/TEST ONLY (wired to F7): start the quest if it has not started yet
+    // this session, then force-fire every scheduled timer immediately via
+    // QuestEngine::debugFireAllTimers(). Lets a tester drive the demo's
+    // after_hours:48 summon without waiting 48 in-game hours. All on the main
+    // thread (a fired timer may show a message / open a dialogue).
+    void DebugForceFireTimers();
 
     // Resume a dialogue after the player picks (from the MessageBox callback).
     void SubmitChoice(int idx);
@@ -118,6 +128,13 @@ private:
     std::unique_ptr<qe::ILogger> logger_;
 
     std::unique_ptr<qe::QuestEngine> engine_;
+
+    // NOTE: the single source of truth for "has on_start run" is now the engine's
+    // PERSISTED qe::QuestEngine::hasStarted() (carried in the 'QEST' progress blob),
+    // not an adapter-side session bool. StartNewQuest/RebuildStaged/DebugForceFireTimers
+    // all gate on engine_->hasStarted(), so a save written before on_start ran (incl.
+    // an old blob lacking the flag, which defaults to false) correctly starts on load,
+    // while a post-start save is never re-run. There is intentionally no started_ here.
 };
 
 }  // namespace skyrim

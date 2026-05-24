@@ -79,8 +79,10 @@ void SkyrimEvents::uninstall() {
 // spell_cast_on / world triggers are wired.
 class SkyrimEvents::DebugInputSink : public RE::BSTEventSink<RE::InputEvent*> {
 public:
-    DebugInputSink(SkyrimEvents* owner, std::function<void()> onTimers)
-        : owner_(owner), onTimers_(std::move(onTimers)) {}
+    DebugInputSink(SkyrimEvents* owner, std::function<void()> onTimers,
+                   std::function<void()> onForceFire)
+        : owner_(owner), onTimers_(std::move(onTimers)),
+          onForceFire_(std::move(onForceFire)) {}
 
     RE::BSEventNotifyControl ProcessEvent(
         RE::InputEvent* const* a_events,
@@ -90,7 +92,11 @@ public:
             auto* btn = e->AsButtonEvent();
             if (!btn || !btn->IsDown()) continue;
             switch (btn->GetIDCode()) {
-                case 0x43:  // F9
+                case 0x41:  // F7 — force-fire all scheduled timers now (test the
+                            // 48h summon without sleeping; starts the quest first)
+                    if (onForceFire_) onForceFire_();
+                    break;
+                case 0x42:  // F8 — poll DUE timers (F9 conflicts with Quick Load)
                     if (onTimers_) onTimers_();
                     break;
                 case 0x44: {  // F10
@@ -109,18 +115,21 @@ public:
 private:
     SkyrimEvents* owner_;
     std::function<void()> onTimers_;
+    std::function<void()> onForceFire_;
 };
 
-void SkyrimEvents::installDebugHotkeys(std::function<void()> onTimers) {
+void SkyrimEvents::installDebugHotkeys(std::function<void()> onTimers,
+                                       std::function<void()> onForceFire) {
     auto* idm = RE::BSInputDeviceManager::GetSingleton();
     if (!idm) {
         SKSE::log::error("SkyrimEvents: no BSInputDeviceManager for debug hotkeys");
         return;
     }
     if (!debugSink_) {
-        debugSink_ = new DebugInputSink(this, std::move(onTimers));
+        debugSink_ = new DebugInputSink(this, std::move(onTimers), std::move(onForceFire));
         idm->AddEventSink(debugSink_);
-        SKSE::log::info("SkyrimEvents: debug hotkeys installed (F9=timers, F10=spell_cast_on)");
+        SKSE::log::info("SkyrimEvents: debug hotkeys installed "
+                        "(F7=force-fire timers, F8=poll timers, F10=spell_cast_on)");
     }
 }
 

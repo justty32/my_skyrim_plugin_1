@@ -137,9 +137,12 @@ bool SkyrimAdapter::BuildEngine(nlohmann::json doc) {
         },
         entities_);
 
-    // Temporary in-game testability hooks (DEFERRED removal): F10 fires
-    // spell_cast_on{victim}, F9 polls timers (after the player waits/sleeps).
-    events_.installDebugHotkeys([]() { SkyrimAdapter::GetSingleton()->CheckTimers(); });
+    // Temporary in-game testability hooks (DEFERRED removal): F7 force-fires all
+    // scheduled timers (starting the quest first if needed), F8 polls DUE timers
+    // (after the player waits/sleeps), F10 fires spell_cast_on{victim}.
+    events_.installDebugHotkeys(
+        []() { SkyrimAdapter::GetSingleton()->CheckTimers(); },
+        []() { SkyrimAdapter::GetSingleton()->DebugForceFireTimers(); });
 
     return true;
 }
@@ -171,12 +174,45 @@ bool SkyrimAdapter::LoadDemoQuest() {
 void SkyrimAdapter::StartNewQuest() {
     // New game: run on_start now (intro message + initial schedule). Marshalled
     // onto the main thread because on_start may show a message / open a dialogue.
+    // engine_->hasStarted() is the single source of truth (a brand-new game fires
+    // kNewGame but not kPostLoadGame, so RebuildStaged won't also start it; even if
+    // both paths ran, this guard makes on_start run exactly once).
     OnMainThread([]() {
         auto* self = SkyrimAdapter::GetSingleton();
-        if (self->engine_) {
+        if (self->engine_ && !self->engine_->hasStarted()) {
             self->engine_->start();
             SKSE::log::info("SkyrimAdapter: engine started (new game)");
         }
+    });
+}
+
+void SkyrimAdapter::DebugForceFireTimers() {
+    // Debug aid (F7): start the quest if on_start has not actually run yet (so a
+    // tester on a save whose quest never truly started — incl. an old/pre-start
+    // 'QEST' blob — doesn't have to wait for the auto-start path), then force-fire
+    // every pending timer immediately. Driving off engine_->hasStarted() (not a
+    // session bool) is the whole fix: a restored pre-start blob reports
+    // hasStarted()==false, so start() runs here, schedules wr_summon, and the
+    // following debugFireAllTimers() fires it. All on the main thread because
+    // start()/a fired timer may show a message or open a dialogue.
+    OnMainThread([]() {
+        auto* self = SkyrimAdapter::GetSingleton();
+        if (!self->engine_) {
+            SKSE::log::warn("SkyrimAdapter: DebugForceFireTimers but no engine built");
+            return;
+        }
+        // F7 is a pure debug/test key: UNCONDITIONALLY (re)start the quest so
+        // on_start always re-runs and (re)schedules its timers, then force-fire them.
+        // This is robust regardless of the loaded save's persisted lifecycle state
+        // (e.g. a save that came back started==true but with an EMPTY timer set —
+        // exactly the state that made the old hasStarted()-gated version fire 0).
+        // start() = applyInitialState() + runStart(), so it resets the demo and
+        // re-arms wr_summon every press; that re-test-from-scratch behaviour is what
+        // a debug hotkey wants.
+        self->engine_->start();
+        SKSE::log::info("SkyrimAdapter: engine (re)started (F7 debug)");
+        self->engine_->debugFireAllTimers();
+        SKSE::log::info("SkyrimAdapter: F7 debug force-fired all scheduled timers");
     });
 }
 
@@ -278,6 +314,9 @@ void SkyrimAdapter::OnRevert(SKSE::SerializationInterface*) {
     }
     auto* self = SkyrimAdapter::GetSingleton();
     self->globals_.vars.clear();
+    // resetState() -> applyInitialState() clears the engine's started_ flag, so the
+    // next load (no blob -> start(); a blob -> importProgress restores started_)
+    // decides afresh whether on_start needs to run. No adapter-side bool to reset.
     if (self->engine_) self->engine_->resetState();
     SKSE::log::info("SkyrimAdapter: OnRevert reset engine + globals (no side effects)");
 }
@@ -293,9 +332,7 @@ bool SkyrimAdapter::Register() {
 }
 
 void SkyrimAdapter::RebuildStaged() {
-    // Drain the staged blob under the lock, then apply on the main thread. If
-    // nothing was staged (brand new game, or no 'QEST' record) this is a no-op:
-    // a new game runs on_start via StartNewQuest() at kNewGame instead.
+    // Drain the staged blob under the lock, then apply on the main thread.
     std::string blobText;
     bool had = false;
     {
@@ -306,7 +343,28 @@ void SkyrimAdapter::RebuildStaged() {
             g_hasStaged = false;
         }
     }
-    if (!had) return;
+
+    if (!had) {
+        // No 'QEST' progress in this save: either a vanilla save, or any save made
+        // before the quest was ever started (e.g. a fresh install onto an old
+        // save). The CORRECT mod behavior is to ACTIVATE the quest now — otherwise
+        // it stays dormant forever (no timer scheduled -> F8 finds nothing; the
+        // lift_curse objective stays inactive -> F10's spell_cast_on never matches).
+        // Run on_start on the main thread, mirroring StartNewQuest(), but ONLY if
+        // on_start has not actually run yet (engine_->hasStarted()). A brand-new
+        // game fires kNewGame -> StartNewQuest() (which runs start()) and does NOT
+        // fire kPostLoadGame on that initial load, so this path won't double-run
+        // on_start; hasStarted() also covers an in-session save reload.
+        OnMainThread([]() {
+            auto* self = SkyrimAdapter::GetSingleton();
+            if (self->engine_ && !self->engine_->hasStarted()) {
+                self->engine_->start();
+                SKSE::log::info("SkyrimAdapter: RebuildStaged found no 'QEST' progress -> "
+                                "auto-started quest (fresh install on existing save)");
+            }
+        });
+        return;
+    }
 
     OnMainThread([blobText = std::move(blobText)]() {
         auto* self = SkyrimAdapter::GetSingleton();
@@ -323,6 +381,17 @@ void SkyrimAdapter::RebuildStaged() {
         qe::restoreGlobals(self->globals_, blob.value("globals", nlohmann::json::object()));
         if (self->engine_) {
             self->engine_->importProgress(blob.value("progress", nlohmann::json::object()));
+            // importProgress restored the engine's persisted started_ flag. If the
+            // blob was written BEFORE on_start ever ran (an old save with no
+            // 'started' field defaults to false, or a pre-start save), hasStarted()
+            // is now false and the quest never truly began — so run start() to fire
+            // on_start (schedule wr_summon etc.). A save written AFTER on_start ran
+            // reports hasStarted()==true and is left untouched (no re-run).
+            if (!self->engine_->hasStarted()) {
+                self->engine_->start();
+                SKSE::log::info("SkyrimAdapter: RebuildStaged imported a pre-start 'QEST' "
+                                "blob -> ran on_start (quest had never truly started)");
+            }
             SKSE::log::info("SkyrimAdapter: RebuildStaged applied 'QEST' progress + globals");
         } else {
             SKSE::log::warn("SkyrimAdapter: RebuildStaged has no engine to apply 'QEST' to");

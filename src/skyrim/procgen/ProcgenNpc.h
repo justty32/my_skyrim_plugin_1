@@ -58,7 +58,11 @@ namespace skyrim::procgen::npc {
 // limit). We no longer call SetUniqueID/SetSaveCallback ourselves; we register a
 // handler with the central dispatcher (research §5 / SKSE/Interfaces.h).
 inline constexpr std::uint32_t kRecordType = 'GNPC';
-inline constexpr std::uint32_t kRecordVersion = 1;
+// v2 adds the prior placed-ref FormID per record (so the load path can delete the
+// engine-restored conjured actor before re-minting — fixes the save/load duplicate).
+// A v1 save lacks that field; OnLoad ignores mismatched versions (the stale conjured
+// actor in such a save can't be auto-stripped, but new saves are written as v2).
+inline constexpr std::uint32_t kRecordVersion = 2;
 
 // Generate one NPC from a recipe and place a ref near the anchor (research §1).
 //

@@ -123,6 +123,7 @@ void QuestEngine::applyInitialState() {
     timers_.clear();  // reset clears this quest's pending timers
     awaitingChoice_ = false;  // and any dialogue in progress
     pending_.clear();
+    started_ = false;  // un-started until runStart() runs on_start (set there)
     if (const nlohmann::json* vars = jsonAt(doc_, "vars"); vars && vars->is_object()) {
         for (auto& [k, v] : vars->items()) st_.vars[k] = jsonToValue(v);
     }
@@ -135,6 +136,10 @@ void QuestEngine::applyInitialState() {
 void QuestEngine::runStart() {
     if (doc_.contains("on_start")) runActions(doc_["on_start"]);
     fireTriggers("quest_start", nlohmann::json::object());
+    // on_start has now actually executed. Set the persisted started_ flag LAST so
+    // both start() and reset_quest (applyInitialState()+runStart()) end up started.
+    // resetState() calls applyInitialState() WITHOUT runStart(), so it stays false.
+    started_ = true;
 }
 
 void QuestEngine::start() {
@@ -200,6 +205,29 @@ void QuestEngine::checkTimers() {
     for (auto& [k, t] : timers_)
         if (t <= now) due.push_back(k);
     for (auto& k : due) {
+        timers_.erase(k);
+        nlohmann::json filter;
+        filter["key"] = k;
+        fireTriggers("timer", filter);
+        if (st_.terminated) break;
+    }
+}
+
+void QuestEngine::debugFireAllTimers() {
+    if (st_.terminated) return;  // SPEC §3.1.3: terminated quest stops responding
+    // Snapshot the keys first: fireTriggers("timer", ...) may re-schedule (a "do"
+    // could schedule a new timer) or reset_quest (which clears timers_), so we
+    // must not iterate timers_ while mutating it. Same per-key logic as
+    // checkTimers(), only WITHOUT the due-time gate (every pending timer fires).
+    std::vector<std::string> keys;
+    keys.reserve(timers_.size());
+    for (auto& [k, t] : timers_) keys.push_back(k);
+    log(questId() + ": debugFireAllTimers force-firing " +
+        std::to_string(keys.size()) + " timer(s)");
+    for (auto& k : keys) {
+        // A timer fired earlier in this loop may already have erased/replaced
+        // this key (e.g. a chained reset_quest); only fire keys still pending.
+        if (timers_.find(k) == timers_.end()) continue;
         timers_.erase(k);
         nlohmann::json filter;
         filter["key"] = k;
@@ -571,6 +599,11 @@ nlohmann::json QuestEngine::exportProgress() const {
 
     blob["terminated"] = st_.terminated;
 
+    // Whether on_start has actually run (§6: a save made BEFORE on_start ran must
+    // come back un-started so the host runs start(); a save made after must not
+    // re-run on_start). Distinct from "a blob exists": this is the real lifecycle.
+    blob["started"] = started_;
+
     // Pending timers: key -> ABSOLUTE due game-hours (§6/§8 "以絕對遊戲時間存").
     nlohmann::json timers = nlohmann::json::object();
     for (const auto& [k, due] : timers_) timers[k] = due;
@@ -611,6 +644,14 @@ bool QuestEngine::importProgress(const nlohmann::json& blob) {
 
     if (const nlohmann::json* t = jsonAt(blob, "terminated"); t && t->is_boolean())
         st_.terminated = t->get<bool>();
+
+    // Restore the persisted lifecycle flag. applyInitialState() above already set
+    // started_ = false, so a missing/non-bool field (an OLD save written before
+    // this field existed, or a save made before on_start ran) correctly stays
+    // false — the host then runs start() on it. Only an after-on_start save flips
+    // it true and thereby suppresses a re-run of on_start.
+    if (const nlohmann::json* s = jsonAt(blob, "started"); s && s->is_boolean())
+        started_ = s->get<bool>();
 
     if (const nlohmann::json* timers = jsonAt(blob, "timers"); timers && timers->is_object()) {
         for (auto& [k, due] : timers->items())

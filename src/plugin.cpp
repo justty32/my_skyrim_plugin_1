@@ -19,6 +19,9 @@
 // >>> cosave: central SerializationInterface dispatcher (ONE SetUniqueID per plugin).
 #include "skyrim/CoSave.h"
 // <<< cosave
+// >>> native-dialogue-spike: Debug probe — inject a custom topic into the native NPC dialogue.
+#include "skyrim/dialogue/NativeDialogueSpike.h"
+// <<< native-dialogue-spike
 
 void OnDataLoaded()
 {
@@ -36,6 +39,12 @@ void OnDataLoaded()
     // >>> procgen: create the dynamic Generate Room / Conjure Keep / Rearrange spells.
     skyrim::procgen::InitializeSpells();
     // <<< procgen
+    // native-dialogue-spike: DISABLED 2026-05-24. The runtime form-edit probe proved
+    // a custom topic renders natively, but the engine re-asserts the form text during
+    // the NPC say-flow and mutating shared vanilla forms globally is dangerous. We
+    // pivoted to build-time ESP generation (Mutagen) — see progress.md. The spike
+    // files remain (inert, not installed) as reference for the SAFE read-only
+    // selection-detection we will reuse to wire native dialogue back into the engine.
 }
 
 void MessageHandler(SKSE::MessagingInterface::Message* a_msg)

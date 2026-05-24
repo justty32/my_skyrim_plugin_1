@@ -109,9 +109,16 @@ bool SkyrimAdapter::BuildEngine(nlohmann::json doc) {
     logger_ = std::make_unique<SkseLogger>();
 
     // SPEC §2.4: globals are declared up front at the system level. Phase 1 has
-    // no co-save yet (DEFERRED), so we seed the cross-cycle counter the demo uses.
+    // no co-save yet (DEFERRED), so we seed the cross-cycle career state the
+    // court-wizard content uses: tasks_done counts completed summons (promotion
+    // threshold), whiterun_resident flips 0->1 once promoted (changes the summons
+    // path letter->guard). Both MUST be declared here or validate() flags a
+    // reference to an undeclared global (SPEC §2.4/§7.6).
     if (globals_.vars.find("whiterun_tasks_done") == globals_.vars.end()) {
         globals_.vars["whiterun_tasks_done"] = 0.0;
+    }
+    if (globals_.vars.find("whiterun_resident") == globals_.vars.end()) {
+        globals_.vars["whiterun_resident"] = 0.0;
     }
 
     // EntityResolver: pre-bind the quest's characters block (main thread).
@@ -148,7 +155,11 @@ bool SkyrimAdapter::BuildEngine(nlohmann::json doc) {
 }
 
 bool SkyrimAdapter::LoadDemoQuest() {
-    const std::string path = ResolveQuestPath("demo_court_wizard.json");
+    // The shipped court-wizard content: a repeatable summons loop (branching,
+    // condition-gated choices, reward/promotion progression) that exercises the
+    // adapter verbs in-game. demo_court_wizard.json remains in config/quests/ as
+    // the minimal Phase-0 reference.
+    const std::string path = ResolveQuestPath("cw_whiterun_summons.json");
     std::ifstream in(path);
     if (!in) {
         SKSE::log::error("SkyrimAdapter: cannot open quest file: {}", path);

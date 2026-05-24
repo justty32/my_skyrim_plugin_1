@@ -130,7 +130,7 @@ void SkyrimActions::run(const std::string& verb, const nlohmann::json& params) {
                 SKSE::log::info("SkyrimActions: deliver_letter gave note '{}'", ref);
             }
         }
-        const std::string msg = subject.empty() ? "你收到一封信。" : ("你收到一封信：" + subject);
+        const std::string msg = subject.empty() ? "You have received a letter." : ("You have received a letter: " + subject);
         RE::DebugNotification(msg.c_str());
         SKSE::log::info("SkyrimActions: deliver_letter subject='{}' (courier deferred)", subject);
         return;

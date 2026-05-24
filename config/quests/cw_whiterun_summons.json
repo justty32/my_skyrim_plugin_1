@@ -1,0 +1,177 @@
+{
+  "id": "cw_whiterun_summons",
+  "title": "The Whiterun Court Summons",
+  "version": 1,
+  "characters": {
+    "jarl":   { "bind": "existing", "ref": "0x0001A678~Skyrim.esm" },
+    "victim": { "bind": "spawn", "template": "0x0001BCD8", "name": "Afflicted Retainer" }
+  },
+  "vars": {
+    "delivered": false
+  },
+  "objectives": {
+    "lift_curse": { "text": "Lift the curse on the afflicted retainer with a spell", "state": "inactive" }
+  },
+  "on_start": [
+    { "schedule": { "after_hours": 24, "key": "wr_summon" } }
+  ],
+  "triggers": [
+    { "on": "quest_start",
+      "when": { "var_eq": { "var": "global.whiterun_tasks_done", "value": 0 } },
+      "do": [
+        { "show_message": "(You are now the visiting Court Wizard of Whiterun. Return to Dragonsreach and await the Jarl's call.)" }
+      ] },
+
+    { "on": "timer", "key": "wr_summon",
+      "when": { "all": [
+        { "var_eq": { "var": "delivered", "value": false } },
+        { "var_eq": { "var": "global.whiterun_resident", "value": 0 } }
+      ] },
+      "do": [
+        { "deliver_letter": { "from": "jarl", "key": "wr_summon",
+            "subject": "A Letter from Jarl Balgruuf",
+            "body": "Court Wizard, a matter at Dragonsreach requires your counsel. Come at once. - Balgruuf" } },
+        { "add_map_marker": { "form": "0x00018A52" } },
+        { "set_var": { "var": "delivered", "value": true } },
+        { "start_dialogue": "court_brief" }
+      ] },
+
+    { "on": "timer", "key": "wr_summon",
+      "when": { "all": [
+        { "var_eq": { "var": "delivered", "value": false } },
+        { "var_eq": { "var": "global.whiterun_resident", "value": 1 } }
+      ] },
+      "do": [
+        { "show_message": "A guard hurries over: \"Court Wizard, the Jarl awaits you in the side hall.\"" },
+        { "add_map_marker": { "form": "0x00018A52" } },
+        { "set_var": { "var": "delivered", "value": true } },
+        { "start_dialogue": "court_brief" }
+      ] },
+
+    { "on": "spell_cast_on", "character": "victim",
+      "when": { "objective_state": { "objective": "lift_curse", "state": "active" } },
+      "do": [
+        { "play_sound": { "form": "0x0003EB4E", "character": "victim" } },
+        { "complete_objective": "lift_curse" }
+      ] },
+
+    { "on": "objective_completed", "objective": "lift_curse",
+      "do": [ { "start_dialogue": "curse_lifted" } ] },
+
+    { "on": "dialogue_end", "dialogue": "court_brief",
+      "when": { "objective_state": { "objective": "lift_curse", "state": "inactive" } },
+      "do": [
+        { "show_message": "(You did not take the task. The Jarl may send for you again another day.)" },
+        { "set_var": { "var": "delivered", "value": false } },
+        { "schedule": { "after_hours": 24, "key": "wr_summon" } }
+      ] }
+  ],
+  "dialogues": {
+    "court_brief": {
+      "entry": "b0",
+      "nodes": {
+        "b0": {
+          "speaker": "Jarl Balgruuf",
+          "lines": [
+            "Court Wizard, you've come at a good time.",
+            "One of my retainers returned from an old barrow outside the city and fell under a foul curse - raving, wasting away. The healers are at a loss.",
+            "I'm told you know your magic. Have you the means to lift such a curse?"
+          ],
+          "choices": [
+            { "text": "Let me see the retainer. (I have learned the spell to turn the undead.)",
+              "when": { "player_has_spell": { "form": "0x000211EF" } },
+              "then": [
+                { "play_idle": { "form": "0x00013452", "character": "jarl" } },
+                { "spawn_character": { "character": "victim", "name": "Afflicted Retainer" } },
+                { "teleport_player": { "to": "victim" } },
+                { "set_objective_active": "lift_curse" }
+              ],
+              "goto": "b_accept" },
+            { "text": "And what reward, should I succeed?",
+              "goto": "b_reward" },
+            { "text": "(I have not yet learned the art to break it. I'll return later.)",
+              "goto": "b_decline" }
+          ]
+        },
+        "b_reward": {
+          "speaker": "Jarl Balgruuf",
+          "lines": [
+            "A wizard who names his price - I'd not deal unfairly.",
+            "Lift this curse and you may choose: gold, an enchanted item, even a Word of Power."
+          ],
+          "choices": [
+            { "text": "(Back to the matter.) Then let me see the retainer.",
+              "when": { "player_has_spell": { "form": "0x000211EF" } },
+              "then": [
+                { "play_idle": { "form": "0x00013452", "character": "jarl" } },
+                { "spawn_character": { "character": "victim", "name": "Afflicted Retainer" } },
+                { "teleport_player": { "to": "victim" } },
+                { "set_objective_active": "lift_curse" }
+              ],
+              "goto": "b_accept" },
+            { "text": "Let me prepare myself, and I'll return to take it.",
+              "goto": "b_decline" }
+          ]
+        },
+        "b_accept": {
+          "speaker": "Jarl Balgruuf",
+          "lines": [ "(The Jarl gestures toward the side hall.) She's in there. Go, cast your spell - Whiterun is in your debt." ],
+          "end": true
+        },
+        "b_decline": {
+          "speaker": "Jarl Balgruuf",
+          "lines": [ "So be it. When you're ready, come find me again." ],
+          "end": true
+        }
+      }
+    },
+    "curse_lifted": {
+      "entry": "r0",
+      "nodes": {
+        "r0": {
+          "speaker": "Jarl Balgruuf",
+          "lines": [
+            "(The retainer stirs and slowly comes to her senses.)",
+            "The curse is broken! Your reputation is well earned, Court Wizard. What reward will you have?"
+          ],
+          "choices": [
+            { "text": "A trifle. Gold will do.",
+              "then": [ { "give_gold": { "amount": 500 } } ],
+              "goto": "r_done" },
+            { "text": "I'd like an enchanted item, something to wield.",
+              "then": [ { "give_item": { "form": "0x0001CB36", "count": 1 } } ],
+              "goto": "r_done" },
+            { "text": "If the Jarl is willing, teach me a Word of Power.",
+              "when": { "var_gte": { "var": "global.whiterun_tasks_done", "value": 1 } },
+              "then": [ { "add_shout": { "form": "0x00013E22" } } ],
+              "goto": "r_done" }
+          ]
+        },
+        "r_done": {
+          "speaker": "Jarl Balgruuf",
+          "lines": [ "Whiterun will remember this." ],
+          "choices": [
+            { "text": "(The Jarl mentions a permanent post.) I'll serve Whiterun as resident wizard.",
+              "when": { "all": [
+                { "var_gte": { "var": "global.whiterun_tasks_done", "value": 2 } },
+                { "var_eq": { "var": "global.whiterun_resident", "value": 0 } }
+              ] },
+              "then": [
+                { "add_var": { "var": "global.whiterun_tasks_done", "value": 1 } },
+                { "set_var": { "var": "global.whiterun_resident", "value": 1 } },
+                { "show_message": "(You are named resident Court Wizard of Whiterun; quarters are prepared for you in Dragonsreach. Henceforth the Jarl will send a guard to summon you.)" },
+                { "reset_quest": true }
+              ],
+              "end": true },
+            { "text": "I'll await your next summons. Farewell.",
+              "then": [
+                { "add_var": { "var": "global.whiterun_tasks_done", "value": 1 } },
+                { "reset_quest": true }
+              ],
+              "end": true }
+          ]
+        }
+      }
+    }
+  }
+}

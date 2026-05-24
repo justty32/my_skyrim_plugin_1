@@ -138,6 +138,7 @@ int main(int argc, char** argv) {
     // global.<name> reference can be validated (§7.6). A real adapter loads
     // these from a manifest; the CLI hard-codes the ones the bundled quests use.
     globals.vars["whiterun_tasks_done"] = 0.0;
+    globals.vars["whiterun_resident"] = 0.0;
     globals.vars["runs"] = 0.0;
     globals.vars["reputation"] = 0.0;
 

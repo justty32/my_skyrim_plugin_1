@@ -51,3 +51,9 @@ set(headers ${headers}
     src/skyrim/CoSave.h
 )
 # <<< cosave
+
+# >>> native-dialogue-spike (DESIGN §5) — native NPC dialogue injection probe.
+set(headers ${headers}
+    src/skyrim/dialogue/NativeDialogueSpike.h
+)
+# <<< native-dialogue-spike

@@ -54,6 +54,14 @@ set(sources ${sources}
 )
 # <<< cosave
 
+# >>> native-dialogue-spike (DESIGN §5) — Debug R&D probe for injecting a custom
+# topic into the native NPC Dialogue Menu. Self-contained; remove this block + the
+# OnDataLoaded() call to drop it. Normal Skyrim TU (uses the PCH).
+set(sources ${sources}
+    src/skyrim/dialogue/NativeDialogueSpike.cpp
+)
+# <<< native-dialogue-spike
+
 # Portable quest-engine core (DESIGN §6). ZERO RE::/SKSE:: — kept out of the
 # forced PCH (RE/Skyrim.h) in CMakeLists.txt via SKIP_PRECOMPILE_HEADERS so the
 # core TUs stay game-agnostic.

@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skyrim Plugin — 專案現況</title>
+<style>
+  :root {
+    --bg: #0f0f14;
+    --bg2: #16161e;
+    --bg3: #1e1e2a;
+    --border: #2a2a3a;
+    --gold: #c8a84b;
+    --gold2: #f0d080;
+    --blue: #5b9bd5;
+    --green: #5cb85c;
+    --red: #d9534f;
+    --yellow: #f0ad4e;
+    --purple: #9b59b6;
+    --teal: #1abc9c;
+    --text: #d0d0dc;
+    --text2: #8888a0;
+    --text3: #bbbbd0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 24px;
+  }
+  a { color: var(--gold); text-decoration: none; }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, #1a1228 0%, #0f1820 100%);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .header-icon { font-size: 48px; line-height: 1; }
+  .header-title { font-size: 26px; font-weight: 700; color: var(--gold2); letter-spacing: 1px; }
+  .header-sub { color: var(--text2); margin-top: 4px; font-size: 13px; }
+  .header-branch {
+    margin-left: auto;
+    background: #1e2a1a;
+    border: 1px solid #3a6a3a;
+    border-radius: 6px;
+    padding: 8px 14px;
+    text-align: right;
+  }
+  .header-branch .label { color: var(--text2); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .header-branch .value { color: #7ddf7d; font-family: monospace; font-size: 13px; }
+
+  /* ── GRID ── */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 900px) { .grid, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+  }
+  .card.full { grid-column: 1 / -1; }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--gold);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── STATUS PILLS ── */
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .pill-green  { background: #1a3a1a; color: var(--green); border: 1px solid #2a5a2a; }
+  .pill-yellow { background: #3a2a00; color: var(--yellow); border: 1px solid #5a4a00; }
+  .pill-red    { background: #3a0f0f; color: var(--red); border: 1px solid #5a1f1f; }
+  .pill-blue   { background: #0f1f3a; color: var(--blue); border: 1px solid #1f3f6a; }
+  .pill-purple { background: #1f0f3a; color: var(--purple); border: 1px solid #3f1f6a; }
+  .pill-teal   { background: #0f2a22; color: var(--teal); border: 1px solid #1a5040; }
+  .pill-gray   { background: #1e1e2a; color: var(--text2); border: 1px solid var(--border); }
+
+  /* ── PHASE LIST ── */
+  .phase { margin-bottom: 10px; }
+  .phase-header {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 600; font-size: 13px; margin-bottom: 6px;
+  }
+  .phase-items { list-style: none; padding-left: 20px; }
+  .phase-items li {
+    display: flex; align-items: flex-start; gap: 8px;
+    color: var(--text3); font-size: 13px; margin-bottom: 4px; line-height: 1.5;
+  }
+  .phase-items li .icon { flex-shrink: 0; margin-top: 2px; }
+  .done   { color: var(--green); }
+  .warn   { color: var(--yellow); }
+  .todo   { color: var(--text2); }
+  .broken { color: var(--red); }
+
+  /* ── BRANCH CARDS ── */
+  .branch-list { display: flex; flex-direction: column; gap: 8px; }
+  .branch-item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 14px;
+  }
+  .branch-name { font-family: monospace; font-size: 12px; color: #7ddf7d; flex: 0 0 auto; }
+  .branch-desc { color: var(--text3); font-size: 13px; flex: 1; }
+  .branch-commits { color: var(--text2); font-size: 11px; }
+
+  /* ── KV TABLE ── */
+  .kv { width: 100%; border-collapse: collapse; }
+  .kv tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+  .kv td { padding: 6px 0; vertical-align: top; }
+  .kv td:first-child { color: var(--text2); font-size: 12px; width: 38%; padding-right: 12px; }
+  .kv td:last-child { color: var(--text3); font-size: 13px; }
+
+  /* ── DEBT TABLE ── */
+  .debt-table { width: 100%; border-collapse: collapse; }
+  .debt-table th {
+    text-align: left; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text2); padding: 0 10px 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .debt-table td {
+    padding: 7px 10px 7px 0; font-size: 13px;
+    border-bottom: 1px solid #1a1a24;
+    vertical-align: top; color: var(--text3);
+  }
+  .debt-table tr:last-child td { border-bottom: none; }
+
+  /* ── TIMELINE ── */
+  .timeline { position: relative; padding-left: 20px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px;
+    width: 2px; background: var(--border);
+  }
+  .tl-item { position: relative; margin-bottom: 12px; }
+  .tl-dot {
+    position: absolute; left: -20px; top: 4px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--bg2);
+  }
+  .tl-dot.green  { background: var(--green); }
+  .tl-dot.yellow { background: var(--yellow); }
+  .tl-dot.red    { background: var(--red); }
+  .tl-dot.blue   { background: var(--blue); }
+  .tl-dot.purple { background: var(--purple); }
+  .tl-date { font-size: 11px; color: var(--text2); }
+  .tl-title { font-size: 13px; color: var(--text3); margin-top: 1px; }
+  .tl-title strong { color: var(--text); }
+
+  /* ── MODFORGE BOX ── */
+  .modforge-box {
+    background: linear-gradient(135deg, #0f1820 0%, #1a1228 100%);
+    border: 1px solid var(--purple);
+    border-radius: 8px; padding: 18px 20px; margin-bottom: 16px;
+  }
+  .modforge-box .card-title { color: var(--purple); border-color: #2a1a3a; }
+
+  /* ── COMMIT HASH ── */
+  .hash { font-family: monospace; font-size: 11px; color: var(--gold); background: #1e1a0a; padding: 1px 5px; border-radius: 3px; }
+
+  /* ── SECTION DIVIDER ── */
+  .section-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 2px; color: var(--text2);
+    margin: 8px 0 12px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── STATS ROW ── */
+  .stat-box {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 12px 16px; text-align: center;
+  }
+  .stat-num { font-size: 28px; font-weight: 700; color: var(--gold2); }
+  .stat-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
+
+  /* ── FOOTER ── */
+  .footer { text-align: center; color: var(--text2); font-size: 11px; margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════ HEADER ══════════════════════════ -->
+<div class="header">
+  <div class="header-icon">⚔️</div>
+  <div>
+    <div class="header-title">Skyrim SKSE Plugin — 專案現況</div>
+    <div class="header-sub">CommonLibSSE-NG · MSVC C++23 · CMake/vcpkg · 2026-05-25</div>
+  </div>
+  <div class="header-branch">
+    <div class="label">當前分支</div>
+    <div class="value">feature/court-wizard</div>
+    <div style="margin-top:4px"><span class="pill pill-green">48 commits ahead of main</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ STATS ROW ══════════════════════════ -->
+<div class="grid-3" style="margin-bottom:16px">
+  <div class="stat-box">
+    <div class="stat-num">48</div>
+    <div class="stat-label">court-wizard commits</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-num">250</div>
+    <div class="stat-label">檔案新增/修改</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-num">5</div>
+    <div class="stat-label">遠端分支</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ BRANCHES ══════════════════════════ -->
+<div class="section-label">分支總覽</div>
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title">🌿 所有遠端分支</div>
+  <div class="branch-list">
+    <div class="branch-item">
+      <span class="branch-name">feature/court-wizard</span>
+      <span class="branch-desc">宮廷大法師 mod — Quest Engine + Skyrim adapter + 程序生成（當前分支）</span>
+      <span class="pill pill-blue">主力開發</span>
+    </div>
+    <div class="branch-item">
+      <span class="branch-name">feat/magic-toolkit</span>
+      <span class="branch-desc">法術工具包 — 144 個 Lesser Power 法術（波次 1–36）</span>
+      <span class="pill pill-green">完成</span>
+    </div>
+    <div class="branch-item">
+      <span class="branch-name">feat/npc-generator</span>
+      <span class="branch-desc">NPC 生成器獨立功能分支</span>
+      <span class="pill pill-gray">待確認</span>
+    </div>
+    <div class="branch-item">
+      <span class="branch-name">feat/custom-weapon</span>
+      <span class="branch-desc">自訂武器模組</span>
+      <span class="pill pill-gray">待確認</span>
+    </div>
+    <div class="branch-item">
+      <span class="branch-name">feat/power-shout</span>
+      <span class="branch-desc">龍吼強化模組</span>
+      <span class="pill pill-gray">待確認</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ COURT WIZARD PROGRESS ══════════════════════════ -->
+<div class="section-label">feature/court-wizard — 詳細進度</div>
+<div class="grid">
+
+  <!-- LEFT: 分期完成狀況 -->
+  <div class="card">
+    <div class="card-title">🏰 各階段完成狀況</div>
+
+    <div class="phase">
+      <div class="phase-header">
+        <span class="pill pill-green">✓ Phase 0</span>
+        <span style="color:var(--text3)">可攜 Quest Engine 骨架</span>
+      </div>
+      <ul class="phase-items">
+        <li><span class="icon done">✓</span>QuestEngine 狀態機（core，零 RE:: 依賴）</li>
+        <li><span class="icon done">✓</span>可恢復式對話（submitChoice / awaitingChoice）</li>
+        <li><span class="icon done">✓</span>timer / schedule / global.* / reset_quest</li>
+        <li><span class="icon done">✓</span>CLI headless harness + build_cli.sh</li>
+        <li><span class="icon done">✓</span>QUEST_ENGINE_SPEC.md / DESIGN.md 定案</li>
+      </ul>
+    </div>
+
+    <div class="phase">
+      <div class="phase-header">
+        <span class="pill pill-green">✓ Phase 1</span>
+        <span style="color:var(--text3)">Skyrim Adapter 六埠</span>
+      </div>
+      <ul class="phase-items">
+        <li><span class="icon done">✓</span>CMake 登錄 core + PCH 隔離</li>
+        <li><span class="icon done">✓</span>MessageBoxPresenter（非同步對話）</li>
+        <li><span class="icon done">✓</span>Clock = RE::Calendar</li>
+        <li><span class="icon done">✓</span>EntityResolver（existing / spawn）</li>
+        <li><span class="icon done">✓</span>EventSource（TESMagicEffectApplyEvent spell_cast_on）</li>
+        <li><span class="icon done">✓</span>ActionRunner + ConditionEvaluator</li>
+        <li><span class="icon done">✓</span>5 個延遲動詞實作（add_map_marker / play_idle / teleport_player / play_sound / add_shout）</li>
+        <li><span class="icon warn">⚠</span>start_combat / set_relationship → 無 CommonLibSSE wrapper，保底 no-op + log warn</li>
+      </ul>
+    </div>
+
+    <div class="phase">
+      <div class="phase-header">
+        <span class="pill pill-green">✓ 程序生成</span>
+        <span style="color:var(--text3)">4 種 runtime Form 生成</span>
+      </div>
+      <ul class="phase-items">
+        <li><span class="icon done">✓</span>generate_interior（房間，Procgen.cpp）</li>
+        <li><span class="icon done">✓</span>generate_structure（城堡）</li>
+        <li><span class="icon done">✓</span>generate_npc（TESNPC mint+Copy，ProcgenNpc.cpp）</li>
+        <li><span class="icon done">✓</span>generate_item（WEAP/ARMO/MISC 深拷貝，ProcgenItem.cpp）</li>
+        <li><span class="icon done">✓</span>示範法術 × 4（ProcgenSpells.cpp）</li>
+      </ul>
+    </div>
+
+    <div class="phase">
+      <div class="phase-header">
+        <span class="pill pill-green">✓ Co-Save 持久化</span>
+        <span style="color:var(--text3)">4 record types</span>
+      </div>
+      <ul class="phase-items">
+        <li><span class="icon done">✓</span><code>QEST</code> — 劇情進度/全域/計時器（SPEC §6 blob）</li>
+        <li><span class="icon done">✓</span><code>GNPC</code> — 程序生成 NPC（readopt 策略）</li>
+        <li><span class="icon done">✓</span><code>PRGN</code> — 程序生成房/城堡</li>
+        <li><span class="icon done">✓</span><code>GITM</code> — 程序生成物品</li>
+        <li><span class="icon warn">⚠</span>煉藥藥水 co-save 未接</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- RIGHT: 主線任務 + In-Game 測試 -->
+  <div class="card">
+    <div class="card-title">🧙 宮廷大法師主線任務</div>
+
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="pill pill-green">✓ 實機驗證通過</span>
+        <span class="hash">de5fe50</span>
+        <span style="color:var(--text2);font-size:11px">2026-05-24</span>
+      </div>
+      <div style="color:var(--text3);font-size:13px;line-height:1.7">
+        完整管線：<code>F7</code>→信件 MessageBox→<code>court_brief</code>→選項→spawn 侍從+傳送→施任意法術→<code>spell_cast_on</code> hook→<code>curse_lifted</code> 領賞
+      </div>
+    </div>
+
+    <div class="card-title" style="font-size:12px;color:var(--text2);border-color:var(--border)">核心 JSON：cw_whiterun_summons.json</div>
+    <ul class="phase-items" style="margin-bottom:14px">
+      <li><span class="icon done">✓</span>可重複任務迴圈（reset_quest）</li>
+      <li><span class="icon done">✓</span>客座/常駐分歧（global.whiterun_resident）</li>
+      <li><span class="icon done">✓</span>金幣 / 法器 / 龍吼賞（tasks_done 解鎖）</li>
+      <li><span class="icon done">✓</span>升常駐選項（tasks_done >= 2）</li>
+      <li><span class="icon warn">⚠</span>spawn 侍從仍用土匪模板（`0x0001BCD8`），待換合理 NPC</li>
+      <li><span class="icon warn">⚠</span>法器/龍吼賞 FormID 占位，no-op 不 crash</li>
+    </ul>
+
+    <div class="card-title" style="font-size:12px;color:var(--text2);border-color:var(--border)">In-Game 測試修法（已修、未 commit → 現已 commit）</div>
+    <ul class="phase-items">
+      <li><span class="icon done">✓</span>F9 衝突 Quick Load → 改 F8</li>
+      <li><span class="icon done">✓</span>劇情引擎未啟動（讀存檔不 start）→ F7 無條件 start+force-fire</li>
+      <li><span class="icon done">✓</span>Conjure NPC 存讀後複製 → readopt 分支（不 mint 不刪）</li>
+      <li><span class="icon done">✓</span>Conjure Item 讀檔後未重裝備 → 延遲 Is3DLoaded 重裝</li>
+      <li><span class="icon done">✓</span>Customize NPC 改到玩家 → 改 actor base weight+height+DoReset3D</li>
+      <li><span class="icon done">✓</span>ProcgenNpc 死碼清理（RunWhenPlayerReady 等）</li>
+      <li><span class="icon done">✓</span>QA findings C1/H1/H2/M1/M2/M3 全部修復</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══════════════════════════ MODFORGE PIVOT ══════════════════════════ -->
+<div class="section-label">重大轉向 — ModForge 新專案</div>
+<div class="modforge-box">
+  <div class="card-title">🔧 ModForge（獨立 repo：/home/lorkhan/repo/ModForge）</div>
+  <div class="grid" style="margin-bottom:0">
+    <div>
+      <div style="color:var(--text3);font-size:13px;margin-bottom:12px">
+        原生對話執行期注入<strong style="color:var(--red)">不可行</strong>（引擎會還原，改共用 vanilla form 危險）→ 轉做獨立 AI mod-authoring 工具鏈。<br>
+        <strong style="color:var(--gold)">描述內容 → 生合法 .esp/.esl + 編 Papyrus + 打包</strong>。C#/.NET/Mutagen，Linux 全自動，不開 CK GUI。
+      </div>
+      <table class="kv">
+        <tr><td>技術棧</td><td>C# / .NET / Mutagen.Bethesda</td></tr>
+        <tr><td>Commits</td><td>18 commits</td></tr>
+        <tr><td>CLI 指令</td><td><code>build / package / compile / validate / dump / find / extract / apply / applyloc / gen</code></td></tr>
+        <tr><td>CJK 翻譯</td><td>applyloc 完成，bytes 驗證通過（等用戶裝字體）</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="card-title" style="font-size:12px;color:var(--text2);border-color:#2a1a3a;margin-bottom:10px">迭代進度</div>
+      <ul class="phase-items">
+        <li><span class="icon done" style="color:var(--purple)">✓</span>It.1–It.6b：基礎 ESP 生成 + CJK applyloc</li>
+        <li><span class="icon done" style="color:var(--purple)">✓</span>It.7a：dump（讀回驗證）</li>
+        <li><span class="icon done" style="color:var(--purple)">✓</span>It.7b：find vanilla FormID + 外部 ref</li>
+        <li><span class="icon done" style="color:var(--purple)">✓</span>It.7c：武器/armor/spell/potion magic effects</li>
+        <li><span class="icon done" style="color:var(--purple)">✓</span>It.7d-p1/p2：新建/override interior cell 放置 NPC/物件</li>
+        <li><span class="icon done" style="color:var(--purple)">✓</span>It.7e：leveled list / container / spell cast-type</li>
+        <li><span class="icon warn">→</span>It.7d-p3：exterior/worldspace 放置（下一步）</li>
+        <li><span class="icon warn">→</span>It.6c：接真 LLM API（卡用戶 key）</li>
+        <li><span class="icon warn">→</span>實機測試（需 Proton，待人類）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ TECH DEBT / KNOWN ISSUES ══════════════════════════ -->
+<div class="section-label">已知問題 / 技術債</div>
+<div class="card full" style="margin-bottom:16px">
+  <div class="card-title">⚠️ 待解問題一覽</div>
+  <table class="debt-table">
+    <thead>
+      <tr>
+        <th style="width:10%">嚴重度</th>
+        <th style="width:35%">問題</th>
+        <th>狀態 / 決策</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="pill pill-red">高</span></td>
+        <td>跨 session crash（完全關遊戲重開，動態 base 不存在）</td>
+        <td style="color:var(--text2)">已研究，決定暫不修。根治需 trampoline hook BGSSaveLoadManager::Save（需 address-library ID），src/hook 是空殼。within-session 已用 readopt 繞過。</td>
+      </tr>
+      <tr>
+        <td><span class="pill pill-yellow">中</span></td>
+        <td>spawn 侍從用土匪模板（<code>0x0001BCD8</code>），進遊戲會敵對</td>
+        <td style="color:var(--text2)">換合理「侍從」NPC FormID 即可，不需重編 DLL。</td>
+      </tr>
+      <tr>
+        <td><span class="pill pill-yellow">中</span></td>
+        <td>MessageBoxPresenter.cpp:66 全形冒號 U+FF1A，無 CJK 字型顯示方塊</td>
+        <td style="color:var(--text2)">需重編 DLL，改為半形冒號。</td>
+      </tr>
+      <tr>
+        <td><span class="pill pill-yellow">中</span></td>
+        <td>占位 FormID × 6（map-marker / 法器 / 龍吼 / idle / 音效 / jarl bind）</td>
+        <td style="color:var(--text2)">no-op + log warn，不 crash。用 console <code>help &lt;名稱&gt;</code> 換真值即可。</td>
+      </tr>
+      <tr>
+        <td><span class="pill pill-blue">低</span></td>
+        <td>煉藥藥水無 co-save（F11 煉藥功能無持久化）</td>
+        <td style="color:var(--text2)">功能可用，但讀存檔後藥水消失。</td>
+      </tr>
+      <tr>
+        <td><span class="pill pill-blue">低</span></td>
+        <td>start_combat / set_relationship stub（無 CommonLibSSE wrapper）</td>
+        <td style="color:var(--text2)">log warn + no-op，不影響主線。需 address-library ID 才能實作。</td>
+      </tr>
+      <tr>
+        <td><span class="pill pill-gray">資訊</span></td>
+        <td>NativeDialogueSpike.{h,cpp} 留著當參考（plugin.cpp Install() 已移除）</td>
+        <td style="color:var(--text2)">不執行，不影響。原生對話注入評估為不可行，已轉 ModForge ESP 路線。</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════ FILE MAP ══════════════════════════ -->
+<div class="grid">
+  <div class="card">
+    <div class="card-title">📂 核心檔案地圖</div>
+    <table class="kv">
+      <tr><td>src/core/</td><td>可攜 Quest Engine（QuestEngine, QuestState, Ports）</td></tr>
+      <tr><td>src/skyrim/</td><td>Skyrim adapter（Actions, Adapter, Conditions, Entities, Events）</td></tr>
+      <tr><td>src/skyrim/dialogue/</td><td>MessageBoxPresenter（+NativeDialogueSpike disabled）</td></tr>
+      <tr><td>src/skyrim/procgen/</td><td>Procgen / ProcgenItem / ProcgenNpc / ProcgenSpells</td></tr>
+      <tr><td>src/skyrim/CoSave.{h,cpp}</td><td>單一 SetUniqueID('TPL1') + 4 record handlers</td></tr>
+      <tr><td>src/NpcGenerator.{h,cpp}</td><td>Runtime NPC form generation</td></tr>
+      <tr><td>config/quests/</td><td>cw_whiterun_summons.json + 11 test/demo quests</td></tr>
+      <tr><td>tools/cli_harness/</td><td>Headless CLI adapter for offline testing</td></tr>
+      <tr><td>research/</td><td>12 份可行性分析 + spike 結論文件</td></tr>
+      <tr><td>scripts/</td><td>build_cli.sh / pack.sh / pack_env.sh / test_quests.sh</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔑 關鍵決策（已定案）</div>
+    <ul class="phase-items">
+      <li><span class="icon" style="color:var(--gold)">◆</span>CMake 專案名：<code>TemplatePlugin</code>，config 資料夾：<code>Template_Plugin</code>（<strong>勿改</strong>）</li>
+      <li><span class="icon" style="color:var(--gold)">◆</span>對話：可恢復式（presentNode display-only，submitChoice 推進），不阻塞主執行緒</li>
+      <li><span class="icon" style="color:var(--gold)">◆</span>可重複任務：reset_quest 復位（不動 global.*），跨循環計數放 global</li>
+      <li><span class="icon" style="color:var(--gold)">◆</span>Co-save：只存邏輯 recipe + plugin-FormID + 原點，<strong>絕不存 0xFF 動態 FormID</strong></li>
+      <li><span class="icon" style="color:var(--gold)">◆</span>原生對話 → 不可行，改走 ModForge build-time ESP 路線</li>
+      <li><span class="icon" style="color:var(--gold)">◆</span>random 在 PRF 演算法定案前不實作</li>
+      <li><span class="icon" style="color:var(--gold)">◆</span>static CRT（/MT release、/MTd debug），Proton 免裝 vcredist</li>
+      <li><span class="icon" style="color:var(--gold)">◆</span>遊戲內顯示文字全英文（用戶無 CJK 字體）</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══════════════════════════ NEXT STEPS ══════════════════════════ -->
+<div class="section-label" style="margin-top:16px">下一步</div>
+<div class="card full">
+  <div class="card-title">🗺️ 優先任務</div>
+  <div class="grid" style="margin-bottom:0">
+    <div>
+      <div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Court Wizard（此 repo）</div>
+      <ul class="phase-items">
+        <li><span class="icon warn">→</span>換 spawn 侍從模板（土匪→合理 NPC），用 console <code>help</code> 找 FormID</li>
+        <li><span class="icon warn">→</span>修 MessageBoxPresenter 全形冒號（→重編 DLL）</li>
+        <li><span class="icon warn">→</span>驗證 5 個新 adapter 動詞（in-game，目前只 compile 綠燈）</li>
+        <li><span class="icon warn">→</span>占位 FormID 換真值（map-marker / idle / 音效 / 龍吼 / 法器）</li>
+        <li><span class="icon todo">○</span>跨 session crash 根治（需 hook BGSSaveLoadManager::Save + address-library ID）</li>
+        <li><span class="icon todo">○</span>煉藥藥水接 co-save</li>
+      </ul>
+    </div>
+    <div>
+      <div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">ModForge（獨立 repo）</div>
+      <ul class="phase-items">
+        <li><span class="icon warn">→</span>It.7d-phase3：exterior/worldspace cell 放置</li>
+        <li><span class="icon warn">→</span>實機測試（生成內容 / vanilla cell 放置 / CJK 顯示，Proton 待人類）</li>
+        <li><span class="icon todo">○</span>It.6c：接真 LLM API（卡用戶 key）</li>
+        <li><span class="icon todo">○</span>安全選取偵測（讀 lastSelectedDialogue，接回 C++ 引擎）</li>
+        <li><span class="icon todo">○</span>Papyrus 編譯自動化整合</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ TIMELINE ══════════════════════════ -->
+<div class="section-label" style="margin-top:16px">開發時間線</div>
+<div class="card full">
+  <div class="card-title">📅 重要里程碑</div>
+  <div class="grid" style="margin-bottom:0">
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot green"></div>
+        <div class="tl-date">早期</div>
+        <div class="tl-title"><strong>Phase 0</strong>：Quest Engine 骨架 + CLI harness</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot green"></div>
+        <div class="tl-date">中期</div>
+        <div class="tl-title"><strong>Phase 1</strong>：Skyrim adapter 六埠 + CMake 整合</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot green"></div>
+        <div class="tl-date">中期</div>
+        <div class="tl-title"><strong>程序生成</strong>：NPC / Item / Interior / Structure + co-save</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot green"></div>
+        <div class="tl-date">2026-05-23</div>
+        <div class="tl-title"><strong>Phase 1 完成</strong>：QA 修復 C1/H1/H2/M1/M2/M3，CLI 測試 67 passed</div>
+      </div>
+    </div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot blue"></div>
+        <div class="tl-date">2026-05-24 上午</div>
+        <div class="tl-title"><strong>In-game 測試</strong>：發現 6 個 in-game-only bug，逐一修法</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot green"></div>
+        <div class="tl-date">2026-05-24 下午</div>
+        <div class="tl-title"><strong>主線驗證通過</strong>：F7→信件→施法→curse_lifted 全線 ✅</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot purple"></div>
+        <div class="tl-date">2026-05-24 晚</div>
+        <div class="tl-title"><strong>重大轉向</strong>：原生對話不可行 → 成立 ModForge，C#/Mutagen 生 ESP</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot green"></div>
+        <div class="tl-date">2026-05-24</div>
+        <div class="tl-title"><strong>ModForge It.7 gameplay-complete</strong>：find/refs/stats/placement/aggregates 全線完成</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot blue"></div>
+        <div class="tl-date">2026-05-25（今日）</div>
+        <div class="tl-title">拉下 <code>feature/court-wizard</code>，準備繼續</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer" style="margin-top:20px">
+  生成於 2026-05-25 · HEAD <span class="hash">de5fe50</span> · feature/court-wizard · 工作樹乾淨（僅 skse64/ untracked）
+</div>
+
+</body>
+</html>

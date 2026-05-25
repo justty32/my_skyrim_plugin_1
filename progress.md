@@ -13,12 +13,13 @@
 - 已完成 It.1–It.6b + CJK 翻譯（`applyloc`，UTF-8 `_chinese.STRINGS`，由使用者官方漢化 mod 解開）+ **It.7 gameplay-complete 全線**：
   - **7a** `dump`（讀回驗證）、**7a+/7b** `find <Skyrim.esm> <query> [type]` 讀 vanilla FormID + 外部 `"<master>:0xFORMID"` ref（→ npc race/class/outfit/factions、keywords；master 寫檔自動加）。
   - **7c** 武器傷害/速度/觸及、armor 類型+裝備部位、spell/potion **magic effects**（MagicEffect ref + magnitude/area/duration）。
-  - **7d-p1** 新建內部 cell + 放置 NPC/物件（PlacedNpc/PlacedObject，`coc <editorId>` 可到）。**7d-p2** 放進 **vanilla interior cell**（手動 override、只加 ref 零膨脹；雷：`GetOrAddAsOverride` 會 deep-copy localized Name → 撞 plugins.txt，改手動建同 FormKey override 繞過）。
+  - **7d-p1** 新建內部 cell + 放置 NPC/物件（PlacedNpc/PlacedObject，`coc <editorId>` 可到）。**7d-p2** 放進 **vanilla interior cell**（手動 override、只加 ref 零膨脹；雷：`GetOrAddAsOverride` 會 deep-copy localized Name → 撞 plugins.txt，改手動建同 FormKey override 繞過）。**7d-p3**（2026-05-25，ModForge `1f6bb0f`）放進 **exterior / 開放世界**：`placements[].worldspace`（如 Tamriel `Skyrim.esm:0x00003C`），`position` 變世界座標 → cell grid = floor(x/4096),floor(y/4096) → 找 master 既有 exterior cell override（同 p2 手法）。**坑（已實證非猜）**：block=floor(grid/32)、subblock=floor(grid/8)，**負座標必須 floor division**（C# `/` 截斷會錯組）；對真 Tamriel 驗 (5,5)→(0,0)/(0,0)、(7,-41)→(0,-2)/(0,-6)。無 master cell 的 grid 則新建（warn、未實機）。**world placement 三階段全完成**。
   - **7e** leveled list（LVLI/LVLN）、container 內容、spell cast-type。
+  - **7f**（2026-05-25，ModForge `1c92928`）九個長尾記錄型別：Ingredient / Ammunition / Scroll / SoulGem / Key / **Keyword（可自訂再被引用）** / **Outfit（npc outfit 可指 in-spec）** / Static / Activator（後兩者帶 model 路徑當放置 base）。重用 WireKeywords/WireEffects/Resolve；validate/dump 全涵蓋；sample 25 records / 18 links round-trip、負向 6/6。
   - 全部 `validate`/`dump` 涵蓋、sample round-trip + 負向測試通過、Mutagen API 全 ilspy 查證。**皆未實機測**（需 Proton）。
 - **CJK 暫停**（2026-05-24）:使用者尚未裝 CJK 字體 → CJK 內容/實機測試先停;`applyloc` 程式碼已完成且位元組驗證過。
-- **下一步**:It.7d-**phase 3** = exterior/worldspace cell 放置（需 worldspace block+grid 結構，較難）;實機測試（生成內容 / vanilla cell 放置 / CJK 顯示，Proton 待人類）;It.6c 接真 LLM API（卡使用者 key）。其餘多為「照 pattern 加欄位」小事。
-- 細節見 ModForge `NOTES.md`（It.7c/7d/7e 完整實作筆記）+ memory `project_authoring_toolchain_roadmap`、`project_native_dialogue_esp`。
+- **下一步**:~~It.7d-p3 / 長尾型別~~ ✅ 完成（2026-05-25）。**「容易的」長尾清空。** 剩：① 中等複雜度型別（MagicEffect/MGEF archetype、ConstructibleObject/COBJ 配方 condition、Race/Class）；② 實機測試（生成內容 / cell+exterior 放置 / CJK 顯示，Proton 待人類）。**It.6c（in-tool LLM API）已放棄** —— NL→spec 改由 Claude Code agent 驅動（2026-05-25 定案，見 memory `project_authoring_toolchain_roadmap`）。
+- 細節見 ModForge `NOTES.md`（It.7c/7d/7e/7f 完整實作筆記）+ memory `project_authoring_toolchain_roadmap`、`project_native_dialogue_esp`。
 
 ---
 

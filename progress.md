@@ -1,7 +1,24 @@
 # 進度 / 接續筆記（宮廷大法師 mod + Quest Engine）
 
 > 交接用 scratch 檔。冷啟動看這份就能接續。
-> 分支：`feature/court-wizard`　最後更新：2026-05-24（焦點在 ModForge：It.7 gameplay-complete 全線完成，見下節）
+> 分支：`feature/court-wizard`　最後更新：2026-05-26（焦點在 ModForge **首次實機測試**，見下節）
+
+## 🎮 2026-05-26 ModForge 首次實機測試（Proton/MO2，重大里程碑）
+
+ModForge 之前所有功能都「結構驗證過、從沒進過遊戲」。這次把核心能力首度 in-game 跑通,並抓修 3 個**只有實機才現形**的系統性 bug(headless 的 validate/dump 全顯示「結構合法」)。詳見 memory `project_modforge_ingame_testing` + ModForge `NOTES.md` It.8–It.10。**ModForge 全部 commit 並 push 到 origin/master(到 `93aee23`)。**
+
+- **✅ 通過(已驗證)**:ESP 載入、記錄/名稱/數值/效果、NPC(`placeatme`)、藥水補血;武器裝備揮砍、書本閱讀、物品 3D 模型;**開放世界放置**(雕像+NPC 出現在指定世界座標)。
+- **🐛 修掉的 bug**:
+  - **It.8 `f645283`**:生成記錄**無 3D 模型** → 裝備武器/讀書/丟物會 crash 或無網格。修法:weapon/book/misc/potion 加可選 `template` ref,從 vanilla 記錄 `DeepCopyIn` clone 模型/動畫/裝備資料(用 `TranslationMask` 跳過 localized Name 避開字串地雷;potion `Effects.Clear()` 防重複)。
+  - **It.9 `81e000a`**:**開放世界放置整個世界泡水 + 存檔「未知地點」**。極簡 worldspace override 丟了 `LandDefaults`(Tamriel 預設水位 -14000→0 淹低地形)+ Name。修法:`CopyCellEnv`/`CopyWorldspaceEnv` 把 cell/worldspace 的環境資料(水位/光照/region/imagespace/氣候/地圖…)整批從 master 複製,跳過 Name + 子結構。
+- **⊘ CJK 中文化**:位元組正確但**英文遊戲不顯示**。使用者**固定用英文遊戲**(`sLanguage=English`),`_chinese.STRINGS` 只在中文遊戲讀取 → ModForge 的 applyloc 對此設定休眠。**遊戲內文字一律英文**(見 memory `feedback_ingame_text_english`,已更新為持久偏好)。
+- **❌ 室內放置(vanilla cell)FAILED — bug 未修(留給下次)**:放進 Bannered Mare 的物件**沒出現**、光照正常(override 被忽略)。**疑似 root cause**:`InteriorSub()`(Program.cs ~636)把 override cell **寫死 block=0/subblock=0**,但 Skyrim 室內 cell 的 block/subblock **由 FormID 決定**(室外有算 grid→成功,室內沒算)。下一步:探出 Bannered Mare 真實 block/subblock、推公式(可能 block=(id/10)%10, subBlock=id%10)填進去,或改用 Mutagen context `GetOrAddAsOverride` + 清 Name。見 ModForge It.10(`93aee23`,WIP)。
+- **⚠️ 非 ModForge 問題**:測試時使用者看到**字幕方塊字 + 地圖被霧籠罩** → 我的 esp 零字串、只動室內 cell,不可能造成;研判是使用者**剛裝的 CJK 字體/UI** 把介面弄壞了,需另外查(可能要還原字體安裝)。
+- **測試包**(`~/skyrim_mods/`,MO2 安裝):`ModForgeProof.zip`(物品)、`ModForgePlace.zip`(開放世界放置)、`ModForgeInterior.zip`(室內,失敗中)。CJK 包已刪。
+
+**ModForge 下一步**:① 修室內放置 block/subblock bug(It.10);② 補剩餘 model 缺口(armor 裝備、ingredient/ammo/scroll/soulGem/key 丟棄,同 `template` 模式);③ 新建-cell 放置(需光照+地板)。
+
+---
 
 ## ⚠️ 2026-05-24 重大轉向 → 新專案 ModForge（本 repo 工作暫擱置）
 

@@ -112,6 +112,22 @@ namespace AmbientBoost
         ApplyToCurrentCell();
     }
 
+    void RestoreAll()
+    {
+        for (auto& [id, s] : g_saved) {
+            auto* cell = RE::TESForm::LookupByID<RE::TESObjectCELL>(id);
+            auto* d = cell ? cell->GetLighting() : nullptr;
+            if (!d) continue;
+            d->ambient = s.ambient;
+            d->directional = s.directional;
+            RE::Color* dalc[6]; DalcSlots(d, dalc);
+            for (int i = 0; i < 6; ++i) *dalc[i] = s.dalc[i];
+            d->lightingTemplateInheritanceFlags = s.flags;
+        }
+        g_saved.clear();
+        g_level = 0;
+    }
+
     class HotkeySink : public RE::BSTEventSink<RE::InputEvent*>
     {
     public:

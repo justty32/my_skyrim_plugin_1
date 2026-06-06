@@ -12,4 +12,8 @@
 namespace AmbientBoost
 {
     void Initialize();   // register hotkey sink + load ini. Call once from kDataLoaded.
+
+    // Restore every cell we modified back to its original lighting and clear state. Call on
+    // kPreLoadGame so a loaded save never inherits this session's runtime ambient edits.
+    void RestoreAll();
 }

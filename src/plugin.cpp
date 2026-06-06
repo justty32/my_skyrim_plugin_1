@@ -28,6 +28,7 @@ void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 		break;
 	case SKSE::MessagingInterface::kPreLoadGame:
 		SKSE::log::info("kPreLoadGame: save load starting");
+		AmbientBoost::RestoreAll();   // clear this session's cell-ambient edits before loading a save
 		break;
 	case SKSE::MessagingInterface::kPostLoadGame: {
 		const bool success = a_msg->data != nullptr;

@@ -5,4 +5,6 @@ set(headers ${headers}
     src/hook.h 
     src/settings.h
     src/NpcGenerator.h
+    src/FollowLight.h
+    src/AmbientBoost.h
 )

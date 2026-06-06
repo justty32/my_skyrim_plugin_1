@@ -1,9 +1,15 @@
 #include "log.h"
 #include "NpcGenerator.h"
+#include "FollowLight.h"
+#include "AmbientBoost.h"
+#include "hook.h"
 
 void OnDataLoaded()
 {
     NpcGenerator::InitializeMagic();
+    FollowLight::Initialize();
+    AmbientBoost::Initialize();
+    Hooks::Install();
 }
 
 void MessageHandler(SKSE::MessagingInterface::Message* a_msg)

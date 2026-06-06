@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Set your project name. This will be the name of your SKSE .dll file.
-project(TemplatePlugin VERSION 0.0.1 LANGUAGES CXX)
+project(DaylightDungeon VERSION 0.0.1 LANGUAGES CXX)
 
 #
 
@@ -57,7 +57,7 @@ if(DEFINED OUTPUT_FOLDER)
     # Copy the SKSE plugin .dll files into the SKSE/Plugins/ folder
     set(DLL_FOLDER "${OUTPUT_FOLDER}/SKSE/Plugins")
 
-    set (CONFIG_FOLDER "Template_Plugin")
+    set (CONFIG_FOLDER "DaylightDungeon")
     set(SRC_CONFIG_FOLDER "${CMAKE_SOURCE_DIR}/config")
     
     message(STATUS "SKSE plugin output folder: ${DLL_FOLDER}")

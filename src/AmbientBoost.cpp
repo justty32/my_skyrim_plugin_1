@@ -37,7 +37,7 @@ namespace AmbientBoost
     static void LoadSettings()
     {
         CSimpleIniA ini; ini.SetUnicode();
-        if (ini.LoadFile("Data/SKSE/Plugins/Template_Plugin/FollowLight.ini") < 0) return;
+        if (ini.LoadFile("Data/SKSE/Plugins/DaylightDungeon/FollowLight.ini") < 0) return;
         g_key = static_cast<std::uint32_t>(ini.GetLongValue("Ambient", "ToggleKey", 0x25));
         SKSE::log::info("AmbientBoost: ini key=0x{:X}", g_key);
     }

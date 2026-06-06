@@ -37,7 +37,7 @@ namespace FollowLight
     {
         CSimpleIniA ini;
         ini.SetUnicode();
-        const char* path = "Data/SKSE/Plugins/Template_Plugin/FollowLight.ini";
+        const char* path = "Data/SKSE/Plugins/DaylightDungeon/FollowLight.ini";
         if (ini.LoadFile(path) < 0) {
             SKSE::log::info("FollowLight: no ini at {}, using defaults", path);
             return;

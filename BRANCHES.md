@@ -18,7 +18,7 @@
 
 ## 這輪做了什麼
 
-**沒有刪任何分支**（本機或 remote 都沒動）——只是把值得留的東西撈到 `main`，讓刪除變成零損失的動作。
+先把值得留的東西全撈到 `main` 並推上 remote，**再**刪掉那五條已無獨有價值的分支——所以刪除是零損失的。上表的 SHA 是救回來的憑據：`git branch <name> <sha>`（物件還在 remote 的 reflog / GC 前的懸空 object 裡；本機 clone 也還有）。
 
 從 `feature/court-wizard` 撈上 `main`：
 
@@ -28,16 +28,8 @@
 
 從三條 spike 分支撈進 [`vendor/`](vendor/README.md)：`MagicToolkit.{h,cpp}`、`power_shout.{h,cpp}`、`custom_weapon.{h,cpp}`。**不參與建置**（`CMakeLists.txt` 不 glob，也沒登記進 `cmake/sourcelist.cmake`）。
 
-## 要收掉分支的話
+## 已執行的清理（2026-08-02）
 
-五條可刪的都已無獨有價值。SHA 記在上表，真要救回來 `git branch <name> <sha>` 即可。
+五條分支已從 remote 與本機刪除：`feat/follow-light-ambient`、`feat/npc-generator`、`feat/custom-weapon`、`feat/magic-toolkit`、`feat/power-shout`。
 
-```bash
-git push origin --delete feat/follow-light-ambient feat/npc-generator feat/custom-weapon feat/magic-toolkit feat/power-shout
-```
-
-```bash
-git branch -D feat/follow-light-ambient
-```
-
-`feature/court-wizard` **不要刪**——它是一整條還活著的平行產品線，程式碼只在那邊。
+現存分支只剩兩條：**`main`**（主線）與 **`feature/court-wizard`**（活著的平行產品線，程式碼只在那邊，**不要刪**）。

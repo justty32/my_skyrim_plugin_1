@@ -166,8 +166,8 @@ For runtime on Proton (Skyrim under Linux / Steam Deck), native debugger attach 
 | --- | --- | --- |
 | `main` | DaylightDungeon（FollowLight + AmbientBoost + NpcGenerator） | ✅ 主線，編得過 |
 | `feature/court-wizard` | 可攜 quest engine + Skyrim adapter + 程序化生成 | ✅ 編得過、實機驗證過；**留著**（設計文件已撈上 main）|
-| `feat/custom-weapon`／`feat/magic-toolkit`／`feat/power-shout` | 早期 spike | 後兩者因 CommonLibSSE API 漂移已編不過；原始碼全存進 [`vendor/`](vendor/README.md)，分支可刪 |
-| `feat/npc-generator`／`feat/follow-light-ambient` | — | 已併進 `main`／與 main 同一 commit，可刪 |
+| `feat/custom-weapon`／`feat/magic-toolkit`／`feat/power-shout` | 早期 spike | 後兩者因 CommonLibSSE API 漂移已編不過;原始碼全存進 [`vendor/`](vendor/README.md),分支已刪 |
+| `feat/npc-generator`／`feat/follow-light-ambient` | — | 已併進 `main`／與 main 同一 commit,分支已刪 |
 
 ### 資料夾補充
 

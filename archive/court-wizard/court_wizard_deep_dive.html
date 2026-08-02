@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Court Wizard Branch — 深度技術分析</title>
+<style>
+:root {
+  --bg:    #0d0d12;
+  --bg2:   #13131a;
+  --bg3:   #1a1a24;
+  --bg4:   #20202e;
+  --border: #252535;
+  --gold:   #c8a84b;
+  --gold2:  #f0d070;
+  --blue:   #5b9bd5;
+  --blue2:  #7ab8f5;
+  --green:  #4ec94e;
+  --red:    #d9534f;
+  --yellow: #f0ad4e;
+  --purple: #a678d8;
+  --teal:   #1abc9c;
+  --orange: #e67e22;
+  --pink:   #e91e8c;
+  --text:   #ccccd8;
+  --text2:  #7878a0;
+  --text3:  #aaaabe;
+  --code-bg: #0a0a14;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13.5px;line-height:1.65;padding:20px 24px}
+code{font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:12px;background:var(--code-bg);padding:1px 5px;border-radius:3px;color:#c8d0e8}
+pre{font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:11.5px;background:var(--code-bg);border:1px solid var(--border);border-radius:6px;padding:14px 16px;overflow-x:auto;color:#c8d0e8;line-height:1.7}
+.kw{color:#c792ea} .fn{color:#82aaff} .str{color:#c3e88d} .cmt{color:#546e7a} .num{color:#f78c6c} .type{color:#ffcb6b}
+
+/* ── layout ── */
+.page-header{background:linear-gradient(135deg,#14101e,#0d1520);border:1px solid var(--gold);border-radius:8px;padding:22px 26px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+.page-header h1{font-size:22px;color:var(--gold2);font-weight:700;letter-spacing:.5px}
+.page-header p{color:var(--text2);font-size:12px;margin-top:3px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.bg{background:#1a1a0f;color:var(--gold);border:1px solid #3a3a1a}
+.bb{background:#0f1a28;color:var(--blue2);border:1px solid #1a3050}
+.bgn{background:#0f2010;color:var(--green);border:1px solid #1a5020}
+.br{background:#280f0f;color:var(--red);border:1px solid #502020}
+.by{background:#281a00;color:var(--yellow);border:1px solid #503000}
+.bpu{background:#1e1028;color:var(--purple);border:1px solid #3a1a50}
+.bte{background:#0f2820;color:var(--teal);border:1px solid #1a5040}
+.bor{background:#281800;color:var(--orange);border:1px solid #503000}
+.bgr{background:#1a1a22;color:var(--text2);border:1px solid var(--border)}
+
+/* ── section ── */
+.sec-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;color:var(--text2);margin:20px 0 12px;display:flex;align-items:center;gap:10px}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── card ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:14px}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.grid{display:grid;gap:14px;margin-bottom:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+.g13{grid-template-columns:1fr 2.2fr}
+.g31{grid-template-columns:2.2fr 1fr}
+@media(max-width:900px){.g2,.g3,.g13,.g31{grid-template-columns:1fr}}
+.full{grid-column:1/-1}
+
+/* ── tables ── */
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);text-align:left;padding:0 10px 8px 0;border-bottom:1px solid var(--border)}
+td{padding:6px 10px 6px 0;font-size:13px;border-bottom:1px solid #16161e;vertical-align:top;color:var(--text3)}
+tr:last-child td{border-bottom:none}
+td:first-child{color:var(--text2);font-size:11.5px;white-space:nowrap}
+
+/* ── arch diagram ── */
+.arch{font-family:'Cascadia Code','Consolas',monospace;font-size:11.5px;line-height:1.9;padding:16px;background:var(--code-bg);border:1px solid var(--border);border-radius:6px;overflow-x:auto;white-space:pre}
+.arch .la{color:#c792ea} .arch .lb{color:#82aaff} .arch .lc{color:#4ec94e} .arch .ld{color:#f0ad4e} .arch .le{color:#1abc9c} .arch .lf{color:#a678d8} .arch .arrow{color:#546e7a}
+
+/* ── flow ── */
+.flow{display:flex;flex-direction:column;gap:0}
+.flow-item{display:flex;align-items:flex-start;gap:12px;padding:8px 0}
+.flow-item:not(:last-child){border-bottom:1px solid var(--border)}
+.flow-num{flex:0 0 22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--bg3);color:var(--gold);border:1px solid var(--gold);margin-top:2px}
+.flow-body{flex:1}
+.flow-title{font-weight:600;color:var(--text);font-size:13px}
+.flow-desc{color:var(--text2);font-size:12px;margin-top:2px}
+
+/* ── items ── */
+.items{list-style:none;display:flex;flex-direction:column;gap:5px}
+.items li{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text3);line-height:1.5}
+.items li .ic{flex:0 0 14px;margin-top:2px;font-size:12px}
+.ok{color:var(--green)}
+.warn{color:var(--yellow)}
+.no{color:var(--red)}
+.todo{color:var(--text2)}
+.pin{color:var(--gold)}
+
+/* ── verb table ── */
+.verb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px}
+.verb-item{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px}
+.verb-name{font-family:monospace;font-size:11.5px;color:#82aaff;white-space:nowrap}
+.verb-desc{color:var(--text3);font-size:12px;flex:1}
+.verb-status{flex:0 0 auto}
+
+/* ── co-save records ── */
+.records{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:800px){.records{grid-template-columns:1fr 1fr}}
+.rec{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px 14px;text-align:center}
+.rec-type{font-family:monospace;font-size:18px;font-weight:700;color:var(--gold2);margin-bottom:6px}
+.rec-ver{font-size:10px;color:var(--text2);margin-bottom:8px}
+.rec-desc{font-size:11.5px;color:var(--text3)}
+
+/* ── quest flow diagram ── */
+.qflow{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.qnode{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;position:relative}
+.qnode-id{font-family:monospace;font-size:10px;color:var(--text2);margin-bottom:4px}
+.qnode-speaker{font-size:11px;color:var(--gold);margin-bottom:4px}
+.qnode-choices{margin-top:6px;display:flex;flex-direction:column;gap:3px}
+.qchoice{font-size:11px;color:var(--blue2);padding:2px 6px;background:var(--bg4);border-radius:3px;border:1px solid var(--border)}
+.qchoice.cond{border-color:#3a2a00;color:var(--yellow)}
+
+/* ── research findings ── */
+.finding{background:var(--bg3);border-left:3px solid;border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:8px}
+.finding.crit{border-color:var(--red)}
+.finding.high{border-color:var(--orange)}
+.finding.med{border-color:var(--yellow)}
+.finding.low{border-color:var(--blue)}
+.finding.ok{border-color:var(--green)}
+.finding-id{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.finding-title{font-size:13px;font-weight:600;margin-bottom:4px}
+.finding-body{font-size:12px;color:var(--text2)}
+
+/* ── port cards ── */
+.ports{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.port{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px 14px}
+.port-name{font-family:monospace;font-size:12px;color:#c792ea;font-weight:600;margin-bottom:4px}
+.port-spec{font-size:10px;color:var(--text2);margin-bottom:6px}
+.port-impl{font-size:12px;color:var(--text3)}
+
+/* ── thread diagram ── */
+.thread-row{display:flex;align-items:stretch;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:8px}
+.thread-label{background:var(--bg4);padding:10px 14px;font-size:11px;font-weight:600;width:140px;flex:0 0 140px;display:flex;align-items:center;color:var(--text2)}
+.thread-ops{flex:1;padding:8px 12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.top{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:11px;color:var(--text3)}
+.top.safe{border-color:#1a5020;color:var(--green)}
+.top.danger{border-color:#502020;color:var(--red)}
+
+/* ── stat boxes ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+@media(max-width:700px){.stats{grid-template-columns:1fr 1fr}}
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center}
+.stat-n{font-size:26px;font-weight:700;color:var(--gold2)}
+.stat-l{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+
+.hash{font-family:monospace;font-size:11px;color:var(--gold);background:#1e1a0a;padding:1px 5px;border-radius:3px}
+hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+
+/* ── inline icon ── */
+.ic-ok::before{content:'✓';color:var(--green)}
+.ic-warn::before{content:'⚠';color:var(--yellow)}
+.ic-no::before{content:'✗';color:var(--red)}
+.ic-todo::before{content:'○';color:var(--text2)}
+.ic-pin::before{content:'◆';color:var(--gold)}
+.ic-arr::before{content:'→';color:var(--blue)}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<div class="page-header">
+  <div style="font-size:44px">🏰</div>
+  <div>
+    <h1>Court Wizard Branch — 深度技術分析</h1>
+    <p>feature/court-wizard · HEAD <span class="hash">de5fe50</span> · 2026-05-25 · 48 commits ahead of main</p>
+  </div>
+  <div style="margin-left:auto;display:flex;flex-direction:column;gap:6px;text-align:right">
+    <span class="badge bgn">in-game 驗證通過</span>
+    <span class="badge bb">Co-save 4 record types</span>
+    <span class="badge bg">CLI 67 tests passed</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ STATS ═══════════════════ -->
+<div class="stats">
+  <div class="stat"><div class="stat-n">48</div><div class="stat-l">Branch Commits</div></div>
+  <div class="stat"><div class="stat-n">25k+</div><div class="stat-l">Lines Added</div></div>
+  <div class="stat"><div class="stat-n">6</div><div class="stat-l">Capability Ports</div></div>
+  <div class="stat"><div class="stat-n">4</div><div class="stat-l">Co-save Records</div></div>
+</div>
+
+<!-- ═══════════════════ ARCHITECTURE OVERVIEW ═══════════════════ -->
+<div class="sec-label">系統架構</div>
+<div class="card">
+  <div class="card-title">📐 整體架構圖（layered）</div>
+  <style>
+    .lay { border-radius:6px; padding:10px 14px; margin-bottom:6px; font-size:12.5px; }
+    .lay-title { font-weight:700; font-size:12px; margin-bottom:4px; font-family:'Cascadia Code','Consolas',monospace; }
+    .lay-desc  { color:var(--text2); font-size:11.5px; line-height:1.6; }
+    .lay-arrow { text-align:center; color:var(--text2); font-size:16px; line-height:1; margin-bottom:6px; }
+    .lay-ports { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+    @media(max-width:800px){ .lay-ports{ grid-template-columns:1fr 1fr; } }
+    .lay-port  { background:rgba(0,0,0,.25); border-radius:4px; padding:6px 9px; font-size:11px; }
+    .lay-port .pn { font-family:'Cascadia Code','Consolas',monospace; color:#c792ea; font-weight:600; }
+    .lay-port .pd { color:var(--text2); margin-top:2px; }
+    .cosave-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+    .chip { font-family:'Cascadia Code','Consolas',monospace; font-size:13px; font-weight:700;
+            background:rgba(0,0,0,.3); border:1px solid var(--border); border-radius:4px;
+            padding:3px 10px; color:var(--gold2); }
+    .chip-arr { color:var(--text2); align-self:center; font-size:12px; }
+    .procgen-row { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:8px; }
+    @media(max-width:700px){ .procgen-row{ grid-template-columns:1fr 1fr; } }
+    .pg-chip { background:rgba(0,0,0,.25); border-radius:4px; padding:6px 8px; font-size:11px; text-align:center; }
+    .pg-chip .pn { font-family:'Cascadia Code','Consolas',monospace; color:#a678d8; font-size:11.5px; font-weight:600; }
+    .pg-chip .pd { color:var(--text2); margin-top:2px; font-size:10.5px; }
+  </style>
+
+  <!-- Layer 1: plugin.cpp -->
+  <div class="lay" style="background:#1a1228;border:1px solid #4a2a6a;">
+    <div class="lay-title" style="color:#c792ea;">plugin.cpp — SKSEPluginLoad / MessageHandler</div>
+    <div class="lay-desc">
+      kDataLoaded → <code>LoadDemoQuest()</code> &nbsp;·&nbsp;
+      kNewGame → <code>StartNewQuest()</code> &nbsp;·&nbsp;
+      kPostLoadGame → <code>RebuildStaged() × 4</code>
+    </div>
+  </div>
+  <div class="lay-arrow">▼</div>
+
+  <!-- Layer 2: SkyrimAdapter -->
+  <div class="lay" style="background:#0f1a28;border:1px solid #1f4a70;">
+    <div class="lay-title" style="color:#82aaff;">SkyrimAdapter — src/skyrim/SkyrimAdapter.{h,cpp}</div>
+    <div class="lay-desc">
+      · 持有 QuestEngine + GlobalStore + 6 capability ports<br>
+      · 所有引擎呼叫經 <code>SKSE::GetTaskInterface()->AddTask</code> marshal 回主執行緒<br>
+      · Co-save 'QEST' handler（OnSave / OnLoad / OnRevert → stage → RebuildStaged）
+    </div>
+    <!-- 6 ports -->
+    <div class="lay-ports">
+      <div class="lay-port">
+        <div class="pn">IDialoguePresenter</div>
+        <div class="pd">MessageBoxPresenter<br>async callback, non-blocking</div>
+      </div>
+      <div class="lay-port">
+        <div class="pn">IClock</div>
+        <div class="pd">RE::Calendar::GetHoursPassed()<br>絕對 game-hours 進 blob</div>
+      </div>
+      <div class="lay-port">
+        <div class="pn">IConditionEvaluator</div>
+        <div class="pd">SkyrimConditions<br>read-only；未知回 false</div>
+      </div>
+      <div class="lay-port">
+        <div class="pn">IActionRunner</div>
+        <div class="pd">SkyrimActions<br>全部 RE:: 副作用在此</div>
+      </div>
+      <div class="lay-port">
+        <div class="pn">SkyrimEvents</div>
+        <div class="pd">ActivateSink + MagicEffectSink<br>+ DebugInputSink (F7/F8)</div>
+      </div>
+      <div class="lay-port">
+        <div class="pn">SkyrimEntities</div>
+        <div class="pd">EntityResolver<br>alias ↔ FormID 反查</div>
+      </div>
+    </div>
+  </div>
+  <div class="lay-arrow">▼</div>
+
+  <!-- Layer 3: QuestEngine (core) -->
+  <div class="lay" style="background:#101a10;border:1px solid #1a5020;">
+    <div class="lay-title" style="color:#4ec94e;">qe::QuestEngine — src/core/QuestEngine.{h,cpp} &nbsp;<span style="font-weight:400;color:#546e7a">ZERO RE::/SKSE:: — only std + nlohmann-json</span></div>
+    <div class="lay-desc" style="display:flex;flex-wrap:wrap;gap:6px 14px;">
+      <span><code>validate()</code></span>
+      <span><code>start()</code> / <code>resetState()</code></span>
+      <span><code>dispatchEvent(on, filter)</code></span>
+      <span><code>checkTimers()</code> / <code>debugFireAllTimers()</code></span>
+      <span><code>submitChoice(idx)</code> / <code>awaitingChoice()</code></span>
+      <span><code>exportProgress()</code> / <code>importProgress()</code></span>
+      <span><code>hasStarted()</code> — persisted lifecycle flag</span>
+      <span><code>global.*</code> — GlobalStore，reset_quest 不清除</span>
+    </div>
+  </div>
+  <div class="lay-arrow">▼</div>
+
+  <!-- Layer 4: Co-save -->
+  <div class="lay" style="background:#101820;border:1px solid #1a4040;">
+    <div class="lay-title" style="color:#1abc9c;">skyrim::cosave — CoSave.{h,cpp} &nbsp;<span style="font-weight:400;color:#546e7a">ONE SetUniqueID('TPL1') per plugin</span></div>
+    <div class="lay-desc">AddHandler() fan-out → GetNextRecordInfo 逐筆讀頭、依 4-char type 派發</div>
+    <div class="cosave-chips">
+      <span class="chip">'QEST'</span><span class="chip-arr">Quest Engine progress + GlobalStore</span>
+      <span class="chip">'GNPC'</span><span class="chip-arr">Generated NPC recipe (v2)</span>
+      <span class="chip">'PRGN'</span><span class="chip-arr">Generated rooms / structures</span>
+      <span class="chip">'GITM'</span><span class="chip-arr">Generated items (WEAP/ARMO/MISC)</span>
+    </div>
+  </div>
+  <div class="lay-arrow">▼</div>
+
+  <!-- Layer 5: Procgen -->
+  <div class="lay" style="background:#1a1028;border:1px solid #3a1a50;">
+    <div class="lay-title" style="color:#a678d8;">Procedural Generation — src/skyrim/procgen/</div>
+    <div class="procgen-row">
+      <div class="pg-chip"><div class="pn">Procgen.{h,cpp}</div><div class="pd">GenerateInterior<br>GenerateStructure<br>RearrangeFurnishings</div></div>
+      <div class="pg-chip"><div class="pn">ProcgenNpc.{h,cpp}</div><div class="pd">TESNPC mint + Copy<br>readopt 策略<br>'GNPC' v2</div></div>
+      <div class="pg-chip"><div class="pn">ProcgenItem.{h,cpp}</div><div class="pd">WEAP/ARMO/MISC<br>component 深拷貝<br>'GITM'</div></div>
+      <div class="pg-chip"><div class="pn">ProcgenSpells.{h,cpp}</div><div class="pd">示範法術<br>Generate Room<br>Conjure Keep/NPC</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ CORE ENGINE ═══════════════════ -->
+<div class="sec-label">可攜 Quest Engine（src/core/）</div>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">⚙️ QuestEngine — 狀態機設計</div>
+    <ul class="items">
+      <li><span class="ic ic-pin"></span><strong>零 RE::/SKSE:: 依賴</strong>，only std + nlohmann-json。可在 Linux CLI 離線跑完整驗證。</li>
+      <li><span class="ic ic-ok"></span><code>Value = variant&lt;double, bool, string&gt;</code>（SPEC §2）</li>
+      <li><span class="ic ic-ok"></span><code>validate()</code> — 離線全文件結構驗證，收集所有錯誤（不 stop-at-first）</li>
+      <li><span class="ic ic-ok"></span><code>start()</code> — 跑 on_start + 發 quest_start；<code>resetState()</code> 無副作用純清除（co-save Revert 用）</li>
+      <li><span class="ic ic-ok"></span><code>dispatchEvent(on, filter)</code> — 驅動觸發器機器（SPEC §3.3）</li>
+      <li><span class="ic ic-ok"></span><code>checkTimers()</code> — 到期計時器掃描；<code>debugFireAllTimers()</code> 無條件全觸發（F7 用）</li>
+      <li><span class="ic ic-ok"></span><strong>Resumable 對話</strong>：<code>presentNode</code> display-only → <code>submitChoice(idx)</code> 推進，不阻塞主執行緒</li>
+      <li><span class="ic ic-ok"></span><code>hasStarted()</code> — 持久化 lifecycle flag，存進 'QEST' blob，防 on_start 重複觸發</li>
+      <li><span class="ic ic-ok"></span><code>exportProgress() / importProgress()</code> — 容錯序列化（壞 blob 降級不崩）</li>
+      <li><span class="ic ic-ok"></span><code>global.*</code> — 跨任務 GlobalStore，reset_quest 不清除</li>
+      <li><span class="ic ic-pin"></span><code>random</code> — PRF 演算法未定，<strong>暫不實作</strong></li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">🔌 Capability Ports（src/core/Ports.h）</div>
+    <div class="ports">
+      <div class="port">
+        <div class="port-name">IDialoguePresenter</div>
+        <div class="port-spec">SPEC §5.5 — display-only, non-blocking</div>
+        <div class="port-impl">→ <code>MessageBoxPresenter</code>（RE::MessageBoxData + ChoiceCallback::Run）</div>
+      </div>
+      <div class="port">
+        <div class="port-name">IClock</div>
+        <div class="port-spec">SPEC §5.7 — game time in hours</div>
+        <div class="port-impl">→ <code>RE::Calendar::GetHoursPassed()</code>，存絕對 game-hours 進 blob</div>
+      </div>
+      <div class="port">
+        <div class="port-name">ILogger</div>
+        <div class="port-spec">log(msg)</div>
+        <div class="port-impl">→ <code>SKSE::log::info()</code></div>
+      </div>
+      <div class="port">
+        <div class="port-name">IConditionEvaluator</div>
+        <div class="port-spec">SPEC §5.3 — adapter-extension conditions</div>
+        <div class="port-impl">→ <code>SkyrimConditions</code>（read-only；未知回 false）</div>
+      </div>
+      <div class="port">
+        <div class="port-name">IActionRunner</div>
+        <div class="port-spec">SPEC §5.2 — adapter-extension actions</div>
+        <div class="port-impl">→ <code>SkyrimActions</code>（所有 RE:: 副作用）</div>
+      </div>
+      <div class="port">
+        <div class="port-name">EntityResolver</div>
+        <div class="port-spec">SPEC §5.1 — not a QuestEngine::Deps port</div>
+        <div class="port-impl">→ <code>SkyrimEntities</code>（adapter-private，shared by Actions/Conditions/Events）</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ ACTION VERBS ═══════════════════ -->
+<div class="sec-label">Action Verbs 實作矩陣</div>
+<div class="card">
+  <div class="card-title">🎬 SkyrimActions::run() — 全動詞清單</div>
+  <div class="grid g2" style="margin-bottom:0">
+    <div>
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">核心動詞（低風險，已實作）</div>
+      <div class="verb-grid">
+        <div class="verb-item"><div class="verb-name">give_gold / remove_gold</div><div class="verb-desc">AddObjectToContainer / RemoveItem(Gold001)</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+        <div class="verb-item"><div class="verb-name">give_item / remove_item</div><div class="verb-desc">resolveAs&lt;TESBoundObject&gt; + Add/Remove</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+        <div class="verb-item"><div class="verb-name">add_spell / remove_spell</div><div class="verb-desc">player→AddSpell / RemoveSpell</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+        <div class="verb-item"><div class="verb-name">spawn_character</div><div class="verb-desc">entities_.spawnCharacter(alias)，NpcGenerator 模式</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+        <div class="verb-item"><div class="verb-name">move_character</div><div class="verb-desc">actor→MoveTo(player / alias / formRef)</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+        <div class="verb-item"><div class="verb-name">deliver_letter</div><div class="verb-desc">RE::DebugNotification + AddItem BGSNote（courier 保底）</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">2026-05-24 新增 5 動詞（compile ✓，in-game 未驗）</div>
+      <div class="verb-grid">
+        <div class="verb-item"><div class="verb-name">play_idle</div><div class="verb-desc">AnimUtil::Idle::Play（RELOCATION_ID 38290/39256）</div><div class="verb-status"><span class="badge by">⚠</span></div></div>
+        <div class="verb-item"><div class="verb-name">add_shout</div><div class="verb-desc">player→AddShout(TESShout)</div><div class="verb-status"><span class="badge by">⚠</span></div></div>
+        <div class="verb-item"><div class="verb-name">teleport_player</div><div class="verb-desc">player→MoveTo(dest) — handle cell transition</div><div class="verb-status"><span class="badge by">⚠</span></div></div>
+        <div class="verb-item"><div class="verb-name">play_sound</div><div class="verb-desc">BSAudioManager::BuildSoundDataFromDescriptor + BSSoundHandle::Play</div><div class="verb-status"><span class="badge by">⚠</span></div></div>
+        <div class="verb-item"><div class="verb-name">add_map_marker</div><div class="verb-desc">ExtraMapMarker::SetVisible + kCanTravelTo（已有 ref，不鑄）</div><div class="verb-status"><span class="badge by">⚠</span></div></div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">有理由 deferred（需 address-library ID）</div>
+      <div class="verb-grid">
+        <div class="verb-item"><div class="verb-name">start_combat</div><div class="verb-desc">無 CommonLibSSE wrapper（Actor 只有 Stop/IsInCombat）→ warn + no-op</div><div class="verb-status"><span class="badge bgr">skip</span></div></div>
+        <div class="verb-item"><div class="verb-name">set_relationship</div><div class="verb-desc">BGSRelationship 動態 mint 對 dynamic NPC fragile → warn + no-op</div><div class="verb-status"><span class="badge bgr">skip</span></div></div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">程序生成動詞（獨立模組）</div>
+      <div class="verb-grid">
+        <div class="verb-item"><div class="verb-name">generate_interior</div><div class="verb-desc">Procgen::GenerateInterior — template file / inline recipe</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+        <div class="verb-item"><div class="verb-name">generate_structure</div><div class="verb-desc">Procgen::GenerateStructure — exterior modular keep</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+        <div class="verb-item"><div class="verb-name">rearrange_furnishings</div><div class="verb-desc">Procgen::RearrangeFurnishings — cycle layouts deterministically</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+        <div class="verb-item"><div class="verb-name">generate_npc</div><div class="verb-desc">ProcgenNpc::Generate — TESNPC mint+Copy + co-save recipe</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+        <div class="verb-item"><div class="verb-name">generate_item</div><div class="verb-desc">ProcgenItem::Generate — WEAP/ARMO/MISC component deep-copy</div><div class="verb-status"><span class="badge bgn">✓</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ CONDITIONS ═══════════════════ -->
+<div class="sec-label">條件評估器 / 事件來源</div>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">🔍 SkyrimConditions（read-only，安全）</div>
+    <table>
+      <tr><th>條件鍵</th><th>實作</th><th>狀態</th></tr>
+      <tr><td><code>player_level_gte / lte</code></td><td>PlayerCharacter::GetLevel()</td><td><span class="badge bgn">✓</span></td></tr>
+      <tr><td><code>player_gold_gte</code></td><td>GetItemCount(Gold001)</td><td><span class="badge bgn">✓</span></td></tr>
+      <tr><td><code>player_has_item</code></td><td>GetItemCount(resolveAs&lt;TESBoundObject&gt;)</td><td><span class="badge bgn">✓</span></td></tr>
+      <tr><td><code>player_has_spell</code></td><td>player→HasSpell()（注意：console addspell 可能回 false）</td><td><span class="badge by">⚠ 已知坑</span></td></tr>
+      <tr><td><code>character_alive / dead</code></td><td>已識別，logged TODO，回 false</td><td><span class="badge bgr">stub</span></td></tr>
+      <tr><td><code>in_location / time_of_day</code></td><td>已識別，logged TODO，回 false</td><td><span class="badge bgr">stub</span></td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title">📡 SkyrimEvents — 事件來源</div>
+    <ul class="items">
+      <li><span class="ic ic-ok"></span><strong>TESActivateEvent</strong> → <code>activate {character}</code>（ActivateSink，aliasForFormID 反查）</li>
+      <li><span class="ic ic-ok"></span><strong>TESMagicEffectApplyEvent</strong> → <code>spell_cast_on {character}</code>
+        <br><small style="color:var(--text2);padding-left:22px">研究選型過程：A(TESSpellCastEvent)=無 target ✗，B(TESHitEvent)=傷害語意✗，<strong>C=同時有 caster+target，涵蓋非傷害，零 RELOCATION_ID ✓</strong>，D(crosshair)=近似 △，E/F(vtable hook)=高風險 ✗</small>
+        <br><small style="color:var(--green);padding-left:22px">2026-05-24 in-game 驗證通過 ✅</small></li>
+      <li><span class="ic ic-pin"></span><strong>Debug hotkeys（F7/F8）</strong>：DebugInputSink，DX scancode</li>
+      <li><span class="ic ic-warn"></span>F9 → Skyrim Quick Load 衝突，已改 F8（0x42）</li>
+      <li><span class="ic ic-todo"></span><code>location_entered</code> / <code>letter_read</code> — 無真實 sink，設計稿用了但 adapter 沒有 → 永不觸發（已從 cw_whiterun_summons.json 移除）</li>
+      <li><span class="ic ic-todo"></span><code>fireManual(on, filter)</code> — 手動注入接口，供未接線觸發用</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════ THREADING ═══════════════════ -->
+<div class="sec-label">執行緒紀律</div>
+<div class="card">
+  <div class="card-title">🔒 主執行緒 vs 序列化執行緒</div>
+  <div class="thread-row">
+    <div class="thread-label">主執行緒<br><small>(SKSE task)</small></div>
+    <div class="thread-ops">
+      <span class="top safe">RE::DebugNotification</span>
+      <span class="top safe">AddObjectToContainer</span>
+      <span class="top safe">actor→MoveTo</span>
+      <span class="top safe">QuestEngine::start()</span>
+      <span class="top safe">QuestEngine::dispatchEvent()</span>
+      <span class="top safe">QuestEngine::submitChoice()</span>
+      <span class="top safe">RebuildStaged() x4</span>
+      <span class="top safe">SkyrimAdapter::FireEvent()</span>
+    </div>
+  </div>
+  <div class="thread-row">
+    <div class="thread-label">序列化執行緒<br><small>(SKSE callback)</small></div>
+    <div class="thread-ops">
+      <span class="top safe">OnSave：只序列化 JSON blob</span>
+      <span class="top safe">OnLoad：stage blob，不碰 RE::</span>
+      <span class="top safe">OnRevert：Registry().clear() / resetState()</span>
+      <span class="top danger">❌ 舊版 OnRevert 呼叫 start()（C1 bug，已修）</span>
+    </div>
+  </div>
+  <div class="thread-row">
+    <div class="thread-label">事件執行緒<br><small>(SKSE event sink)</small></div>
+    <div class="thread-ops">
+      <span class="top safe">MagicEffectSink::ProcessEvent → 過濾 → sink(on, filter)</span>
+      <span class="top safe">sink 立即 AddTask → 主執行緒 dispatchEvent</span>
+      <span class="top">不碰 RE:: live state 直接</span>
+    </div>
+  </div>
+  <div style="margin-top:10px;font-size:12px;color:var(--text2)">
+    <span class="ic-pin ic"></span> 所有 <code>SkyrimAdapter::Start/SubmitChoice/FireEvent/CheckTimers</code> 均走 <code>SKSE::GetTaskInterface()->AddTask</code> marshalling，確保 RE:: 呼叫在主執行緒。
+  </div>
+</div>
+
+<!-- ═══════════════════ CO-SAVE ═══════════════════ -->
+<div class="sec-label">Co-Save 持久化架構</div>
+<div class="card">
+  <div class="card-title">💾 Central Dispatcher（ONE SetUniqueID per plugin）</div>
+  <div style="margin-bottom:12px;font-size:12.5px;color:var(--text3)">
+    SKSE 硬限制：<code>SerializationInterface</code> 每個 plugin 只允許一次 <code>SetUniqueID</code> + 一組 Save/Load/Revert callback（後者覆蓋前者）。
+    <code>skyrim::cosave</code>（CoSave.h）持有唯一 <code>kPluginUniqueID = 'TPL1'</code>，用 <code>AddHandler</code> 擴充出四個 record handler，在 OnLoad 裡以 <code>GetNextRecordInfo</code> 逐筆讀頭、依 4-char type 派發。
+  </div>
+  <div class="records">
+    <div class="rec">
+      <div class="rec-type">'QEST'</div>
+      <div class="rec-ver">version 1</div>
+      <div class="rec-desc">Quest Engine 進度：vars / objectives / activeDialogue / timers（絕對 game-hours）/ terminated / hasStarted flag + 系統 GlobalStore</div>
+    </div>
+    <div class="rec">
+      <div class="rec-type">'GNPC'</div>
+      <div class="rec-ver">version 2</div>
+      <div class="rec-desc">Generated NPC recipe（key + template plugin FormID + JSON recipe + 位置）。v2 多了 prior ref FormID，供 readopt 找舊 actor 而不 mint 新的</div>
+    </div>
+    <div class="rec">
+      <div class="rec-type">'PRGN'</div>
+      <div class="rec-ver">version 1</div>
+      <div class="rec-desc">Generated rooms/structures（key + kind + 自包含 recipe JSON + absolute origin + yaw + seed + cell/worldspace plugin FormID）</div>
+    </div>
+    <div class="rec">
+      <div class="rec-type">'GITM'</div>
+      <div class="rec-ver">version 1</div>
+      <div class="rec-desc">Generated items（WEAP/ARMO/MISC）recipe，rebuild 時重新鑄造並加回玩家背包（注意 H1 bug 已修：strip 舊的再加）</div>
+    </div>
+  </div>
+  <div style="margin-top:10px;font-size:12px;color:var(--text2)">
+    <span class="ic-pin ic"></span> <strong>邏輯持久化原則</strong>：只存 recipe + plugin FormID（可 ResolveFormID 重映），<strong>絕不</strong>存 0xFF 動態 FormID。OnLoad 只 stage，RebuildStaged（kPostLoadGame 主執行緒）才鑄造。
+  </div>
+</div>
+
+<!-- ═══════════════════ PROCGEN ═══════════════════ -->
+<div class="sec-label">程序生成系統</div>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">🏗️ Procgen.{h,cpp} — 室內/室外生成</div>
+    <ul class="items">
+      <li><span class="ic ic-ok"></span><strong>Recipe 格式</strong>：templateId / gridStep / anchorDistance / seed / groundRule / shell / furniture / lights / clutter（含 scatter AABB）</li>
+      <li><span class="ic ic-ok"></span><strong>GenerateInterior</strong>：在 anchor 前方 anchorDistance 單位處放置牆/地板/燈/家具/clutter；deterministic seed</li>
+      <li><span class="ic ic-ok"></span><strong>GenerateStructure</strong>：外部模組城堡；groundRule（flatten_to_max / per_piece）用 RE::TES::GetLandHeight</li>
+      <li><span class="ic ic-ok"></span><strong>RearrangeFurnishings</strong>：重排已追蹤的家具 ref，每次呼叫 cycle 一個佈局</li>
+      <li><span class="ic ic-ok"></span><strong>ClearGenerated</strong>：Disable + SetDelete + 從 registry 移除，co-save 也清</li>
+      <li><span class="ic ic-ok"></span><strong>RecipeToJson</strong>：自包含序列化，讓 co-save 重建可脫離原始 recipe file</li>
+      <li><span class="ic ic-warn"></span>M3 bug（已修）：spell 路徑 clutter scatter 參數丟失 → PieceSpec 現在保存 scatter 欄位</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">🧬 ProcgenNpc — NPC Form 生成</div>
+    <ul class="items">
+      <li><span class="ic ic-ok"></span>IFormFactory + Copy(template) 鑄新 TESNPC_；0xFF FormID 僅 session 內有效</li>
+      <li><span class="ic ic-ok"></span>Recipe：template / name / persist_key / scale / essential / level / sex</li>
+      <li><span class="ic ic-ok"></span><strong>readopt 策略</strong>（v2）：OnLoad 先看 prior ref FormID，找得到就接管舊 actor（不 mint 不刪），找不到才 mint 新的 → 解決 within-session 存讀複製問題</li>
+      <li><span class="ic ic-pin"></span><strong>誠實說明</strong>：這是「邏輯持久化」。重載後 form 重建，舊 FormID 消失，quest alias / 其他 mod 的 ref 會失效。僅適合「同個位置重現同個 NPC」的場景。</li>
+      <li><span class="ic ic-warn"></span>跨 session crash：完全關遊戲重開，.ess 中殘留的動態 actor 在 OnRevert 後找不到 base → crash。決定<strong>暫不修</strong>（根治需 hook BGSSaveLoadManager::Save，無現成 RELOCATION_ID）</li>
+    </ul>
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">⚔️ ProcgenItem — Item Form 生成（WEAP/ARMO/MISC）</div>
+  <div class="grid g2" style="margin-bottom:0">
+    <div>
+      <ul class="items">
+        <li><span class="ic ic-ok"></span>WEAP/MISC：<code>TESForm::Copy</code> 是 no-op → 改用 component 深拷貝（<code>TESValueForm</code>/<code>TESWeightForm</code>/<code>TESAttackDamageForm</code>，以 <code>static_cast</code> 而非 <code>As&lt;T&gt;</code>）</li>
+        <li><span class="ic ic-ok"></span>ARMO：<code>TESForm::Copy</code> 有真實 override，可直接用</li>
+        <li><span class="ic ic-ok"></span>H1 bug（已修）：RebuildStaged 在重新鑄造前先 strip 玩家背包舊版本（依 key），不累加</li>
+        <li><span class="ic ic-warn"></span>H2 潛伏：WEAP <code>weaponData = tmpl->weaponData</code> 淺拷貝，<code>RangedData*</code> alias。近戰模板（rangedData=null）安全；ranged 模板（弓/弩）會 double-free。已文件化，待深拷貝</li>
+      </ul>
+    </div>
+    <pre><span class="cmt">// MintWeapon — component 深拷貝</span>
+<span class="kw">auto</span>* w = factory-&gt;Create();
+w-&gt;weaponData = tmpl-&gt;weaponData;  <span class="cmt">// ⚠ H2: RangedData* alias</span>
+<span class="kw">if</span> (<span class="kw">auto</span>* val = w-&gt;As&lt;RE::TESValueForm&gt;())
+    val-&gt;CopyComponent(tmpl);  <span class="cmt">// not As&lt;T&gt; — concrete types</span>
+<span class="kw">if</span> (<span class="kw">auto</span>* wt = w-&gt;As&lt;RE::TESWeightForm&gt;())
+    wt-&gt;CopyComponent(tmpl);
+<span class="kw">if</span> (<span class="kw">auto</span>* dmg = w-&gt;As&lt;RE::TESAttackDamageForm&gt;())
+    dmg-&gt;CopyComponent(tmpl);</pre>
+  </div>
+</div>
+
+<!-- ═══════════════════ QUEST FLOW ═══════════════════ -->
+<div class="sec-label">宮廷大法師主線任務 — cw_whiterun_summons.json</div>
+<div class="card">
+  <div class="card-title">🗺️ 劇情流程圖</div>
+  <div class="flow">
+    <div class="flow-item">
+      <div class="flow-num">1</div>
+      <div class="flow-body">
+        <div class="flow-title">kDataLoaded → LoadDemoQuest() → BuildEngine()</div>
+        <div class="flow-desc">讀 cw_whiterun_summons.json，bindCharacters（jarl=existing <code>0x0001A678</code>，victim=spawn <code>0x0001BCD8</code>），裝 event sinks</div>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-num">2</div>
+      <div class="flow-body">
+        <div class="flow-title">kNewGame → start() / kPostLoadGame → importProgress()</div>
+        <div class="flow-desc">on_start：排 <code>wr_summon</code> timer（after_hours:24）。若讀存檔，從 'QEST' blob 還原 vars/objectives/timers/hasStarted</div>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-num">3</div>
+      <div class="flow-body">
+        <div class="flow-title">F7（DEBUG）→ DebugForceFireTimers() → timer 'wr_summon' fires</div>
+        <div class="flow-desc">根據 <code>global.whiterun_resident</code> 分路：0→deliver_letter + start_dialogue('court_brief')；1→show_message 衛兵通知 + start_dialogue</div>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-num">4</div>
+      <div class="flow-body">
+        <div class="flow-title">Dialogue: court_brief（MessageBoxPresenter）</div>
+        <div class="flow-desc">
+          b0（Jarl）→ 三個選項：
+          <div style="margin-top:6px" class="qflow">
+            <div class="qnode">
+              <div class="qnode-id">b0</div>
+              <div class="qnode-speaker">Jarl Balgruuf</div>
+              <div class="qnode-choices">
+                <div class="qchoice">→ b_accept：spawn victim + teleport_player + lift_curse active</div>
+                <div class="qchoice">→ b_reward：詢問賞金</div>
+                <div class="qchoice">→ b_decline：end</div>
+              </div>
+            </div>
+            <div class="qnode">
+              <div class="qnode-id">b_reward</div>
+              <div class="qnode-speaker">Jarl Balgruuf</div>
+              <div class="qnode-choices">
+                <div class="qchoice">→ b_accept（接任務）</div>
+                <div class="qchoice">→ b_decline</div>
+              </div>
+            </div>
+            <div class="qnode">
+              <div class="qnode-id">b_accept</div>
+              <div class="qnode-speaker">Jarl Balgruuf</div>
+              <div class="qnode-choices">
+                <div class="qchoice">end:true</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-num">5</div>
+      <div class="flow-body">
+        <div class="flow-title">trigger: spell_cast_on {character:"victim"} ← TESMagicEffectApplyEvent</div>
+        <div class="flow-desc">when: lift_curse == active → play_sound + complete_objective('lift_curse') → objective_completed → start_dialogue('curse_lifted')</div>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-num">6</div>
+      <div class="flow-body">
+        <div class="flow-title">Dialogue: curse_lifted — 領賞</div>
+        <div class="flow-desc">
+          <div class="qflow">
+            <div class="qnode">
+              <div class="qnode-id">r0</div>
+              <div class="qnode-speaker">Jarl Balgruuf</div>
+              <div class="qnode-choices">
+                <div class="qchoice">金幣 500 → r_done</div>
+                <div class="qchoice">法器 0x0001CB36 → r_done</div>
+                <div class="qchoice cond">⚠ 龍吼 0x00013E22（tasks_done ≥ 1）→ r_done</div>
+              </div>
+            </div>
+            <div class="qnode">
+              <div class="qnode-id">r_done</div>
+              <div class="qnode-speaker">Jarl Balgruuf</div>
+              <div class="qnode-choices">
+                <div class="qchoice cond">⚠ 升常駐（tasks_done ≥ 2 && resident==0）→ set resident=1 + reset_quest</div>
+                <div class="qchoice">繼續客座 → add_var tasks_done+1 + reset_quest</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-num">7</div>
+      <div class="flow-body">
+        <div class="flow-title">reset_quest → applyInitialState() + runStart() → 重排 wr_summon timer</div>
+        <div class="flow-desc">vars 復位（delivered=false），objectives 復位（lift_curse=inactive），global.whiterun_tasks_done 保留。下一輪 24 小時後再送信。</div>
+      </div>
+    </div>
+    <div class="flow-item">
+      <div class="flow-num">✓</div>
+      <div class="flow-body">
+        <div class="flow-title">dialogue_end guard：婉拒分路</div>
+        <div class="flow-desc">on:dialogue_end / dialogue:court_brief / when: lift_curse==inactive → 通知玩家 + set delivered=false + 重排 24h 計時器</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ QA FINDINGS ═══════════════════ -->
+<div class="sec-label">QA 審查 — 發現與修復（HEAD 647e93d）</div>
+<div class="card">
+  <div class="card-title">🔬 獨立審查 Agent 發現的 bug（research/REVIEW_FINDINGS.md）</div>
+  <div class="finding crit">
+    <div class="finding-id" style="color:var(--red)">C1 — Critical（已修）</div>
+    <div class="finding-title">OnRevert 在序列化執行緒呼叫 start()，觸發 RE::DebugNotification → 非主執行緒 UB/crash</div>
+    <div class="finding-body">修法：OnRevert 只呼叫 resetState()（純 std 記憶體清除），不跑 on_start 副作用；真正的重置延到 kPostLoadGame 的 RebuildStaged（主執行緒）。</div>
+  </div>
+  <div class="finding high">
+    <div class="finding-id" style="color:var(--orange)">H1 — High（已修）</div>
+    <div class="finding-title">ProcgenItem::RebuildStaged 每次讀檔重新鑄造 + AddObjectToContainer，沒有 RemoveItem → 每次讀檔物品倍增</div>
+    <div class="finding-body">修法：RebuildStaged 在 MintItem 前先對玩家背包做 best-effort RemoveItem（依 key），strip prior → 不累加。header doc 與 impl 現在一致（修 L3）。</div>
+  </div>
+  <div class="finding high">
+    <div class="finding-id" style="color:var(--orange)">H2 — High（已文件化，待深拷貝）</div>
+    <div class="finding-title">WEAP weaponData 淺拷貝，RangedData* 指標 alias → ranged 模板會 double-free</div>
+    <div class="finding-body">現況：預設模板是 Iron Sword（近戰，rangedData=null），不爆發。已在 ProcgenItem.cpp 加註，禁止 ranged 模板直到深拷貝就位。</div>
+  </div>
+  <div class="finding med">
+    <div class="finding-id" style="color:var(--yellow)">M1 — Medium（已修）</div>
+    <div class="finding-title">submitChoice 內 reset_quest 若重啟出新對話，守衛無條件清 activeDialogue，抹掉剛開的對話</div>
+    <div class="finding-body">修法：守衛改為「activeDialogue != dlgId 且 activeDialogue 非空」才清（新對話保留）；只有「回到舊對話 id」才視為仍在舊對話結束之。</div>
+  </div>
+  <div class="finding med">
+    <div class="finding-id" style="color:var(--yellow)">M2 — Medium（已修）</div>
+    <div class="finding-title">kDataLoaded 時 start() 提早觸發 on_start 訊息（主選單時機錯亂）</div>
+    <div class="finding-body">修法：kDataLoaded 只 BuildEngine（不 start）；新遊戲由 kNewGame StartNewQuest，讀存檔由 kPostLoadGame importProgress，兩條路徑分流。</div>
+  </div>
+  <div class="finding med">
+    <div class="finding-id" style="color:var(--yellow)">M3 — Medium（已修）</div>
+    <div class="finding-title">法術路徑 clutter scatter 參數（aabb/count/seed）未存進 PieceSpec，RecipeToJson 後遺失 → 重建時 clutter 跑到 (0,0,0)</div>
+    <div class="finding-body">修法：PieceSpec 增加 hasScatter / scatterLo / scatterHi / clutterCount / clutterSeed 欄位，ParseRecipe / RecipeToJson 全程攜帶。</div>
+  </div>
+</div>
+
+<!-- ═══════════════════ IN-GAME BUGS ═══════════════════ -->
+<div class="sec-label">In-Game 測試發現的 bug（2026-05-24 修法完畢）</div>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">🎮 6 個 In-Game-Only Bug</div>
+    <ul class="items">
+      <li><span class="ic ic-ok"></span><strong>F9 衝突 Quick Load</strong> → debug hotkey 改 F8（DX 0x42）</li>
+      <li><span class="ic ic-ok"></span><strong>劇情引擎未啟動（讀存檔不 start）</strong>：引擎缺 <code>started_</code> 持久化 → 修：F7 無條件 <code>start() + debugFireAllTimers()</code>，繞開 started 歷史包袱；<code>hasStarted()</code> 進 'QEST' blob</li>
+      <li><span class="ic ic-ok"></span><strong>Conjure NPC 存讀後複製（2 個 actor）</strong>：codec 還原舊 + RebuildStaged 又 mint 新 → 修：readopt 分支（找到舊 actor 就接管，不 mint 不刪）；GNPC record version 1→2</li>
+      <li><span class="ic ic-ok"></span><strong>Conjure Item 讀檔後丟失手持狀態</strong>：修：strip 前記裝備槽，rebuild 後 ActorEquipManager::EquipObject 重裝，<strong>延遲到 Is3DLoaded</strong>（同步裝備在載入窗口 crash）</li>
+      <li><span class="ic ic-ok"></span><strong>Customize NPC 改到玩家</strong>：RaceSexMenu 只能編玩家 → 修：直接改 actor base weight+height + DoReset3D</li>
+      <li><span class="ic ic-ok"></span><strong>Lower Terrain 無感（無目標靜默）</strong>：補 no-target 警告，對齊 RaiseTerrain 行為</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">🧹 死碼清理</div>
+    <ul class="items">
+      <li><span class="ic ic-ok"></span><code>ProcgenNpc.cpp</code> 移除 <code>RunWhenPlayerReady</code> / <code>StripPriorActorNow</code> / <code>ScheduleStripPriorActor</code>（readopt 已取代）</li>
+      <li><span class="ic ic-ok"></span>孤兒 <code>#include &lt;functional&gt;</code> 移除</li>
+      <li><span class="ic ic-ok"></span><code>NativeDialogueSpike</code>：<code>Install()</code> 呼叫從 plugin.cpp 移除（spike 檔留著當參考）</li>
+      <li><span class="ic ic-ok"></span>F10 spell_cast_on debug fake 移除（真實 hook 已驗證）</li>
+      <li><span class="ic ic-ok"></span>3 個 demo quest 的中文 display 字串換英文（user 無 CJK 字體）</li>
+    </ul>
+    <hr>
+    <div class="card-title" style="font-size:11px;margin-top:4px">✅ In-Game 驗證通過</div>
+    <ul class="items">
+      <li><span class="ic ic-ok"></span>冒煙：plugin/quest 載入、4 個 co-save handler</li>
+      <li><span class="ic ic-ok"></span>Co-save 4 record 完整來回（save → 讀 → 重建）</li>
+      <li><span class="ic ic-ok"></span>H1 物品不累加（log: "stripped 1 prior"）</li>
+      <li><span class="ic ic-ok"></span>F7→信件→施法→curse_lifted 全線完成</li>
+      <li><span class="ic ic-ok"></span>Conjure NPC within-session 存讀不 crash（readopt）</li>
+      <li><span class="ic ic-ok"></span>生成/重建 NPC + 房 + 物品多次存讀</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════ NATIVE DIALOGUE RESEARCH ═══════════════════ -->
+<div class="sec-label">原生對話 Spike 研究結論（2026-05-24 轉向）</div>
+<div class="card">
+  <div class="card-title">🚫 原生 DialogueMenu 不可行 → 轉向 ModForge ESP</div>
+  <div class="grid g13" style="margin-bottom:0">
+    <div>
+      <ul class="items">
+        <li><span class="ic ic-ok"></span><strong>Header 層級：摸得到</strong>。DialogueMenu / MenuTopicManager / TESTopic / TESTopicInfo / DialogueItem（有 public ctor）全部存在。</li>
+        <li><span class="ic ic-ok"></span><strong>Form 可鑄</strong>：IFormFactory::GetConcreteFormFactoryByType&lt;TESTopic&gt;() 同 NpcGenerator 模式，編譯連結均可。</li>
+        <li><span class="ic ic-no"></span><strong>但「鑄得出」≠「引擎顯示」</strong>：MenuTopicManager 依 branch/subtype/saidOnce/條件過濾後產生 Dialogue 清單，再透過 GFx push 給選單。自鑄 topic 不接 branch/quest 樹無法通過過濾。</li>
+        <li><span class="ic ic-no"></span><strong>無受支援的 API</strong>：grep 整棵 RE/ 找不到「給文字+選項就開對話」的入口。唯一可行路：trampoline hook populate/select 函式 + 記憶體注入，SE/AE/GOG/VR 位址各異。</li>
+        <li><span class="ic ic-no"></span><strong>語音硬傷</strong>：無語音時引擎傾向跳過台詞；字幕需自管 SubtitleManager，時長需自管 timer。</li>
+        <li><span class="ic ic-ok"></span><strong>MessageBox 已滿足 go/no-go 準則</strong>（自訂文字 + ≥2 可點選項 + 點選回呼 C++）。</li>
+        <li><span class="ic ic-pin"></span><strong>VERDICT</strong>：維持 MessageBoxPresenter 為 production 保底；轉向 build-time ESP（ModForge，C#/Mutagen）生成真正的原生對話。</li>
+      </ul>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">spike 中改記憶體的結果</div>
+      <table>
+        <tr><th>嘗試</th><th>結果</th></tr>
+        <tr><td>MenuOpenCloseEvent sink 讀 dialogueList</td><td><span class="badge bgn">✓ fire 正常</span></td></tr>
+        <tr><td>改 Dialogue::topicText</td><td><span class="badge by">算繪出，但幾秒後被引擎還原</span></td></tr>
+        <tr><td>改 TESTopic::fullName（form）</td><td><span class="badge br">開著留住，但 say-flow 後引擎重設；改共用 vanilla form 危險</span></td></tr>
+        <tr><td>→ 結論</td><td><span class="badge bpu">build-time ESP 路線（ModForge）</span></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ KNOWN ISSUES ═══════════════════ -->
+<div class="sec-label">已知問題 / 技術債</div>
+<div class="card">
+  <div class="card-title">⚠️ 未解問題詳述</div>
+  <div class="finding high">
+    <div class="finding-id" style="color:var(--orange)">跨 Session Crash（決定暫不修）</div>
+    <div class="finding-title">完全關遊戲重開，讀「含動態 NPC」的存檔 → crash（OnRevert 後 OnLoad 消失）</div>
+    <div class="finding-body">
+      <strong>研究結論</strong>（research/kpresavegame_dynamic_cleanup.md）：本 SKSE 根本沒有 <code>kPreSaveGame</code>，只有 <code>kSaveGame</code>，它晚於 .ess 寫入。方案 B（kSaveGame→AddTask strip）只能讓「下次」存檔乾淨，且讓召喚內容「存檔後從世界消失」= 退步。根治需方案 C：trampoline hook <code>BGSSaveLoadManager::Save</code>，<code>src/hook</code> 是空殼，需要 RELOCATION_ID。<strong>Within-session</strong> 已用 readopt 繞過。
+    </div>
+  </div>
+  <div class="finding med">
+    <div class="finding-id" style="color:var(--yellow)">占位 FormID × 6</div>
+    <div class="finding-title">JSON 中 6 個 FormID 是占位值，解析失敗 → no-op + log warn，不 crash</div>
+    <div class="finding-body">
+      <table style="margin-top:6px">
+        <tr><th>用途</th><th>占位值</th><th>替換方式</th></tr>
+        <tr><td>victim spawn template</td><td><code>0x0001BCD8</code>（土匪，會敵對）</td><td>換合理侍從 NPC FormID</td></tr>
+        <tr><td>play_idle form</td><td><code>0x00013452</code></td><td>console <code>help &lt;idle name&gt;</code></td></tr>
+        <tr><td>play_sound form</td><td><code>0x0003EB4E</code></td><td>console <code>help &lt;sound name&gt;</code></td></tr>
+        <tr><td>add_map_marker form</td><td><code>0x00018A52</code>（需有 ExtraMapMarker 的 ref）</td><td>console 查白漫 marker ref</td></tr>
+        <tr><td>give_item（法器賞）</td><td><code>0x0001CB36</code></td><td>換想給的物品</td></tr>
+        <tr><td>add_shout（龍吼賞）</td><td><code>0x00013E22</code></td><td>換想教的龍吼</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="finding med">
+    <div class="finding-id" style="color:var(--yellow)">MessageBoxPresenter 全形冒號</div>
+    <div class="finding-title">MessageBoxPresenter.cpp:66 speaker/台詞間用了全形冒號 U+FF1A → 無 CJK 字型顯示方塊</div>
+    <div class="finding-body">修法：改為半形冒號 <code>:</code>，需重編 DLL。</div>
+  </div>
+  <div class="finding low">
+    <div class="finding-id" style="color:var(--blue)">煉藥藥水無 co-save</div>
+    <div class="finding-title">F11 煉藥（AlchemySpike）功能可用，但生成的藥水讀存檔後消失</div>
+    <div class="finding-body">未接 'GITM' 或獨立 record；功能性問題，不 crash。</div>
+  </div>
+  <div class="finding low">
+    <div class="finding-id" style="color:var(--blue)">5 個新動詞僅 compile ✓，未 in-game 驗證</div>
+    <div class="finding-title">play_idle / add_shout / teleport_player / play_sound / add_map_marker</div>
+    <div class="finding-body">全部 null-safe（占位 FormID 解析不到 → log warn + no-op），不 crash。需實機確認效果。</div>
+  </div>
+</div>
+
+<!-- ═══════════════════ KEY FILES ═══════════════════ -->
+<div class="sec-label">關鍵決策與檔案地圖</div>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">⚖️ 已定案的架構決策</div>
+    <ul class="items">
+      <li><span class="ic ic-pin"></span><strong>對話非同步</strong>：presentNode display-only，submitChoice 推進，不阻塞主執行緒</li>
+      <li><span class="ic ic-pin"></span><strong>Co-save 中央派發器</strong>：ONE SetUniqueID，AddHandler 擴充，GetNextRecordInfo fan-out</li>
+      <li><span class="ic ic-pin"></span><strong>邏輯持久化</strong>：只存 recipe + plugin FormID，絕不存 0xFF 動態 FormID</li>
+      <li><span class="ic ic-pin"></span><strong>reset_quest</strong>：復位任務 vars/objectives/timers，不動 global.*（跨循環計數在 global）</li>
+      <li><span class="ic ic-pin"></span><strong>Core 可攜</strong>：src/core/ 零 RE::/SKSE::，set SKIP_PRECOMPILE_HEADERS ON</li>
+      <li><span class="ic ic-pin"></span><strong>Static CRT</strong>（/MT release，/MTd debug）+ vcpkg triplet x64-windows-skse，Proton 免裝 vcredist</li>
+      <li><span class="ic ic-pin"></span><strong>原生對話</strong> → MessageBox 保底（原生注入不可行，已 spike 確認）</li>
+      <li><span class="ic ic-pin"></span><strong>spell_cast_on</strong>：TESMagicEffectApplyEvent（候選 C，零 RELOCATION_ID）</li>
+      <li><span class="ic ic-pin"></span>CMake 專案名 <code>TemplatePlugin</code>，config 資料夾 <code>Template_Plugin</code>，<strong>勿改</strong></li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">📂 原始碼地圖</div>
+    <table>
+      <tr><td><code>src/core/QuestEngine.{h,cpp}</code></td><td>可攜狀態機，SPEC §3/§4/§6</td></tr>
+      <tr><td><code>src/core/QuestState.h</code></td><td>Value / QuestState / GlobalStore</td></tr>
+      <tr><td><code>src/core/Ports.h</code></td><td>5 個 capability port 介面</td></tr>
+      <tr><td><code>src/skyrim/SkyrimAdapter.{h,cpp}</code></td><td>整合器，持有 engine + 6 ports + 'QEST' handler</td></tr>
+      <tr><td><code>src/skyrim/SkyrimActions.{h,cpp}</code></td><td>IActionRunner 實作，所有 RE:: 副作用</td></tr>
+      <tr><td><code>src/skyrim/SkyrimConditions.{h,cpp}</code></td><td>IConditionEvaluator，read-only</td></tr>
+      <tr><td><code>src/skyrim/SkyrimEntities.{h,cpp}</code></td><td>EntityResolver，alias↔FormID 反查</td></tr>
+      <tr><td><code>src/skyrim/SkyrimEvents.{h,cpp}</code></td><td>ActivateSink + MagicEffectSink + DebugInputSink</td></tr>
+      <tr><td><code>src/skyrim/dialogue/MessageBoxPresenter.{h,cpp}</code></td><td>IDialoguePresenter，async callback</td></tr>
+      <tr><td><code>src/skyrim/dialogue/NativeDialogueSpike.{h,cpp}</code></td><td>已 DISABLED 的 spike（不安裝）</td></tr>
+      <tr><td><code>src/skyrim/CoSave.{h,cpp}</code></td><td>中央派發器，ONE SetUniqueID</td></tr>
+      <tr><td><code>src/skyrim/procgen/Procgen.{h,cpp}</code></td><td>GenerateInterior / GenerateStructure / RearrangeFurnishings，'PRGN'</td></tr>
+      <tr><td><code>src/skyrim/procgen/ProcgenNpc.{h,cpp}</code></td><td>TESNPC mint + readopt，'GNPC' v2</td></tr>
+      <tr><td><code>src/skyrim/procgen/ProcgenItem.{h,cpp}</code></td><td>WEAP/ARMO/MISC component 深拷貝，'GITM'</td></tr>
+      <tr><td><code>src/skyrim/procgen/ProcgenSpells.{h,cpp}</code></td><td>示範法術（Generate Room / Conjure Keep / Conjure NPC）</td></tr>
+      <tr><td><code>config/quests/cw_whiterun_summons.json</code></td><td>主線任務，可重複迴圈，全英文顯示</td></tr>
+      <tr><td><code>tools/cli_harness/main.cpp</code></td><td>Headless CLI adapter，離線驗證用</td></tr>
+      <tr><td><code>research/</code></td><td>12 份可行性分析（spell_cast_on / native_dialogue / PROCGEN / REVIEW）</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════ NEXT STEPS ═══════════════════ -->
+<div class="sec-label">下一步（優先順序）</div>
+<div class="card">
+  <div class="card-title">🗺️ 待辦事項</div>
+  <div class="grid g2" style="margin-bottom:0">
+    <div>
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">立即可做（改 JSON，不需重編）</div>
+      <ul class="items">
+        <li><span class="ic ic-arr"></span>換 victim spawn template（<code>0x0001BCD8</code> 土匪→友好 NPC）</li>
+        <li><span class="ic ic-arr"></span>換占位 FormID（地圖標記 / idle / 音效 / 龍吼 / 法器）</li>
+      </ul>
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;margin-top:12px">需重編 DLL</div>
+      <ul class="items">
+        <li><span class="ic ic-arr"></span>修 MessageBoxPresenter.cpp 全形冒號（U+FF1A → <code>:</code>）</li>
+        <li><span class="ic ic-arr"></span>5 個新動詞 in-game 驗證（play_idle / add_shout / teleport_player / play_sound / add_map_marker）</li>
+        <li><span class="ic ic-todo"></span>煉藥藥水接 co-save</li>
+      </ul>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">需 address-library ID（deferred）</div>
+      <ul class="items">
+        <li><span class="ic ic-todo"></span>跨 session crash 根治：hook <code>BGSSaveLoadManager::Save</code>（方案 C），需逐版本 RELOCATION_ID</li>
+        <li><span class="ic ic-todo"></span><code>start_combat</code> / <code>set_relationship</code> 真實實作</li>
+      </ul>
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;margin-top:12px">ModForge 路線（獨立 repo）</div>
+      <ul class="items">
+        <li><span class="ic ic-arr"></span>It.7d-phase3：exterior/worldspace cell 放置</li>
+        <li><span class="ic ic-arr"></span>實機測試（生成內容 / vanilla cell 放置 / CJK 顯示）</li>
+        <li><span class="ic ic-todo"></span>It.6c：接真 LLM API（卡用戶 key）</li>
+        <li><span class="ic ic-todo"></span>安全唯讀選取偵測（lastSelectedDialogue → submitChoice，從 NativeDialogueSpike 取讀取零件）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center;color:var(--text2);font-size:11px;margin-top:20px">
+  生成於 2026-05-25 · HEAD <span class="hash">de5fe50</span> · feature/court-wizard · 工作樹乾淨（僅 skse64/ untracked）
+</div>
+
+</body>
+</html>

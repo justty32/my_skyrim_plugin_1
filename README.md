@@ -160,7 +160,18 @@ For runtime on Proton (Skyrim under Linux / Steam Deck), native debugger attach 
 
 ### 當前分支
 
+全部七條分支的實編結果與處置在 **[BRANCHES.md](BRANCHES.md)**（2026-08-02 逐條交叉編譯過）。摘要：
+
 | Branch | 功能 | 狀態 |
 | --- | --- | --- |
-| `feat/power-shout` | 動態 3 段龍吼「力量強化」，每段 +100/+200/+300 HP·SP·MP 自身 buff 60s | 尚未驗證 CI（需開 PR 或 `workflow_dispatch`） |
+| `main` | DaylightDungeon（FollowLight + AmbientBoost + NpcGenerator） | ✅ 主線，編得過 |
+| `feature/court-wizard` | 可攜 quest engine + Skyrim adapter + 程序化生成 | ✅ 編得過、實機驗證過；**留著**（設計文件已撈上 main）|
+| `feat/custom-weapon`／`feat/magic-toolkit`／`feat/power-shout` | 早期 spike | 後兩者因 CommonLibSSE API 漂移已編不過；原始碼全存進 [`vendor/`](vendor/README.md)，分支可刪 |
+| `feat/npc-generator`／`feat/follow-light-ambient` | — | 已併進 `main`／與 main 同一 commit，可刪 |
+
+### 資料夾補充
+
+- **[`research/`](research/)** — 對照 CommonLibSSE-NG 標頭查證過的可行性分析（navmesh-free 尋路、NPC 行為改造、程序化生成、煉金、hook 手法…）。做新功能前先翻這裡。
+- **[`archive/`](archive/court-wizard/README.md)** — 已停更專案的設計／交接快照，**不是現況**。
+- **[`vendor/`](vendor/README.md)** — 從舊分支撈出的實作，**不參與建置**（沒登記進 `cmake/sourcelist.cmake`）。
 

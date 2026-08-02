@@ -41,6 +41,13 @@ If a `config/` folder exists at the repo root, its contents are also copied to `
 
 `CMakeLists.txt` does not glob. New `.cpp` files must be registered in `cmake/sourcelist.cmake` and new headers in `cmake/headerlist.cmake`, or they won't be built.
 
+## Non-build directories
+
+- `research/` — feasibility analyses, every engine-level claim checked against the CommonLibSSE-NG `RE/` headers. **Read before designing a new feature** — several dead ends (dynamic navmesh generation, runtime native-dialogue injection) are already written up there.
+- `archive/` — design/handoff snapshots from projects that stopped. Dated, **not current state**; each has a README saying what went stale.
+- `vendor/` — implementations lifted off old feature branches, kept as reference. Deliberately **not** in `sourcelist.cmake`, so nothing here compiles. `vendor/README.md` records which ones no longer build against current CommonLibSSE-NG and exactly which APIs moved.
+- `BRANCHES.md` — per-branch inventory: what each contains, whether it actually cross-compiles, and the SHA to recover it. Consult before creating or deleting branches.
+
 ## Code layout
 
 - `src/plugin.cpp` — entry point (`SKSEPluginLoad`). Calls `SKSE::Init`, `SetupLog()`, then registers `MessageHandler` on the SKSE messaging interface. The handler has stub `switch` cases for `kDataLoaded`, `kPostLoad`, `kPreLoadGame`, `kPostLoadGame`, `kNewGame` — wire up initialization there.

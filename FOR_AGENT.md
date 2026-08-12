@@ -47,14 +47,14 @@ cmake --build build/release-clang-cl-linux -j$(nproc)
 ### 4.1 日誌路徑
 SKSE 日誌位於 Proton Prefix 內：
 ```bash
-/home/lorkhan/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/TemplatePlugin.log
+/home/lorkhan/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/DaylightDungeon.log
 ```
 
 ### 4.2 驗證指令
 檢查日誌更新狀態與內容：
 ```bash
-ls -l "/home/lorkhan/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/TemplatePlugin.log"
-tail -n 50 "/home/lorkhan/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/TemplatePlugin.log"
+ls -l "/home/lorkhan/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/DaylightDungeon.log"
+tail -n 50 "/home/lorkhan/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/DaylightDungeon.log"
 ```
 
 ## 5. 成功標準 (Success Criteria)

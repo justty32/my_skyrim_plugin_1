@@ -1,4 +1,4 @@
-# Gemini Project Context: TemplatePlugin (SKSE Plugin)
+# Gemini Project Context: DaylightDungeon (SKSE Plugin)
 
 This project is an SKSE (Skyrim Script Extender) plugin template for Skyrim SE/AE/GOG/VR, designed for cross-version compatibility using `CommonLibSSE-NG`. It features a specialized build infrastructure for static CRT linkage, automated MO2 packaging, and CI integration.
 
@@ -25,7 +25,7 @@ This project is an SKSE (Skyrim Script Extender) plugin template for Skyrim SE/A
 - **Build (Release):** `cmake --build build/release-msvc`
 - **Clean Rebuild:** `Remove-Item -Recurse -Force build; cmake --preset build-release-msvc; cmake --build build/release-msvc`
 - **Package for MO2:** `scripts/pack.ps1` (creates ZIP in `dist/`)
-- **Verify Static Linkage:** `dumpbin /dependents build/release-msvc/TemplatePlugin.dll` (Look for absence of `MSVCP140.dll`).
+- **Verify Static Linkage:** `dumpbin /dependents build/release-msvc/DaylightDungeon.dll` (Look for absence of `MSVCP140.dll`).
 
 ### Deployment
 - The DLL must be placed in `Data/SKSE/Plugins/` within the Skyrim directory or a mod manager's virtual folder.
@@ -55,7 +55,7 @@ This project is an SKSE (Skyrim Script Extender) plugin template for Skyrim SE/A
 
 ## Debugging Workflow (Linux/Proton Focus)
 Since direct debugger attachment is difficult under Proton, rely heavily on trace logs:
-- **Log Path:** `<Proton-Prefix>/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/TemplatePlugin.log`
+- **Log Path:** `<Proton-Prefix>/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/DaylightDungeon.log`
 - All logs flush immediately on write (configured in `SetupLog()`).
 
 ## Key Files Summary

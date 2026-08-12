@@ -11,16 +11,17 @@ Windows runner 自動 build + 打包 plugin。Workflow 在 `.github/workflows/bu
 ## 每次跑做什麼
 
 1. Checkout
-2. 設 MSVC 開發環境（`ilammy/msvc-dev-cmd@v1`，效果等同 Developer PowerShell for VS 2022；參見 `PITFALLS.md` 第 4 條的背景）
-3. 安裝 Ninja
-4. 把 `VCPKG_INSTALLATION_ROOT`（windows-latest 預裝 vcpkg 在 `C:\vcpkg`，環境變數這樣叫）alias 成 `VCPKG_ROOT`，`CMakePresets.json` 才讀得到
-5. 還原 vcpkg binary cache（見下節）
-6. `cmake --preset build-release-msvc` → `cmake --build build/release-msvc`
-7. **驗證靜態 CRT**：跑 `dumpbin /dependents`，若 DLL 依賴 `MSVCP*.dll` / `VCRUNTIME*.dll` 就 **fail 整個 workflow**（靜/動 CRT 搞混了）
-8. 跑 `scripts/pack.ps1` 打包 MO2 zip
-9. 上傳 artifact：
-   - `TemplatePlugin-dll` — 單一 `.dll`
-   - `TemplatePlugin-mo2-zip` — MO2 可直接安裝的 `.zip`
+2. 跑 `scripts/test_packaging.ps1` 驗證離線打包契約
+3. 設 MSVC 開發環境（`ilammy/msvc-dev-cmd@v1`，效果等同 Developer PowerShell for VS 2022；參見 `PITFALLS.md` 第 4 條的背景）
+4. 安裝 Ninja
+5. 把 `VCPKG_INSTALLATION_ROOT`（windows-latest 預裝 vcpkg 在 `C:\vcpkg`，環境變數這樣叫）alias 成 `VCPKG_ROOT`，`CMakePresets.json` 才讀得到
+6. 還原 vcpkg binary cache（見下節）
+7. `cmake --preset build-release-msvc` → `cmake --build build/release-msvc`
+8. **驗證靜態 CRT**：跑 `dumpbin /dependents`，若 DLL 依賴 `MSVCP*.dll` / `VCRUNTIME*.dll` 就 **fail 整個 workflow**（靜/動 CRT 搞混了）
+9. 跑 `scripts/pack.ps1` 打包 MO2 zip
+10. 上傳 artifact：
+   - `DaylightDungeon-dll` — 單一 `.dll`
+   - `DaylightDungeon-mo2-zip` — MO2 可直接安裝的 `.zip`
 
 ## Cache
 
@@ -68,16 +69,11 @@ Artifact 保留 90 天（GitHub 預設），之後要自己留一份或重跑 wo
 2. 公開 repo 的 Actions 功能**預設啟用**，不用動設定。
 3. 第一次 push 之後看 Actions tab，若 fail 回報 log。
 
-## 重命名 plugin 時要同步改的地方
+## Plugin 名稱與發佈契約
 
-Workflow 裡兩處 hardcode 了 `TemplatePlugin.dll`：
+Workflow 在 build 後從 `CMakeCache.txt` 讀取 `CMAKE_PROJECT_NAME`，先確認對應 DLL 確實存在，再把精確路徑交給 `dumpbin` 和 artifact upload。名稱不再硬編碼於 workflow。
 
-- 「Verify static CRT」步驟：`dumpbin /dependents build\release-msvc\TemplatePlugin.dll`
-- 「Upload DLL」步驟：`path: build/release-msvc/TemplatePlugin.dll`
-
-若改 `CMakeLists.txt` 的 `project(TemplatePlugin ...)` 成別的名字，這兩處也要同步改。另一個選擇是改成 glob（`build/release-msvc/*.dll`），但精確路徑不會 upload 到意料外的檔。
-
-同時：`scripts/pack.ps1` 裡的 `$ConfigFolderName = 'Template_Plugin'` 要跟 `CMakeLists.txt` 裡的 `CONFIG_FOLDER` 常數對齊。
+設定檔子目錄由 `CMakeLists.txt` 的 cache 變數 `PLUGIN_CONFIG_FOLDER` 定義；CMake post-build、`pack.ps1` 與 `pack.sh` 共用此值。若改 plugin 名稱而設定檔目錄也應跟著改，只需同時更新 `project(...)` 與 `PLUGIN_CONFIG_FOLDER`。可用 `scripts\test_packaging.ps1` 離線驗證這條契約。
 
 ## 未來可加
 

@@ -14,9 +14,6 @@ CONFIG="release-clang-cl-linux"
 # 你可以修改這裡的 "dist" 成任何你想要的路徑 (例如 "/home/user/my_mods")
 OUTPUT_DIR="dist"
 
-# 3. 插件設定檔資料夾名稱 (需與 CMakeLists.txt 中的 CONFIG_FOLDER 一致)
-CONFIG_FOLDER_NAME="Template_Plugin"
-
 # ==============================================================================
 
 # 幫助訊息功能
@@ -25,24 +22,32 @@ usage() {
   echo "說明:"
   echo "  --config      指定要打包的編譯資料夾 (預設: $CONFIG)"
   echo "  --output-dir  指定 ZIP 輸出的目的地 (預設: $OUTPUT_DIR)"
-  exit 1
+  exit "${1:-1}"
 }
 
 # 解析命令列參數
 while [[ "$#" -gt 0 ]]; do
   case $1 in
   --config)
+    if [[ "$#" -lt 2 || -z "$2" ]]; then
+      echo "錯誤: --config 需要一個值。" >&2
+      exit 2
+    fi
     CONFIG="$2"
     shift
     ;;
   --output-dir)
+    if [[ "$#" -lt 2 || -z "$2" ]]; then
+      echo "錯誤: --output-dir 需要一個值。" >&2
+      exit 2
+    fi
     OUTPUT_DIR="$2"
     shift
     ;; # 也可以透過執行時傳參來臨時改變輸出位置
-  -h | --help) usage ;;
+  -h | --help) usage 0 ;;
   *)
     echo "未知參數: $1"
-    usage
+    usage 2
     ;;
   esac
   shift
@@ -77,6 +82,7 @@ get_cache_value() {
 # 讀取專案名稱與版本號
 PLUGIN_NAME=$(get_cache_value "CMAKE_PROJECT_NAME")
 PLUGIN_VERSION=$(get_cache_value "CMAKE_PROJECT_VERSION")
+CONFIG_FOLDER_NAME=$(get_cache_value "PLUGIN_CONFIG_FOLDER")
 
 # 檢查 DLL 是否已生成
 DLL_PATH="$BUILD_DIR/$PLUGIN_NAME.dll"
@@ -85,8 +91,19 @@ if [[ ! -f "$DLL_PATH" ]]; then
   exit 1
 fi
 
-# 準備打包用的暫存資料夾結構 (pack/Data/SKSE/Plugins)
+# 先解析輸出路徑；輸出若位於 pack/ 內，會在重建 staging 時被刪除或把 zip
+# 自己遞迴打包，因此明確拒絕。
 PACK_DIR="$REPO_ROOT/pack"
+mkdir -p "$OUTPUT_DIR"
+ABS_OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
+case "$ABS_OUTPUT_DIR/" in
+  "$PACK_DIR/"*)
+    echo "錯誤: --output-dir 不可指向 '$PACK_DIR' 或其子目錄。" >&2
+    exit 2
+    ;;
+esac
+
+# 準備打包用的暫存資料夾結構 (pack/Data/SKSE/Plugins)
 PLUGINS_DIR="$PACK_DIR/Data/SKSE/Plugins"
 
 echo "正在準備暫存檔案至 $PACK_DIR..."
@@ -103,10 +120,6 @@ if [[ -d "$CONFIG_SRC" ]]; then
   cp -r "$CONFIG_SRC" "$CONFIG_DST"
   echo "已包含設定檔: config/ -> Data/SKSE/Plugins/$CONFIG_FOLDER_NAME/"
 fi
-
-# 建立輸出目錄並取得其絕對路徑
-mkdir -p "$OUTPUT_DIR"
-ABS_OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
 
 # 決定 ZIP 檔名 (如果是 Debug 版會加上 -Debug 後綴)
 BUILD_TAG=""

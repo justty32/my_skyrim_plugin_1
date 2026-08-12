@@ -27,11 +27,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Must match CONFIG_FOLDER in CMakeLists.txt — rename both together.
-$ConfigFolderName = 'Template_Plugin'
-
 $repoRoot = Split-Path -Parent $PSScriptRoot
-Set-Location $repoRoot
 
 $buildDir  = Join-Path $repoRoot "build\$Config"
 $cacheFile = Join-Path $buildDir  'CMakeCache.txt'
@@ -49,14 +45,24 @@ function Get-CacheValue([string]$Key) {
 
 $pluginName    = Get-CacheValue 'CMAKE_PROJECT_NAME'
 $pluginVersion = Get-CacheValue 'CMAKE_PROJECT_VERSION'
+$configFolderName = Get-CacheValue 'PLUGIN_CONFIG_FOLDER'
 
 $dllPath = Join-Path $buildDir "$pluginName.dll"
 if (-not (Test-Path $dllPath)) {
     throw "DLL not found at '$dllPath'. Build the project first (cmake --build $buildDir)."
 }
 
-# Staging: pack/Data/SKSE/Plugins/<files>
+# Resolve and validate the output before replacing the staging tree. An archive
+# inside pack/ would recursively package itself or be deleted during staging.
 $packDir    = Join-Path $repoRoot 'pack'
+$outDirAbs = if ([System.IO.Path]::IsPathRooted($OutputDir)) { $OutputDir } else { Join-Path $repoRoot $OutputDir }
+$packDirFull = [System.IO.Path]::GetFullPath($packDir).TrimEnd('\', '/')
+$outDirFull = [System.IO.Path]::GetFullPath($outDirAbs).TrimEnd('\', '/')
+if ($outDirFull -eq $packDirFull -or $outDirFull.StartsWith("$packDirFull\", [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "OutputDir '$outDirFull' must not be the packaging staging directory or one of its children."
+}
+
+# Staging: pack/Data/SKSE/Plugins/<files>
 $pluginsDir = Join-Path $packDir  'Data\SKSE\Plugins'
 
 if (Test-Path $packDir) { Remove-Item -Recurse -Force $packDir }
@@ -64,22 +70,21 @@ New-Item -ItemType Directory -Path $pluginsDir -Force | Out-Null
 
 Copy-Item -Path $dllPath -Destination $pluginsDir
 
-# Optional: config/ folder (CMakeLists renames it to CONFIG_FOLDER on post-build;
+# Optional: config/ folder (CMakeLists uses PLUGIN_CONFIG_FOLDER on post-build;
 # mirror that here so the zip layout matches what CMakeLists would deploy).
 $configSrc = Join-Path $repoRoot 'config'
 if (Test-Path $configSrc) {
-    $configDst = Join-Path $pluginsDir $ConfigFolderName
+    $configDst = Join-Path $pluginsDir $configFolderName
     Copy-Item -Recurse -Path $configSrc -Destination $configDst
-    Write-Host "Included config/ -> Data\SKSE\Plugins\$ConfigFolderName\"
+    Write-Host "Included config/ -> Data\SKSE\Plugins\$configFolderName\"
 }
 
 # Zip
-$outDirAbs = if ([System.IO.Path]::IsPathRooted($OutputDir)) { $OutputDir } else { Join-Path $repoRoot $OutputDir }
-New-Item -ItemType Directory -Path $outDirAbs -Force | Out-Null
+New-Item -ItemType Directory -Path $outDirFull -Force | Out-Null
 
 $buildTag = if ($Config -eq 'debug-msvc') { '-Debug' } else { '' }
 $zipName  = "$pluginName-$pluginVersion$buildTag.zip"
-$zipPath  = Join-Path $outDirAbs $zipName
+$zipPath  = Join-Path $outDirFull $zipName
 if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
 
 Compress-Archive -Path (Join-Path $packDir '*') -DestinationPath $zipPath -CompressionLevel Optimal

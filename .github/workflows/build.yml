@@ -17,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Test packaging contract
+        run: scripts/test_packaging.ps1
+
       # Sets INCLUDE / LIB / PATH so cl.exe and link.exe resolve STL headers
       # and Windows SDK libs (same thing "Developer PowerShell for VS 2022" does).
       - name: Set up MSVC dev environment
@@ -50,9 +53,24 @@ jobs:
       - name: Build
         run: cmake --build build/release-msvc
 
+      - name: Read build metadata
+        id: build_metadata
+        run: |
+          $cacheLine = Select-String -Path build\release-msvc\CMakeCache.txt -Pattern '^CMAKE_PROJECT_NAME:\w+=(.+)$' | Select-Object -First 1
+          if (-not $cacheLine) {
+              throw "CMAKE_PROJECT_NAME is missing from CMakeCache.txt"
+          }
+          $pluginName = $cacheLine.Matches[0].Groups[1].Value.Trim()
+          $dllPath = "build/release-msvc/$pluginName.dll"
+          if (-not (Test-Path -LiteralPath $dllPath)) {
+              throw "Expected plugin DLL was not produced: $dllPath"
+          }
+          "plugin_name=$pluginName" >> $env:GITHUB_OUTPUT
+          "dll_path=$dllPath" >> $env:GITHUB_OUTPUT
+
       - name: Verify static CRT (no MSVC runtime deps)
         run: |
-          $deps = & dumpbin /dependents build\release-msvc\TemplatePlugin.dll
+          $deps = & dumpbin /dependents '${{ steps.build_metadata.outputs.dll_path }}'
           Write-Host ($deps | Out-String)
           if ($deps -match '(MSVCP|VCRUNTIME)\d+(D)?\.dll') {
               throw "DLL still depends on MSVC runtime; static CRT link failed. Match: $($Matches[0])"
@@ -65,13 +83,13 @@ jobs:
       - name: Upload DLL
         uses: actions/upload-artifact@v4
         with:
-          name: TemplatePlugin-dll
-          path: build/release-msvc/TemplatePlugin.dll
+          name: ${{ steps.build_metadata.outputs.plugin_name }}-dll
+          path: ${{ steps.build_metadata.outputs.dll_path }}
           if-no-files-found: error
 
       - name: Upload MO2-installable zip
         uses: actions/upload-artifact@v4
         with:
-          name: TemplatePlugin-mo2-zip
+          name: ${{ steps.build_metadata.outputs.plugin_name }}-mo2-zip
           path: dist/*.zip
           if-no-files-found: error

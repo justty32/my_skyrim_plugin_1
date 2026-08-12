@@ -6,7 +6,7 @@
 cmake --preset build-release-msvc; if ($?) { cmake --build build/release-msvc }
 ```
 
-產出：`build/release-msvc/TemplatePlugin.dll`。
+產出：`build/release-msvc/DaylightDungeon.dll`。
 
 ## 先決條件
 
@@ -77,7 +77,7 @@ Build 完後，檢查 DLL 的 import 表，確認沒有任何 MSVC runtime DLL �
 
 ```powershell
 # 需要 Developer PowerShell for VS 2022（dumpbin 才在 PATH 上）
-dumpbin /dependents build\release-msvc\TemplatePlugin.dll
+dumpbin /dependents build\release-msvc\DaylightDungeon.dll
 ```
 
 預期看到的只有 Windows 系統 DLL：`KERNEL32.dll`、`USER32.dll`、`d3d11.dll` 之類。
@@ -86,14 +86,20 @@ dumpbin /dependents build\release-msvc\TemplatePlugin.dll
 
 ## 產出位置
 
-- Release：`build/release-msvc/TemplatePlugin.dll`
-- Debug：`build/debug-msvc/TemplatePlugin.dll` + `TemplatePlugin.pdb`
+- Release：`build/release-msvc/DaylightDungeon.dll`
+- Debug：`build/debug-msvc/DaylightDungeon.dll` + `DaylightDungeon.pdb`
 
 沒有自動安裝步驟（因為你沒設 `SKYRIM_FOLDER` / `SKYRIM_MODS_FOLDER`）。要丟進 Manjaro 的 MO2，用 `scripts/pack.ps1` 打包：
 
 ```powershell
-scripts\pack.ps1                      # Release，產出 dist\TemplatePlugin-0.0.1.zip
-scripts\pack.ps1 -Config debug-msvc   # Debug，產出 dist\TemplatePlugin-0.0.1-Debug.zip
+scripts\pack.ps1                      # Release，產出 dist\DaylightDungeon-0.0.1.zip
+scripts\pack.ps1 -Config debug-msvc   # Debug，產出 dist\DaylightDungeon-0.0.1-Debug.zip
 ```
 
-腳本會從 `build/<config>/CMakeCache.txt` 讀出 plugin 名稱與版本，在 `pack/` 暫存出標準 MO2 結構（`Data/SKSE/Plugins/<PluginName>.dll` + 若 `config/` 存在則一併複製成 `Data/SKSE/Plugins/Template_Plugin/`），最後壓成 `dist/<PluginName>-<version>[-Debug].zip`。產出的 zip 直接拖進 MO2 的「Install a new mod from an archive」就行。
+腳本會從 `build/<config>/CMakeCache.txt` 讀出 plugin 名稱、版本與 `PLUGIN_CONFIG_FOLDER`，在 `pack/` 暫存出標準 MO2 結構（`Data/SKSE/Plugins/DaylightDungeon.dll` + `Data/SKSE/Plugins/DaylightDungeon/`），最後壓成 `dist/<PluginName>-<version>[-Debug].zip`。`OutputDir` 不可指向 `pack/` 或其子目錄。產出的 zip 直接拖進 MO2 的「Install a new mod from an archive」即可。
+
+不需完整 toolchain 的打包契約測試：
+
+```powershell
+scripts\test_packaging.ps1
+```

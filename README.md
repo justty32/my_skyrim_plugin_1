@@ -1,8 +1,8 @@
-# TemplatePlugin
+# DaylightDungeon
 
 An SKSE plugin for Skyrim SE / AE (incl. 1.6.1170) / GOG / VR, built on [CommonLibSSE-NG](https://github.com/CharmedBaryon/CommonLibSSE-NG). Forked from [Monitor221hz/CommonLibSSE-NG-Template-Plugin](https://github.com/Monitor221hz/CommonLibSSE-NG-Template-Plugin) with extra build infrastructure added on top — see below.
 
-> Rename `TemplatePlugin` in `CMakeLists.txt` (`project(...)`) and the `CONFIG_FOLDER` string near line 60 when using this as a starting point for a real plugin; also update the two hardcoded paths in `.github/workflows/build.yml` and `$ConfigFolderName` in `scripts/pack.ps1`.
+> The plugin name comes from `project(...)` and the configuration directory comes from the cache-backed `PLUGIN_CONFIG_FOLDER` variable in `CMakeLists.txt`. Both packagers read the configured values from `CMakeCache.txt`, and CI discovers the DLL name from the same cache.
 
 ## What this adds on top of the upstream template
 
@@ -97,7 +97,7 @@ For runtime on Proton (Skyrim under Linux / Steam Deck), native debugger attach 
                   GitHub Actions
              (cold ~20 min, cached ~2–3 min)
                         │
-       下載 artifact（TemplatePlugin-mo2-zip）
+       下載 artifact（DaylightDungeon-mo2-zip）
                         │
         MO2 → Install a new mod from an archive
                         │
@@ -112,7 +112,7 @@ For runtime on Proton (Skyrim under Linux / Steam Deck), native debugger attach 
 
 ### Log 檔路徑
 
-插件名為 `<PluginName>`（目前 `TemplatePlugin`，正式用要在 `CMakeLists.txt` 改）。log 位於 Proton prefix 內：
+插件名目前為 `DaylightDungeon`。log 位於 Proton prefix 內：
 
 ```
 <prefix>/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/<PluginName>.log
@@ -123,6 +123,14 @@ For runtime on Proton (Skyrim under Linux / Steam Deck), native debugger attach 
 ### Log 層級
 
 `src/log.h::SetupLog()` 將 spdlog level 強制設為 `trace` 且 `flush_on(trace)`，所以即使 Release build，所有 `SKSE::log::trace/debug/info/warn/error` 都會立即寫進 log 檔。目前 CI 只 build Release（`build.yml` 沒做 Debug matrix）。若日後要讓 Release 變安靜，用 `#ifndef NDEBUG` gate 掉 verbose 區段。
+
+### 離線打包契約測試
+
+不需要 CommonLibSSE 或編譯器即可驗證 PowerShell 打包輸出、設定檔目錄、危險輸出路徑拒絕，以及 CI／bash packager 的 rename 契約：
+
+```powershell
+scripts\test_packaging.ps1
+```
 
 ### 程式風格：多 log
 

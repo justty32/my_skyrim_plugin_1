@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 3.21)
 # Set your project name. This will be the name of your SKSE .dll file.
 project(DaylightDungeon VERSION 0.0.1 LANGUAGES CXX)
 
+# Keep deployment and both packaging scripts on one cache-backed source of truth.
+set(PLUGIN_CONFIG_FOLDER "${PROJECT_NAME}" CACHE STRING "SKSE/Plugins configuration subdirectory")
+
 #
 
 # YOU DO NOT NEED TO EDIT ANYTHING BELOW HERE
@@ -57,7 +60,6 @@ if(DEFINED OUTPUT_FOLDER)
     # Copy the SKSE plugin .dll files into the SKSE/Plugins/ folder
     set(DLL_FOLDER "${OUTPUT_FOLDER}/SKSE/Plugins")
 
-    set (CONFIG_FOLDER "DaylightDungeon")
     set(SRC_CONFIG_FOLDER "${CMAKE_SOURCE_DIR}/config")
     
     message(STATUS "SKSE plugin output folder: ${DLL_FOLDER}")
@@ -73,7 +75,7 @@ if(DEFINED OUTPUT_FOLDER)
         add_custom_command(
             TARGET "${PROJECT_NAME}"
             POST_BUILD
-            COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/config" "${DLL_FOLDER}/${CONFIG_FOLDER}"
+            COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${CMAKE_SOURCE_DIR}/config" "${DLL_FOLDER}/${PLUGIN_CONFIG_FOLDER}"
             VERBATIM
         )
     endif()

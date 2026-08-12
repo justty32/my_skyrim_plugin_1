@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SKSE plugin template for Skyrim SE/AE/GOG/VR, built on [CommonLibSSE-NG](https://github.com/CharmedBaryon/CommonLibSSE-NG) (via the `commonlibsse-ng-fork` vcpkg port from the `Monitor221hz/modding-vcpkg-ports` registry — see `vcpkg-configuration.json`). Hook IDs / address-library offsets for each game version still have to be found manually.
 
-The CMake project name (`TemplatePlugin` in `CMakeLists.txt`) becomes the `.dll` filename. Rename it when using this template for a real plugin, and also update the hardcoded `CONFIG_FOLDER` string (`Template_Plugin`) around `CMakeLists.txt:60` — that's the subfolder name under `SKSE/Plugins/` that the `config/` tree gets copied to on post-build.
+The CMake project name (`DaylightDungeon` in `CMakeLists.txt`) becomes the `.dll` filename. `PLUGIN_CONFIG_FOLDER` is a cache-backed CMake value for the subfolder under `SKSE/Plugins/`; CMake deployment and both packaging scripts consume that same value.
 
 ## Build
 
@@ -26,7 +26,7 @@ cmake --preset build-release-msvc; if ($?) { cmake --build build/release-msvc }
 - C++23, MSVC with `/permissive- /Zc:preprocessor /EHsc /MP`, **static CRT** (`/MT` release, `/MTd` debug — `CMAKE_MSVC_RUNTIME_LIBRARY` in `CMakePresets.json`, `VCPKG_CRT_LINKAGE static` in `cmake/x64-windows-skse.cmake`). Everything links statically into the .dll so it runs on Manjaro/Proton without needing vcredist installed in the prefix. If you change either of those knobs you must change both to match, and wipe `build/` so vcpkg rebuilds all deps against the new CRT — otherwise the final link dies with LNK2038 runtime library mismatch.
 - Triplet `x64-windows-skse` (overlay in `cmake/x64-windows-skse.cmake`); library linkage is static for non-SKSE ports and dynamic for ports matching `fully-dynamic-game-engine|skse|qt*`.
 - `src/PCH.h` is the required precompiled header — it includes `RE/Skyrim.h` and `SKSE/SKSE.h` and enables `using namespace std::literals`.
-- No test suite is configured (`testPresets` in `CMakePresets.json` is empty).
+- No C++ test suite is configured (`testPresets` in `CMakePresets.json` is empty). `scripts/test_packaging.ps1` is a toolchain-free regression test for the packaging and release-name contract.
 
 ### Install-on-build
 
@@ -35,7 +35,7 @@ Post-build steps in `CMakeLists.txt` copy the `.dll` (and `.pdb` in Debug) into 
 - `SKYRIM_FOLDER` env var → `<SKYRIM_FOLDER>/Data/SKSE/Plugins/`
 - `SKYRIM_MODS_FOLDER` env var (MO2/Vortex) → `<SKYRIM_MODS_FOLDER>/<ProjectName> <BuildType>/SKSE/Plugins/`
 
-If a `config/` folder exists at the repo root, its contents are also copied to `SKSE/Plugins/<CONFIG_FOLDER>/` (the `CONFIG_FOLDER` name is set in `CMakeLists.txt`, currently `Template_Plugin`). If neither env var is set, the DLL just stays in the build dir.
+If a `config/` folder exists at the repo root, its contents are also copied to `SKSE/Plugins/<PLUGIN_CONFIG_FOLDER>/` (currently `DaylightDungeon`). If neither env var is set, the DLL just stays in the build dir.
 
 ## Adding source files
 

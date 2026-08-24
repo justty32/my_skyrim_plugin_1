@@ -132,6 +132,25 @@ For runtime on Proton (Skyrim under Linux / Steam Deck), native debugger attach 
 scripts\test_packaging.ps1
 ```
 
+### Quest engine：pure-core 離線驗證
+
+`feat/quest-prf-random-20260824` 從 pinned `origin/main`（`ea6bfeb`）只新增
+`src/core/DeterministicRandom.{h,cpp}`：它釘死並實作 SPEC 附錄 B 的 canonical
+framing、SHA-256、uint64→`[0,1)` 與 chance 比較。沒有移植
+`origin/feature/court-wizard` 的 `QuestEngine`/`Ports`/`QuestState`、demo、tests、
+CLI harness 或 Skyrim adapter。詳細範圍見
+[`research/QUEST_ENGINE_AUDIT.md`](research/QUEST_ENGINE_AUDIT.md#5-2026-08-24-prf-primitive-provenance-and-scope)。
+
+Windows / PowerShell（MinGW `g++`，不需 CommonLibSSE 或 nlohmann-json）：
+
+```powershell
+scripts\test_quest_prf.ps1             # 21 個 PRF primitive assertions
+```
+
+這個 target 只編 PRF primitive + 專用 test，不建 SKSE DLL。current main 沒有
+quest runtime，故 `random` 尚未接進 condition evaluator；Skyrim adapter 也尚未接
+save-wide `master_seed` 的產生/co-save lifecycle。離線通過不代表 runtime 或遊戲端完成。
+
 ### 程式風格：多 log
 
 因為 debug 只能靠 log，所有 handler / hook / callback / form 建立步驟都要有進入點與出口的 log，以及中間關鍵狀態（pointer 有無、formID、enum 值、數值）。原則：

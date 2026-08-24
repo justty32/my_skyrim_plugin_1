@@ -1,6 +1,6 @@
 # 劇情/對話引擎 — C++ 參考實作 + Skyrim Adapter
 
-> 狀態：**設計階段，尚未實作**。
+> 狀態：current main 仍無 quest runtime；本分支只完成可攜 PRF primitive。Phase 0 runtime / Skyrim adapter 仍只在獨立的 `feature/court-wizard` 線，本分支不移植或宣稱它們完成。
 > **可攜契約（格式、狀態機語意、詞彙、能力埠、持久化、一致性）在 `QUEST_ENGINE_SPEC.md`。本檔只談這個規格在 C++/SKSE/Skyrim 上的落地。**
 > 搭配閱讀：`MODDING_COOKBOOK.md`（本專案核心模式）、`COMMONLIBSSE_INDEX.md`（有哪些 class）、`PITFALLS.md`（編譯雷區）、`CLAUDE.md`（專案規則）。
 
@@ -28,7 +28,7 @@ src/skyrim/ ── Skyrim adapter：唯一 include RE::Skyrim.h / SKSE，實作�
 | EventSource | `ScriptEventSourceHolder` + `BSTEventSink<T>`（`TESActivateEvent` / `TESDeathEvent` / `TESContainerChangedEvent` / `TESCellAttachDetachEvent`）|
 | DialoguePresenter | §3：MessageBox（保底）/ 原生 DialogueMenu（spike）/ Scaleform（選配）|
 | PersistenceBackend | `SKSE::SerializationInterface`（co-save）—— 見 §4 |
-| Clock / Logger / RNG | `RE::Calendar` / `SKSE::log` / std RNG |
+| Clock / Logger / RNG | `RE::Calendar` / `SKSE::log` / core 的 SPEC 附錄 B SHA-256 PRF；adapter 只供應並持久化 `master_seed` |
 
 ---
 
@@ -111,7 +111,7 @@ SPEC §5.5 的對話呈現埠，Skyrim 有三個可換實作：
 ## 4. 持久化：co-save 實作 PersistenceBackend
 
 - 用 `SKSE::SerializationInterface`（見 `COMMONLIBSSE_INDEX.md` §SKSE）。
-- 核心給一個版本化進度 blob（SPEC §6），adapter 把它寫進 .skse co-save、讀回。blob 內含 `master_seed`（供 SPEC §8 的 `random` 確定性導出）；adapter 不需理解內容，原樣存取即可。
+- 未來 runtime 給一個版本化任務進度 blob（SPEC §6），adapter 把它寫進 .skse co-save、讀回。`master_seed` 是 save-wide 系統層欄位，必須與各任務 progress/globals 一起存，並在 runtime 重建前還原；adapter 不自行擲骰。這段 wiring 本分支未實作。
 - **鍵一律穩定字串 ID，絕不存動態 FormID 當主鍵**（讀檔後會變）。
 - 全域變數（SPEC §2.4）與待發計時器（SPEC §4.2）一併入 co-save：全域變數鍵用變數名於系統層；計時器存（任務 id、key、絕對到期遊戲時間，由 `RE::Calendar` 換算）；未確認的信件（SPEC §4.5）亦持久化待 `letter_read`。
 - 讀檔流程：先重載 JSON 定義，再套用 blob 進度。改 .json 文字內容不弄壞舊存檔。
@@ -143,6 +143,7 @@ SPEC §5.5 的對話呈現埠，Skyrim 有三個可換實作：
 > 本專案 `CMakeLists.txt` 不 glob：新 `.cpp` 登 `cmake/sourcelist.cmake`、新 `.h` 登 `cmake/headerlist.cmake`，否則不編譯。
 
 ```
+src/core/DeterministicRandom.{h,cpp} SPEC 附錄 B PRF primitive（本分支已實作）
 src/core/QuestEngine.{h,cpp}       載入 JSON、持有狀態機、總分派（無 RE::）
 src/core/QuestState.h              執行期狀態結構（vars/objectives/節點）
 src/core/Conditions.{h,cpp}        SPEC §4.1 核心條件求值
@@ -168,9 +169,9 @@ config/schema/quest.core.schema.json  核心詞彙 JSON Schema（adapter 擴充�
 
 ## 7. 分期路線
 
-- **Phase 0 — 骨架** ✅（2026-05-23，`feature/court-wizard`）：`src/core/`（`QuestState.h` / `Ports.h` / `QuestEngine.{h,cpp}`，零 RE::/SKSE::）實作核心狀態機 + 條件/動作/觸發 + 同步對話流程 + `schedule`/`timer` + 全域變數 + `reset_quest`。能力埠先由 **headless CLI harness**（`tools/cli_harness/`，SPEC 附錄 A）實作以無遊戲驗證；`MessageBoxPresenter` 待接 Skyrim adapter 再補。Demo `config/quests/demo_court_wizard.json` 跑通整條召喚循環（信→對話→「對 victim 施法」事件解咒→領賞→`reset_quest` 重排，`global.whiterun_tasks_done` 跨循環保留）。建置：`scripts/build_cli.sh` → `build/cli/qe_cli`。
-  - **注意**：core 目前只由該腳本原生（clang，Manjaro）編譯，**尚未**登錄 `cmake/sourcelist.cmake`/`headerlist.cmake`——接 Skyrim adapter、並確保 PCH（`RE::Skyrim.h`）不汙染 core TU 時，於 Phase 1 登錄。
-  - Conditions/Actions/Triggers 暫合在 `QuestEngine.cpp`，成長後再依本檔 §6 拆檔。`random`（待 PRF）、持久化（§4）未實作。
+- **Phase 0 — 骨架** ✅（僅來源線 `feature/court-wizard`，未移植到 current main）：該線有可攜 runtime 與 headless CLI；本分支刻意不承接 divergent Phase 0。
+  - **2026-08-24 PRF primitive** ✅（本機 branch `feat/quest-prf-random-20260824`）：`src/core/DeterministicRandom.*` 實作附錄 B framing/SHA-256/uint64→binary64，專用測試驗證純函式重建等價。
+  - **仍未完成**：沒有 condition evaluator wiring、JSON Pointer 自動路徑 plumbing、host `master_seed` persistence 或 Skyrim adapter 接線；未登錄 SKSE DLL CMake。
 - **Phase 1 — 核心**：完整核心 + Skyrim 擴充詞彙 + co-save + EntityResolver 兩種綁定 + 目標狀態。
 - **Phase 2 — 任務化**：世界事件觸發（殺/到/拿）+ 自製日誌追蹤 + 多任務並行 + 有效 schema validator（嚴格錯誤訊息）。
 - **Phase 3 — 原生對話 spike**：依 §5 go/no-go；成功才接 `NativePresenter`。
@@ -182,7 +183,7 @@ config/schema/quest.core.schema.json  核心詞彙 JSON Schema（adapter 擴充�
 
 - ~~多任務優先序~~ → 已暫定（SPEC §8）：3 級 `priority` + 先搶先贏；強制執行細節待實作期再定。
 - ~~第二 adapter 試金石~~ → 已定：headless CLI harness（SPEC 附錄 A），同時當離線 validator；實作語言待定。
-- **`PRF` 演算法未定案（高優先，見 SPEC「未定事項」）**：`random` 確定性導出用的雜湊尚未釘死，未定前 `random` 不可實作。
+- ~~**PRF 演算法 / site key 契約**~~ → 已由 SPEC 附錄 B 釘死並有 golden vectors；runtime 自動路徑 plumbing 與 save-wide seed lifecycle 尚未接。
 - LLM 生成的驗證：核心 schema 已生（`config/schema/quest.core.schema.json`，**暫定可能改**）；離線 validator vs 載入時驗證的時機待定。
 - 對話進行中存檔的行為（鎖存檔？還是允許並在讀檔後重開對話？）。
 - spawned 角色讀檔失效的預設政策（重生 / 中斷 / 視任務標記）。

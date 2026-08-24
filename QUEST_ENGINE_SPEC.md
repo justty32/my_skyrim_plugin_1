@@ -269,9 +269,9 @@ MAY：宣告任意 adapter 擴充詞彙；提供多個 DialoguePresenter；提�
 - **動作失敗**：擴充動作失敗 MUST 記錄並繼續執行同串後續動作（不中止整串）。流程性核心動作（`start_dialogue` / `complete_quest`…）的失敗處理見各自定義。
 - **未定義參照**：`goto` 指向不存在節點、條件/動作引用未宣告變數或未知 alias → **驗證期 MUST 報錯**；若執行期才發現，MUST 記錄並安全中止當前流程（不崩潰）。
 - **型別不符**：`set_var` / 比較遇到型別不符 → 驗證期 MUST 報錯。
-- **`random`（確定性，由存檔種子導出）**：MUST 由「`master_seed`（§6）+ 該 `random` 的穩定 site key」確定性導出，使**重載同一存檔結果不變**。
-  - site key = `任務 id` + 該 `random` 在 JSON 中的穩定路徑（如 `dialogues.greet.choices[1].when.random`），或作者明設的 `key` 欄位。
-  - 導出 = `PRF(master_seed, quest_id, site_key)` 映到 `[0,1)`，與 `chance` 比較。`PRF` 的具體演算法 MUST 在 SPEC 附錄釘死（待補），讓不同語言實作得出**同一結果**。
+- **`random`（確定性，由存檔種子導出）**：MUST 由「`master_seed`（§6）+ 該 `random` 的穩定 site key」依**附錄 B** 導出，使**重載同一存檔結果不變**。
+  - site key 由作者非空 `key` 或該條件的 RFC 6901 JSON Pointer 導出；精確字串規則見附錄 B。`quest_id` 是 PRF 的獨立欄位，不重複塞進 site key。
+  - 導出 = `PRF(master_seed, quest_id, site_key)` 映到 `[0,1)`，以嚴格小於（`sample < chance`）比較；`chance=0` 永假、`chance=1` 永真。
   - 性質：(a) 重載穩定；(b) 不同 site 互相獨立；(c) **同一 site 重複求值結果相同（冪等）**。
   - 要「每次命中可能不同」的擲骰：MUST 改用顯式變數（例如 `add_var` 計數並把計數納入 site key），核心**不提供**非冪等 `random`。
 - **多任務並行（暫定，可能改）**：每個任務 MAY 宣告 `priority` ∈ {`high`,`normal`,`low`}（預設 `normal`，意圖對應主線/支線/雜項）。多任務爭用互斥資源（同時要開對話、或控制同一角色）時：**較高 priority 優先；同級則先搶先贏**（已持有/先啟動者保留）。強制執行範圍暫不深入定義，實作初期 MAY 僅記錄欄位而不強制。
@@ -285,9 +285,8 @@ MAY：宣告任意 adapter 擴充詞彙；提供多個 DialoguePresenter；提�
 
 下列尚未釘死，實作前需先定案。彙整自全文行內標記。
 
-1. **`PRF` 演算法（高優先，阻擋 `random` 實作）**：`random` 確定性導出用的 `PRF(master_seed, quest_id, site_key)`（§8）尚未定案。跨語言實作 MUST 得出**同一結果**，故須指定一個各語言都易重現的明確演算法。候選：對 `master_seed | quest_id | site_key` 做 SHA-256（或 SipHash），取前 64 bit 當整數除以 2^64 映到 `[0,1)`。**未定案前 `random` 不應實作。** 定案後寫入附錄 B。
+1. ~~**PRF 演算法 / site key 精確規則**~~ → 已定案：SHA-256 + canonical binary framing + RFC 6901 path，見附錄 B。
 2. **priority 強制範圍（暫定，§8）**：多任務 `priority` 的「互斥資源」具體涵蓋哪些（對話、角色控制、其他？）、仲裁時機，暫定「高優先先、同級先搶先贏」，細節待實作期定。
-3. **`site key` 的精確規則（§8）**：`random` 的穩定路徑表示法（陣列索引格式、作者 `key` 與自動路徑的優先序）需與附錄 B 一併釘死，否則不同實作算出的 site key 不一致。
 
 > 已於本版納入（原列 `COURT_WIZARD_DESIGN.md` §6 開放問題）：可重複任務 → `reset_quest`（§3.1/§4.2，搭配全域變數承載跨循環計數）；時間排程 → `schedule`/`timer`（§4.2/§4.3）；跨任務狀態 → 全域變數（§2.4）；非同步訊息 → 標準擴充（§4.5）。
 
@@ -322,3 +321,56 @@ MAY：宣告任意 adapter 擴充詞彙；提供多個 DialoguePresenter；提�
 4. 若 CLI 實作不出某個**核心**詞彙（§4.1–4.3）或狀態機語意（§3），那就是核心抽得不夠乾淨，要回頭修 SPEC —— 這是這個 harness 最大的價值。
 
 > 註：第一個 adapter（Skyrim）+ 這個 CLI harness 並行，是驗證「核心零遊戲依賴」最便宜的方式。實作期 `src/core/` 應能同時被 Skyrim adapter 與一個小型 CLI 測試程式連結。
+
+---
+
+## 附錄 B：`random` 的跨語言 PRF（規範性）
+
+本附錄釘死 `PRF(master_seed, quest_id, site_key)`。實作 MUST NOT 使用平台 `hash()`、PRNG state、locale、原生整數位元序或未規範的字串串接。
+
+### B.1 輸入字串與 site key
+
+- `master_seed` MUST 是存檔系統層持久化的**非空字串**。建議 host 首次建立存檔狀態時產生至少 128 bits 熵並存為小寫十六進位字串；PRF 把字串本身編碼，不解碼 hex。
+- `quest_id` = 任務頂層 `id` 的原字串。
+- 若 `random` 有作者明設的非空字串 `key`，`site_key = "key:" + key`。
+- 否則 `site_key = "path:" + pointer`；`pointer` 是從任務文件根開始、指到該 `random` key 的 RFC 6901 JSON Pointer。例如 `dialogues.greet.nodes.entry.choices[1].when.random` 對應 `/dialogues/greet/nodes/entry/choices/1/when/random`。物件 key 中 `~` 編成 `~0`、`/` 編成 `~1`；陣列索引用無前導零十進位。
+- `key:` / `path:` 是不同命名空間；相同明設 `key` 可讓不同位置刻意共用一次 deterministic roll。
+- 三個字串都 MUST 取其 JSON 字串值的 UTF-8 bytes（RFC 3629），不含 BOM、不做 Unicode normalization、不做大小寫或 locale 轉換。實作遇到無法編成合法 UTF-8 的字串 MUST 驗證失敗。
+
+### B.2 Canonical binary framing
+
+先寫入固定 16 bytes ASCII domain tag：
+
+```text
+51 45 2d 52 41 4e 44 4f 4d 2d 50 52 46 2d 56 31
+ Q  E  -  R  A  N  D  O  M  -  P  R  F  -  V  1
+```
+
+接著依序寫入 `master_seed`、`quest_id`、`site_key`。每欄格式皆為 `u64be(byte_length) || utf8_bytes`：長度是**該欄 UTF-8 byte 數**，以 unsigned 64-bit big-endian 固定 8 bytes 表示。完整輸入為：
+
+```text
+ASCII("QE-RANDOM-PRF-V1")
+|| U64BE(len(UTF8(master_seed))) || UTF8(master_seed)
+|| U64BE(len(UTF8(quest_id)))    || UTF8(quest_id)
+|| U64BE(len(UTF8(site_key)))    || UTF8(site_key)
+```
+
+PRF digest = SHA-256(canonical input bytes)。SHA-256 指 FIPS 180-4，不得替換成平台 hash。
+
+### B.3 Digest 到 `[0,1)` 與 chance
+
+1. 取 digest 的前 8 bytes `digest[0..7]`，以 big-endian 解成 unsigned `uint64`：`word = Σ digest[i] × 2^(56-8i)`。
+2. `top53 = word >> 11`。
+3. `sample = top53 / 2^53`，以 IEEE-754 binary64 計算。因 numerator 小於 `2^53`，結果可精確表示且 MUST 落在 `[0,1)`，永不等於 `1.0`。
+4. `random` 為真 iff `sample < chance`。`chance` MUST 是有限 number 且在 `[0,1]`；否則驗證失敗，若執行期才遇到則安全回傳 false。
+
+低 11 bits 刻意捨棄，使 JavaScript、C++、C#、GDScript 等使用 binary64 的實作得到完全相同且不會向上捨入成 `1.0` 的值。
+
+### B.4 Golden vectors
+
+| # | `master_seed` | `quest_id` | `site_key` | canonical bytes (hex) | SHA-256 digest | first uint64 | `sample` |
+|---|---|---|---|---|---|---|---|
+| 1 | `seed` | `quest` | `path:/triggers/0/when/random` | `51452d52414e444f4d2d5052462d563100000000000000047365656400000000000000057175657374000000000000001c706174683a2f74726967676572732f302f7768656e2f72616e646f6d` | `0fe72c7122d71c586f354eb4be5f23787bc3c4b75e9e722b4144592e282ae7e8` | `0x0fe72c7122d71c58` | `0.062121179219357336` |
+| 2 | `種子-01` | `任務/alpha` | `key:門檻` | `51452d52414e444f4d2d5052462d56310000000000000009e7a8aee5ad902d3031000000000000000ce4bbbbe58b992f616c706861000000000000000a6b65793ae99680e6aabb` | `0569538156f6057cb02ffddb1f895fdec269053b09ca57ba80fa7a71c5d404c4` | `0x0569538156f6057c` | `0.0211384001513224` |
+
+Vector 1 的門檻結果：`chance=0` → false；`chance=sample` → false（嚴格 `<`）；下一個大於 sample 的 binary64 值 → true；`chance=1` → true。

@@ -144,7 +144,7 @@ CLI harness 或 Skyrim adapter。詳細範圍見
 Windows / PowerShell（MinGW `g++`，不需 CommonLibSSE 或 nlohmann-json）：
 
 ```powershell
-scripts\test_quest_prf.ps1             # 21 個 PRF primitive assertions
+scripts\test_quest_prf.ps1             # 25 個 PRF primitive assertions
 ```
 
 這個 target 只編 PRF primitive + 專用 test，不建 SKSE DLL。current main 沒有

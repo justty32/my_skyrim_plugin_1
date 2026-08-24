@@ -17,13 +17,33 @@ void check(bool condition, const std::string& label) {
 std::span<const std::uint8_t> bytesOf(const std::string& text) {
     return {reinterpret_cast<const std::uint8_t*>(text.data()), text.size()};
 }
+
+void checkSha256(const std::string& input, const std::string& expected,
+                 const std::string& label) {
+    check(qe::hexLower(qe::sha256(bytesOf(input))) == expected, label);
+}
 }  // namespace
 
 int main() {
-    const std::string abc = "abc";
-    check(qe::hexLower(qe::sha256(bytesOf(abc))) ==
-              "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-          "SHA-256 implementation matches the standard abc vector");
+    checkSha256("",
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "SHA-256 empty-input vector");
+    checkSha256("abc",
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                "SHA-256 abc vector");
+
+    // SHA-256 appends 0x80 plus an eight-byte bit length. These vectors pin
+    // the one-block maximum (55), padding spill (56), and an exact data block
+    // (64), where regressions in the padding loop otherwise hide easily.
+    checkSha256(std::string(55, 'a'),
+                "9f4390f8d30c2dd92ec9f095b65e2b9ae9b0a925a5258e241c9f1e910f734318",
+                "SHA-256 55-byte one-block padding boundary");
+    checkSha256(std::string(56, 'a'),
+                "b35439a4ac6f0948b6d6f9e3c6af0f5f590ce20f1bde7090ef7970686ec6738a",
+                "SHA-256 56-byte padding spill boundary");
+    checkSha256(std::string(64, 'a'),
+                "ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb",
+                "SHA-256 exact-block boundary");
 
     const auto framed1 = qe::frameRandomPrfInput(
         "seed", "quest", "path:/triggers/0/when/random");

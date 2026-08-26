@@ -56,5 +56,23 @@ set -e
 # 因為 staging 重建會把輸出目錄一起刪掉。只驗非零的話這條斷言等於沒測到防護本身。
 check "$([[ "$rc" -eq 2 ]] && echo 0 || echo 1)" "--output-dir 指向 pack/ 內時明確拒絕（要 exit 2，實得 $rc）"
 
+# 沒有 pre-rename 的 Template_Plugin 殘留（`.ps1` 版也驗這件事，但它是靜態 grep 原始碼，
+# 且只在有 pwsh 的機器上跑得到）。這裡驗的是打出來的成品，不是原始碼文字。
+if [[ -f "$ZIP" ]]; then
+  check "$(grep -q '^Data/SKSE/Plugins/Template_Plugin/' <<<"$(unzip -Z1 "$ZIP")" && echo 1 || echo 0)" \
+        "壓縮檔裡沒有 pre-rename 的 Template_Plugin 目錄"
+fi
+
+# CLI 契約：--help 要成功，參數錯誤要 exit 2。`.ps1` 版用 regex 比對 pack.sh 的原始碼來驗
+# `--help`，那種寫法改個排版就會失效；這裡直接跑。
+set +e
+"$FIXTURE/scripts/pack.sh" --help >/dev/null 2>&1; help_rc=$?
+"$FIXTURE/scripts/pack.sh" --config >/dev/null 2>&1; missing_rc=$?
+"$FIXTURE/scripts/pack.sh" --bogus >/dev/null 2>&1; bogus_rc=$?
+set -e
+check "$([[ "$help_rc" -eq 0 ]] && echo 0 || echo 1)" "--help 回報成功（要 exit 0，實得 $help_rc）"
+check "$([[ "$missing_rc" -eq 2 ]] && echo 0 || echo 1)" "--config 缺值時 exit 2（實得 $missing_rc）"
+check "$([[ "$bogus_rc" -eq 2 ]] && echo 0 || echo 1)" "未知參數時 exit 2（實得 $bogus_rc）"
+
 if [[ "$failures" -ne 0 ]]; then echo "$failures failure(s)" >&2; exit 1; fi
 echo "all packaging contract tests passed"

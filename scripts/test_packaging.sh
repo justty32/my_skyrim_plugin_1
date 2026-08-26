@@ -30,9 +30,7 @@ CACHE
 printf 'MZ' > "$BUILD_DIR/DaylightDungeon.dll"
 
 DIST="$FIXTURE/test-dist"
-STARTING_PWD="$PWD"
 "$FIXTURE/scripts/pack.sh" --output-dir "$DIST" >/dev/null
-check "$([[ "$PWD" == "$STARTING_PWD" ]] && echo 0 || echo 1)" "pack.sh 沒有改變呼叫端的工作目錄"
 
 ZIP="$DIST/DaylightDungeon-0.0.1.zip"
 check "$([[ -f "$ZIP" ]] && echo 0 || echo 1)" "產生了 DaylightDungeon-0.0.1.zip"
@@ -46,6 +44,31 @@ if [[ -f "$ZIP" ]]; then
   check "$(grep -q '^pack/' <<<"$entries" && echo 1 || echo 0)" \
         "壓縮檔裡沒有 staging 目錄本身"
 fi
+
+# cwd 契約：pack.sh 開頭那行 `cd "$REPO_ROOT"` 的可觀測語意，是「相對的 --output-dir
+# 要解析到 pack.sh 自己的 repo root，不是呼叫端的 cwd」。所以就從別的目錄、用相對路徑
+# 呼叫它，然後看 zip 掉在哪裡。
+#
+# 這裡不能只寫 `[[ "$PWD" == "$STARTING_PWD" ]]`——那條是恆真的。pack.sh 是子行程，
+# 它內部怎麼 cd 都改不到父 shell 的 $PWD。實測：把 `cd /` 加到 pack.sh 尾巴，那條斷言
+# 照樣是綠的；連真正的 pack.sh 結束時本來就已經站在 $REPO_ROOT 而不是呼叫端的目錄。
+# $PWD 比對可以留著當附加條件，但不能是唯一條件。
+CALLER_CWD="$FIXTURE/caller-cwd"
+mkdir -p "$CALLER_CWD"
+REL_DIST="rel-dist"
+STARTING_PWD="$PWD"
+set +e
+( cd "$CALLER_CWD" && "$FIXTURE/scripts/pack.sh" --output-dir "$REL_DIST" ) >/dev/null 2>&1
+rel_rc=$?
+set -e
+check "$([[ "$rel_rc" -eq 0 ]] && echo 0 || echo 1)" \
+      "從別的 cwd 用相對 --output-dir 呼叫 pack.sh 會成功（要 exit 0，實得 $rel_rc）"
+check "$([[ -f "$FIXTURE/$REL_DIST/DaylightDungeon-0.0.1.zip" ]] && echo 0 || echo 1)" \
+      "相對的 --output-dir 解析到 pack.sh 的 repo root（$REL_DIST/ 在 repo root 底下）"
+check "$([[ -e "$CALLER_CWD/$REL_DIST" ]] && echo 1 || echo 0)" \
+      "相對的 --output-dir 沒有落在呼叫端 cwd 底下"
+check "$([[ "$PWD" == "$STARTING_PWD" ]] && echo 0 || echo 1)" \
+      "呼叫端的 \$PWD 沒有被改動（恆真的附加條件，契約在上面三條）"
 
 # 拒絕把輸出指到 pack/ 內（會在重建 staging 時被刪、或把 zip 自己遞迴打包）
 set +e

@@ -202,3 +202,7 @@ save-wide `master_seed` 的產生/co-save lifecycle。離線通過不代表 runt
 - **[`archive/`](archive/court-wizard/README.md)** — 已停更專案的設計／交接快照，**不是現況**。
 - **[`vendor/`](vendor/README.md)** — 從舊分支撈出的實作，**不參與建置**（沒登記進 `cmake/sourcelist.cmake`）。
 
+## 文件索引
+
+- [Skyrim modding 知識庫](skyrim_mod/INDEX.md)
+- [研究報告索引](research/INDEX.md)

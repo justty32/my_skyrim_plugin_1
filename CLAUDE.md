@@ -26,7 +26,7 @@ cmake --preset build-release-msvc; if ($?) { cmake --build build/release-msvc }
 - C++23, MSVC with `/permissive- /Zc:preprocessor /EHsc /MP`, **static CRT** (`/MT` release, `/MTd` debug — `CMAKE_MSVC_RUNTIME_LIBRARY` in `CMakePresets.json`, `VCPKG_CRT_LINKAGE static` in `cmake/x64-windows-skse.cmake`). Everything links statically into the .dll so it runs on Manjaro/Proton without needing vcredist installed in the prefix. If you change either of those knobs you must change both to match, and wipe `build/` so vcpkg rebuilds all deps against the new CRT — otherwise the final link dies with LNK2038 runtime library mismatch.
 - Triplet `x64-windows-skse` (overlay in `cmake/x64-windows-skse.cmake`); library linkage is static for non-SKSE ports and dynamic for ports matching `fully-dynamic-game-engine|skse|qt*`.
 - `src/PCH.h` is the required precompiled header — it includes `RE/Skyrim.h` and `SKSE/SKSE.h` and enables `using namespace std::literals`.
-- No C++ test suite is configured (`testPresets` in `CMakePresets.json` is empty). `scripts/test_packaging.ps1` is a toolchain-free regression test for the packaging and release-name contract.
+- No C++ test suite is configured (`testPresets` in `CMakePresets.json` is empty). `scripts/test_packaging.ps1` (Windows, tests `pack.ps1`) and `scripts/test_packaging.sh` (Linux, tests `pack.sh`) are toolchain-free regression tests for the packaging and release-name contract — the two pack scripts are independent, so run the one matching the script you touched. `scripts/test_quest_prf.{ps1,sh}` covers the quest-PRF contract.
 
 ### Install-on-build
 
@@ -35,7 +35,7 @@ Post-build steps in `CMakeLists.txt` copy the `.dll` (and `.pdb` in Debug) into 
 - `SKYRIM_FOLDER` env var → `<SKYRIM_FOLDER>/Data/SKSE/Plugins/`
 - `SKYRIM_MODS_FOLDER` env var (MO2/Vortex) → `<SKYRIM_MODS_FOLDER>/<ProjectName> <BuildType>/SKSE/Plugins/`
 
-If a `config/` folder exists at the repo root, its contents are also copied to `SKSE/Plugins/<PLUGIN_CONFIG_FOLDER>/` (currently `DaylightDungeon`). If neither env var is set, the DLL just stays in the build dir.
+If a `config/` folder exists at the repo root, its contents are also copied to `SKSE/Plugins/<PLUGIN_CONFIG_FOLDER>/` (currently `DaylightDungeon`; today it holds `FollowLight.ini` plus `schema/`). If neither env var is set, the DLL just stays in the build dir.
 
 ## Adding source files
 
@@ -50,10 +50,14 @@ If a `config/` folder exists at the repo root, its contents are also copied to `
 
 ## Code layout
 
-- `src/plugin.cpp` — entry point (`SKSEPluginLoad`). Calls `SKSE::Init`, `SetupLog()`, then registers `MessageHandler` on the SKSE messaging interface. The handler has stub `switch` cases for `kDataLoaded`, `kPostLoad`, `kPreLoadGame`, `kPostLoadGame`, `kNewGame` — wire up initialization there.
+- `src/plugin.cpp` — entry point (`SKSEPluginLoad`). Calls `SKSE::Init`, `SetupLog()`, then registers `MessageHandler` on the SKSE messaging interface. `kDataLoaded` runs `OnDataLoaded()` (`NpcGenerator::InitializeMagic`, `FollowLight::Initialize`, `AmbientBoost::Initialize`, `Hooks::Install`); `kNewGame` / successful `kPostLoadGame` call `NpcGenerator::GiveSpellsToPlayer`; `kPreLoadGame` calls `AmbientBoost::RestoreAll` so a session's cell-ambient edits don't leak into the loaded save.
+- `src/NpcGenerator.{h,cpp}` — NPC/spell logic (magic setup at data-load, grants spells to the player on new game / load).
+- `src/FollowLight.{h,cpp}` — a runtime fill light attached to the player (hotkey, default `L`, cycles brightness tiers); configured by `config/FollowLight.ini`. Needs a per-frame driver — see `hook.cpp`.
+- `src/AmbientBoost.{h,cpp}` — hotkey (default `K`) cycles levels that raise the current interior cell's ambient / directional / DALC lighting (takes effect on cell re-entry); `RestoreAll()` undoes this session's edits. No per-frame hook needed.
+- `src/core/DeterministicRandom.{h,cpp}` — cross-language deterministic random primitive for `QUEST_ENGINE_SPEC.md` appendix B; zero game/runtime dependencies. **Not** in `sourcelist.cmake` — add it there if a runtime module starts using it.
+- `src/hook.{h,cpp}` — `Hooks::Install()` writes a vtable hook on `PlayerCharacter::Update` (Actor vfunc `0xAD`) that calls the original then `FollowLight::Update()`. It's a `write_vfunc`, not a code trampoline, so no `SKSE::AllocTrampoline` is needed. `hook.cpp` must not include `log.h` (that header defines `SetupLog()`; `SKSE::log` comes in via the PCH).
 - `src/log.h` — `SetupLog()` creates an spdlog basic file sink at `SKSE::log::log_directory() / "<PluginName>.log"` with trace-level logging and flush-on-trace. Log via `SKSE::log::info(...)` etc.
-- `src/hook.{h,cpp}` — empty stubs for trampoline/hook code.
-- `src/settings.h` — empty stub; `simpleini` and `nlohmann-json` are already vcpkg dependencies, so config parsing is wired up headers-wise (SimpleIni include dir is added in `CMakeLists.txt`).
+- `src/settings.h` — still an empty stub; `simpleini` and `nlohmann-json` are already vcpkg dependencies, so config parsing is wired up headers-wise (SimpleIni include dir is added in `CMakeLists.txt`).
 - `src/util.h` — large header of static helper structs inside namespaces. When adding utilities, prefer extending these instead of inventing parallel helpers:
   - `PointerUtil::adjust_pointer` — cv-preserving pointer arithmetic.
   - `SystemUtil::File::GetConfigs` — enumerate config files by suffix/extension.

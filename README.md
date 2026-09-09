@@ -206,3 +206,5 @@ save-wide `master_seed` 的產生/co-save lifecycle。離線通過不代表 runt
 
 - [Skyrim modding 知識庫](skyrim_mod/INDEX.md)
 - [研究報告索引](research/INDEX.md)
+- [研究報告入口（含同層導航）](research/README.md)
+- [Skyrim mod 技術解答入口（含同層導航）](skyrim_mod/answers/README.md)

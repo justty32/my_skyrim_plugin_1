@@ -65,7 +65,7 @@ cmake --preset build-release-msvc && cmake --build build/release-msvc
 rm -rf build
 ```
 
-> 直接在 Manjaro 上跑這些不會成功，因為那邊沒有 MSVC。從 Linux 產出 Windows `.dll` 需要另外架 toolchain（clang-cl + wine，或 MinGW-w64 + LLVM），屬於路線圖的 step 2，還沒做。
+> 直接在 Manjaro 上跑這些 MSVC preset 不會成功，因為那邊沒有 MSVC。Linux 上要改用已架好的 cross-compile preset `build-release-clang-cl-linux`（clang-cl + lld-link + xwin，toolchain 在 `cmake/toolchain-clang-cl-xwin.cmake`），完整指令見 [FOR_AGENT.md](FOR_AGENT.md)。
 
 ## VS Code 工作流（你現在的方式）
 

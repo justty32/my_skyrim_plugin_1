@@ -23,8 +23,10 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Local reference / tutorial notes (not part of the plugin)
-skyrim_mod/
+# skyrim_mod/ is intentionally NOT ignored (2026-10-17): its 169 files were
+# already tracked despite the old ignore line (added 2026-04-23 without
+# `git rm --cached`), are linked from README/AGENTS docs, and had 42 links fixed
+# on 2026-10-17 — treat it as repo content (Skyrim modding knowledge base).
 
 # Local clone of the library source (dependency comes from vcpkg, not vendored)
 CommonLibSSE-NG/

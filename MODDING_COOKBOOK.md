@@ -1,7 +1,7 @@
 # SKSE Mod 實作食譜（給 AI 看的）
 
 這份文件是寫給「之後幫忙做 mod 的 AI」看的。目的：讓 AI 在不踩雷的前提下，照著本專案**已經驗證可運作**的模式快速產出功能。
-搭配閱讀：`COMMONLIBSSE_INDEX.md`（有哪些 class/方法）、`CLAUDE.md`（專案規則）、`PITFALLS.md`（編譯/連結雷區）、`FOR_AGENT.md`（編譯/打包/驗證流程）。
+搭配閱讀：`COMMONLIBSSE_INDEX.md`（有哪些 class/方法）、`AGENTS.md`（專案規則）、`PITFALLS.md`（編譯/連結雷區）、`FOR_AGENT.md`（編譯/打包/驗證流程）。
 
 > **權威範例**：`src/NpcGenerator.cpp` 是本專案的標準範本。要新增功能時，**先讀它**，照同樣的結構寫，不要自創一套。
 
@@ -196,7 +196,7 @@ RE::DebugNotification("螢幕左上角的小提示");                    // 螢�
 - 碰撞：`NifUtil::Collision::ToggleMeshCollision(...)`。
 - 播放動畫：`AnimUtil::Idle::Play(idle, actor, action, target)`。
 - 設定檔列舉：`SystemUtil::File::GetConfigs(folder, suffix, ".ini")`。
-新工具優先**擴充這些既有 namespace**，而非另起爐灶（見 `CLAUDE.md`）。
+新工具優先**擴充這些既有 namespace**，而非另起爐灶（見 `AGENTS.md`）。
 
 ---
 

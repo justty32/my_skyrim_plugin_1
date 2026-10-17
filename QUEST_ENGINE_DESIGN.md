@@ -2,7 +2,7 @@
 
 > 狀態：current main 仍無 quest runtime；本分支只完成可攜 PRF primitive。Phase 0 runtime / Skyrim adapter 仍只在獨立的 `feature/court-wizard` 線，本分支不移植或宣稱它們完成。
 > **可攜契約（格式、狀態機語意、詞彙、能力埠、持久化、一致性）在 `QUEST_ENGINE_SPEC.md`。本檔只談這個規格在 C++/SKSE/Skyrim 上的落地。**
-> 搭配閱讀：`MODDING_COOKBOOK.md`（本專案核心模式）、`COMMONLIBSSE_INDEX.md`（有哪些 class）、`PITFALLS.md`（編譯雷區）、`CLAUDE.md`（專案規則）。
+> 搭配閱讀：`MODDING_COOKBOOK.md`（本專案核心模式）、`COMMONLIBSSE_INDEX.md`（有哪些 class）、`PITFALLS.md`（編譯雷區）、`AGENTS.md`（專案規則）。
 
 C++/SKSE 是 spec 的**參考實作之一**；Skyrim 是它的第一個 adapter。
 

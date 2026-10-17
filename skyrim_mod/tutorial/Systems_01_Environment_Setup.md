@@ -51,4 +51,4 @@ cmake --preset vs2022-windows-vcpkg
 - `src/`: 存放你的 C++ 源代碼。
 - `include/`: 存放你的頭文件。
 
-> **下一步**: 前往 [階段二：代碼開發實戰](02_Coding_Basics.md) 開始編寫你的第一個功能。
+> **下一步**: 前往 [階段二：代碼開發實戰](Systems_02_Coding_Basics.md) 開始編寫你的第一個功能。

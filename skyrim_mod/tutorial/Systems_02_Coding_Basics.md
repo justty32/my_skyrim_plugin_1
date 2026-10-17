@@ -95,4 +95,4 @@ void ShowPlayerPosition() {
 3. **`GetSingleton()`**: 大多數 RE 類別都通過單例獲取實例。
 4. **`RE::DebugNotification`**: 開發時最快的調試反饋方式。
 
-> **下一步**: 前往 [階段三：構建與部署](03_Build_and_Deploy.md) 看看如何生成 DLL 並在遊戲中運行。
+> **下一步**: 前往 [階段三：構建與部署](Systems_03_Build_and_Deploy.md) 看看如何生成 DLL 並在遊戲中運行。

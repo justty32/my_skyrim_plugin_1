@@ -20,9 +20,9 @@
 - 格式：`Response_[Topic_Name].md` 或根據內容性質命名。
 - 若內容涉及多個分類，助手將選擇最核心的一個，或在相關分類中建立交叉引用。
 
-## 3. 執行狀態
-- **當前環境**: Windows PowerShell。
-- **目標根目錄**: `C:\code\important_2\skyrim_modding\architectures\classified\`。
+## 3. 執行狀態（2026-10-23 更新）
+- **當時環境**: Windows PowerShell，輸出根目錄是該機的 `architectures\classified\`。該路徑**已不存在**，本協議也不再以它為準。
+- **現在的落點**: 這批 `.md` 已遷入本知識庫的 `answers/` 目錄（正本在母工作區 `analysis/skyrim_engine/answers/`，本目錄是副本），上面第 1 節那八個分類前綴就是現在的檔名慣例。寫新解答請放 `answers/`，不要再找舊的 Windows 路徑。
 
 ---
 *本協議由 AI 助手自動生成，以確認指令已正確接收。*

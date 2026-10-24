@@ -13,6 +13,7 @@ Guidance for any coding agent (Claude Code, Gemini, Codex, …) working in this 
 | CI workflow / GitHub Actions primer | [CI.md](CI.md) / [GITHUB_ACTIONS.md](GITHUB_ACTIONS.md) |
 | Branch inventory before creating/deleting branches | [BRANCHES.md](BRANCHES.md) |
 | Core modding patterns / CommonLib class index | [MODDING_COOKBOOK.md](MODDING_COOKBOOK.md) / [COMMONLIBSSE_INDEX.md](COMMONLIBSSE_INDEX.md) |
+| Chinese-language Skyrim modding knowledge base (Q&A / architecture / tutorials / CommonLibSSE-NG details) — this repo's self-contained copy; the master lives in the parent workspace's `analysis/skyrim_engine/` | [skyrim_mod/INDEX.md](skyrim_mod/INDEX.md) |
 | Quest engine design & spec | [QUEST_ENGINE_DESIGN.md](QUEST_ENGINE_DESIGN.md) / [QUEST_ENGINE_SPEC.md](QUEST_ENGINE_SPEC.md) |
 
 ## Project
@@ -60,7 +61,7 @@ If a `config/` folder exists at the repo root, its contents are also copied to `
 ## Non-build directories
 
 - `research/` — feasibility analyses, every engine-level claim checked against the CommonLibSSE-NG `RE/` headers. **Read before designing a new feature** — several dead ends (dynamic navmesh generation, runtime native-dialogue injection) are already written up there.
-- `archive/` — design/handoff snapshots from projects that stopped. Dated, **not current state**; each has a README saying what went stale.
+- [`archive/`](archive/README.md) — dated snapshots of stopped projects and superseded docs. **Not current state**; the index there says what each one is and why it was retired.
 - `vendor/` — implementations lifted off old feature branches, kept as reference. Deliberately **not** in `sourcelist.cmake`, so nothing here compiles. `vendor/README.md` records which ones no longer build against current CommonLibSSE-NG and exactly which APIs moved.
 - `BRANCHES.md` — per-branch inventory: what each contains, whether it actually cross-compiles, and the SHA to recover it. Consult before creating or deleting branches.
 

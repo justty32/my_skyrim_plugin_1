@@ -1,6 +1,6 @@
 # Skyrim modding 知識庫索引
 
-本索引依問答、架構、教學與其他主題，連接 repo 內的繁體中文 Skyrim modding 知識庫。
+本索引依問答、架構、教學、細節與其他主題，連接 repo 內的繁體中文 Skyrim modding 知識庫。
 
 > **本目錄是副本，不是正本。** 正本在母工作區的 `analysis/skyrim_engine/`（`moddings/skyrim` repo），那邊另有 50 份本目錄沒有的 AI 框架研究。2026-10-23 逐份比對：168 組配對裡 163 組 sha256 完全相同。本目錄保留下來是為了讓 `my_skyrim_plugin_1` 單獨 clone 時也自足（2026-10-17 使用者裁示）。**改這裡的共有檔案時，先評估正本是否要同步**——同一批連結已經被兩邊各自修過一次（analysis 2026-08-12、本目錄 2026-10-17），索引也各建了一份。
 
@@ -164,6 +164,26 @@
 | [tutorial/World_Tutorial_Interior_Renovation_Architecture.md](tutorial/World_Tutorial_Interior_Renovation_Architecture.md) | 實戰教學：建築物內部改造與室內空間設計 (Interior Renovation) |
 | [tutorial/World_Tutorial_New_Worldspace_Creation_Guide.md](tutorial/World_Tutorial_New_Worldspace_Creation_Guide.md) | 實戰教學：新大地圖 (Worldspace) 建立開發指南 (New Worldspace) |
 | [tutorial/World_Tutorial_Vehicle_System_Implementation.md](tutorial/World_Tutorial_Vehicle_System_Implementation.md) | 實戰教學：載具系統實作指南 (Vehicle System) |
+
+## 細節（CommonLibSSE-NG）
+
+`details/commonlibsee-ng/` 是 CommonLibSSE-NG 本身的專案結構、RE 逆向層類別與開發範例筆記；該目錄自己的導覽在第一列的 README。共 13 份。
+
+| 文件 | 第一個標題 |
+|---|---|
+| [details/commonlibsee-ng/README.md](details/commonlibsee-ng/README.md) | Skyrim Modding - CommonLibSSE NG 學習筆記 |
+| [details/commonlibsee-ng/00_overview.md](details/commonlibsee-ng/00_overview.md) | CommonLibSSE NG 概覽 (00_overview) |
+| [details/commonlibsee-ng/01_structure.md](details/commonlibsee-ng/01_structure.md) | CommonLibSSE NG 目錄結構 (01_structure) |
+| [details/commonlibsee-ng/RE/00_overview.md](details/commonlibsee-ng/RE/00_overview.md) | CommonLibSSE RE 層概覽 (00_overview) |
+| [details/commonlibsee-ng/RE/Actor.md](details/commonlibsee-ng/RE/Actor.md) | Actor - 角色類 (Actor) |
+| [details/commonlibsee-ng/RE/PlayerCharacter.md](details/commonlibsee-ng/RE/PlayerCharacter.md) | PlayerCharacter - 玩家角色類 (Player) |
+| [details/commonlibsee-ng/RE/TESForm.md](details/commonlibsee-ng/RE/TESForm.md) | TESForm - 基礎表單類 (TESForm) |
+| [details/commonlibsee-ng/RE/TESObjectREFR.md](details/commonlibsee-ng/RE/TESObjectREFR.md) | TESObjectREFR - 世界引用類 (Reference) |
+| [details/commonlibsee-ng/RE/TESObjectREFR_Detailed.md](details/commonlibsee-ng/RE/TESObjectREFR_Detailed.md) | TESObjectREFR 終極解析：世界引用的內存與邏輯 |
+| [details/commonlibsee-ng/RE/beware.md](details/commonlibsee-ng/RE/beware.md) | 開發者守則：SKSE 插件開發的禁區與陷阱 (Beware) |
+| [details/commonlibsee-ng/examples/00_helloworld.md](details/commonlibsee-ng/examples/00_helloworld.md) | SKSE 插件基礎 - HelloWorld (HelloWorld) |
+| [details/commonlibsee-ng/examples/01_hooking_thunks.md](details/commonlibsee-ng/examples/01_hooking_thunks.md) | 進階插件開發 - Hooking 與 Thunks (NPCs-Learn-to-Barter) |
+| [details/commonlibsee-ng/examples/02_events_papyrus.md](details/commonlibsee-ng/examples/02_events_papyrus.md) | 進階插件開發 - 事件監聽與 Papyrus 交互 (Inworld-Skyrim-Mod) |
 
 ## 其他
 

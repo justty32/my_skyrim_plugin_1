@@ -7,7 +7,7 @@
 - **目標系統 (Target):** Windows x64
 - **編譯器:** `clang-cl` (透過 `xwin` toolchain)
 - **遊戲運行:** Steam/Proton (AppID 489830)
-- **API 參考:** `./CommonLibSSE-NG/` (最權威的標頭檔與代碼參考)
+- **API 參考:** CommonLibSSE-NG 標頭檔（最權威的代碼參考）。repo 內沒有原始碼目錄，依賴由 vcpkg 的 `commonlibsse-ng-fork` port 提供（`vcpkg-configuration.json`）；configure 之後在 `build/release-clang-cl-linux/vcpkg_installed/x64-windows-skse-clang/include/RE/`（triplet 見 `CMakePresets.json:114`），本機 vcpkg 快取另有一份 `~/dev/vcpkg/packages/commonlibsse-ng-fork_x64-windows-skse-clang/include/`。
 - **輔助資料:** `./skyrim_mod/` (包含解析資料，僅供參考，需經實測驗證)
 
 ## 2. 開發規範 (Development Conventions)

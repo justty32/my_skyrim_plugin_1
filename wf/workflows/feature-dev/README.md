@@ -10,7 +10,7 @@
 ## Done when
 
 - [testing](../testing.md) 標「改完必跑」的驗證指令回傳 0。
-- code map（根 [AGENTS.md](../../../AGENTS.md)「Code layout」段，見 [common/code-map](../common/code-map.md)）已更新（新增／刪除的檔、職責變動）；新檔已登記進 `cmake/sourcelist.cmake`／`headerlist.cmake`。
+- code map（[common/code-map](../common/code-map.md) 的「`src/` 逐檔職責」）已更新（新增／刪除的檔、職責變動）；新檔已登記進 `cmake/sourcelist.cmake`／`headerlist.cmake`。
 - 要使用者實機驗證的在 [WAIT_USER](../../../../../WAIT_USER.md) 有一行；跨 session 沒收尾的在 [SESSION-LOG](../../SESSION-LOG.md) 有一行。
 
 ## 流程

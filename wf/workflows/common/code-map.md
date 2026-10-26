@@ -6,11 +6,37 @@
 
 ## 領域表
 
-**本專案的 code map 本體是根 [AGENTS.md](../../../AGENTS.md) 的「Code layout」段**（`src/` 逐檔職責、`util.h` 各 helper 命名空間），另有「Non-build directories」段（`research/`、`vendor/`、`archive/`）。本檔不另抄一份，只定下面的真相層與維護鏈；下文的「本表」都指那一段。
+本專案的 code map 本體是下面的「`src/` 逐檔職責」（2026-10-26 自根 [AGENTS.md](../../../AGENTS.md)「Code layout」段移入，原文照搬）；非建置目錄（`research/`、`vendor/`、`archive/`）見根 AGENTS.md「Non-build directories」段。下文的「本表」都指這一段。
+
+### `src/` 逐檔職責
+
+- `src/plugin.cpp` — entry point (`SKSEPluginLoad`). Calls `SKSE::Init`, `SetupLog()`, then registers `MessageHandler` on the SKSE messaging interface. `kDataLoaded` runs `OnDataLoaded()` (`NpcGenerator::InitializeMagic`, `FollowLight::Initialize`, `AmbientBoost::Initialize`, `Hooks::Install`); `kNewGame` / successful `kPostLoadGame` call `NpcGenerator::GiveSpellsToPlayer`; `kPreLoadGame` calls `AmbientBoost::RestoreAll` so a session's cell-ambient edits don't leak into the loaded save.
+- `src/NpcGenerator.{h,cpp}` — NPC/spell logic (magic setup at data-load, grants spells to the player on new game / load).
+- `src/FollowLight.{h,cpp}` — a runtime fill light attached to the player (hotkey, default `L`, cycles brightness tiers); configured by `config/FollowLight.ini`. Needs a per-frame driver — see `hook.cpp`.
+- `src/AmbientBoost.{h,cpp}` — hotkey (default `K`) cycles levels that raise the current interior cell's ambient / directional / DALC lighting (takes effect on cell re-entry); `RestoreAll()` undoes this session's edits. No per-frame hook needed.
+- `src/core/DeterministicRandom.{h,cpp}` — cross-language deterministic random primitive for `QUEST_ENGINE_SPEC.md` appendix B; zero game/runtime dependencies. **Not** in `sourcelist.cmake` — add it there if a runtime module starts using it.
+- `src/hook.{h,cpp}` — `Hooks::Install()` writes a vtable hook on `PlayerCharacter::Update` (Actor vfunc `0xAD`) that calls the original then `FollowLight::Update()`. It's a `write_vfunc`, not a code trampoline, so no `SKSE::AllocTrampoline` is needed. `hook.cpp` must not include `log.h` (that header defines `SetupLog()`; `SKSE::log` comes in via the PCH).
+- `src/log.h` — `SetupLog()` creates an spdlog basic file sink at `SKSE::log::log_directory() / "<PluginName>.log"` with trace-level logging and flush-on-trace. Log via `SKSE::log::info(...)` etc.
+- `src/settings.h` — still an empty stub; `simpleini` and `nlohmann-json` are already vcpkg dependencies, so config parsing is wired up headers-wise (SimpleIni include dir is added in `CMakeLists.txt`).
+- `src/util.h` — large header of static helper structs inside namespaces. When adding utilities, prefer extending these instead of inventing parallel helpers:
+  - `PointerUtil::adjust_pointer` — cv-preserving pointer arithmetic.
+  - `SystemUtil::File::GetConfigs` — enumerate config files by suffix/extension.
+  - `KeyUtil` — `MACRO_LIMITS` / `KBM_OFFSETS` / `GAMEPAD_OFFSETS` enums and `Interpreter::GamepadMaskToKeycode` mapping game gamepad bitmasks to the 282-key macro space.
+  - `Util::String` — `Split`, `Join`, `iContains`, `iEquals`, `ToLower`, `ToUpper`, `ToFloatVector`.
+  - `MathUtil` — `Clamp`, `ApproximatelyEqual`, `GetNiPoint3(hkVector4)`, and `MathUtil::Angle` (degree/radian conversion, angle normalization, quaternion↔matrix, `GetForwardVector`). Predefined `PI`, `TWO_PI`, `PI2`/`PI3`/`PI4`/`PI8`, `TWOTHIRDS_PI` macros.
+  - `MathUtil::Interp::InterpTo`, `ObjectUtil::Transform::InterpAngleTo` — frame-rate-independent interpolation.
+  - `ObjectUtil::Transform::TranslateTo` — wraps `RELOCATION_ID(55706, 56237)`.
+  - `AnimUtil::Idle::Play` — wraps `RELOCATION_ID(38290, 39256)` to play idle animations on an actor.
+  - `FormUtil::Parse` — resolve `TESForm*` / `FormID` from `"formid~modname"` config strings (delimiter defaults to `~`).
+  - `FormUtil::Quest::FindAliasByName` — locks `aliasAccessLock`, iterates aliases.
+  - `NifUtil::Node` / `Armature` / `Collision` — clone NiAVObject (`RELOCATION_ID(68835, 70187)`), find/attach bones by name on an actor, and toggle/remove havok collision via `BSVisit::TraverseScenegraphCollision` with `CFilter::Flag::kNoCollision`.
+  - `util.h` does `using namespace RE;` at the top, so `RE::` prefixes are optional inside these namespaces but still encouraged for clarity elsewhere.
+
+### 總表
 
 | 領域 | 檔案 | 職責 | 測試在哪 |
 |------|------|------|---------|
-| 全部 | `src/**`（註冊清單 `cmake/sourcelist.cmake`、`cmake/headerlist.cmake`）| 見 AGENTS.md「Code layout」| 無 C++ 測試套件；契約測試在 `scripts/test_*.{sh,ps1}`、`tools/quest_prf_test.cpp`（見 [testing](../testing.md)）|
+| 全部 | `src/**`（註冊清單 `cmake/sourcelist.cmake`、`cmake/headerlist.cmake`）| 見上方「`src/` 逐檔職責」| 無 C++ 測試套件；契約測試在 `scripts/test_*.{sh,ps1}`、`tools/quest_prf_test.cpp`（見 [testing](../testing.md)）|
 
 ## 真相層優先序
 

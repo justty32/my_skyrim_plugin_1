@@ -4,7 +4,7 @@
 
 碰原始碼的工作流（feature-dev / refactor / investigation）共用這套規矩：**寫碼時要遵守什麼**。哪個檔負責什麼領域、測試在哪 → [code-map](code-map.md)；真相層優先序也在 [code-map](code-map.md)。結構整理原則 → [STRUCTURE](../../STRUCTURE.md)。
 
-來源：根 [AGENTS.md](../../../AGENTS.md)（Build、Adding source files、Code layout）、[FOR_AGENT.md](../../../FOR_AGENT.md) §2、[PITFALLS.md](../../../PITFALLS.md)；細節與緣由以那幾份為準。
+來源：根 [AGENTS.md](../../../AGENTS.md)（Build 硬規則）、[BUILD.md](../../../BUILD.md)「編譯設定細節」段、[code-map](code-map.md)、[FOR_AGENT.md](../../../FOR_AGENT.md) §2、[PITFALLS.md](../../../PITFALLS.md)；細節與緣由以那幾份為準。
 
 ## 慣例
 

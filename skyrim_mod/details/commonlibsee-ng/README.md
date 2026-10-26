@@ -54,8 +54,10 @@
 - [00_RE 層概覽](RE/00_overview.md) - RTTI、VTable 與地址重定位的工作原理。
 - [TESForm](RE/TESForm.md) - 所有表單的基礎類。
 - [TESObjectREFR](RE/TESObjectREFR.md) - 世界中的對象引用。
+- [TESObjectREFR 終極解析](RE/TESObjectREFR_Detailed.md) - 世界引用的內存佈局與邏輯細節。
 - [Actor](RE/Actor.md) - 角色、NPC 與生物。
 - [PlayerCharacter](RE/PlayerCharacter.md) - 玩家角色單例。
+- [開發者守則 (Beware)](RE/beware.md) - SKSE 插件開發的禁區與陷阱。
 
 ## 3. 開發示例 (Examples)
 

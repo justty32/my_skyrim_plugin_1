@@ -46,8 +46,8 @@
 ## 4. 核心類別原始碼標註
 
 - **`RE::TESRace`**: `include/RE/T/TESRace.h` - 種族定義。
-- **`RE::CombatStyle`**: `include/RE/C/CombatStyle.h` - 基礎戰鬥傾向。
-- **`RE::CharacterProxy`**: 處理大型魔物的複雜物理碰撞。
+- **`RE::TESCombatStyle`**: `include/RE/T/TESCombatStyle.h` - 基礎戰鬥傾向。
+- **`RE::bhkCharacterProxy`**: 處理大型魔物的複雜物理碰撞。
 - **`RE::BGSScene`**: 用於實作魔物登場的「開場動畫」劇情。
 
 ---

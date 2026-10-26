@@ -10,8 +10,8 @@ Skyrim 的法術（Spells）是一個高度封裝的邏輯鏈條。它涉及施�
 - **原始碼**: `include/RE/M/MagicCaster.h`
 - **屬性校驗**:
     - **Magicka (法力值)**: 引擎從 `ActorValueOwner` 讀取當前法力。
-    - **Cost Reduction (減耗)**: 引擎會遍歷施法者的 `perkArray`（天賦列表），尋找與當前法術學派（如：毀滅系）相關的減耗效果。
-- **C++ 介入**: 你可以 Hook `RE::MagicCaster::GetSpellCost` 來動態改變任何法術的法耗。
+    - **Cost Reduction (減耗)**: 引擎會遍歷施法者的 `BGSPerkRankArray`（天賦列表），尋找與當前法術學派（如：毀滅系）相關的減耗效果。
+- **C++ 介入**: 你可以 Hook `RE::MagicItem::CalculateMagickaCost` 來動態改變任何法術的法耗。
 
 ---
 

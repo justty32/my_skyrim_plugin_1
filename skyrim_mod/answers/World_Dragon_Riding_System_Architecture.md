@@ -14,7 +14,7 @@
 - **優點**: 龍在翻滾或俯衝時，玩家會完美地跟隨龍的骨骼同步擺動，不會發生位移。
 
 ### B. 玩家狀態切換
-- **技術**: 進入騎乘狀態時，必須調用 `RE::PlayerCharacter::SetSitting(true)` 並進入特定的「騎龍動作 (DragonSit)」，否則玩家會以站姿穿透龍背。
+- **技術**: 進入騎乘狀態時，必須設定坐姿狀態（NG 無 `SetSitting`；最接近的是 `ActorState::DoSetSitSleepState(SIT_SLEEP_STATE)`） 並進入特定的「騎龍動作 (DragonSit)」，否則玩家會以站姿穿透龍背。
 
 ---
 
@@ -61,8 +61,8 @@
 
 ## 5. 核心類別原始碼標註
 
-- **`RE::TESObjectREFR::SetVehicle`**: 引擎內部的依附接口。
-- **`RE::CharacterProxy`**: 處理龍的物理膠囊體。
+- **`SetVehicle`**: Papyrus `Actor.SetVehicle(ObjectReference)`，引擎內部的依附接口（CommonLibSSE-NG 無 `TESObjectREFR::SetVehicle`）。
+- **`RE::bhkCharacterProxy`**: 處理龍的物理膠囊體。
 - **`RE::ActorValue`**: 修改 `SpeedMult` 影響飛行速度。
 - **`RE::BSAnimationGraphManager`**: 同步玩家與龍的動作事件。
 

@@ -6,12 +6,12 @@
 -   **持久化 (Persistence)**: 默認動態生成的對象在玩家離開單元後可能會被回收。
 -   **存檔膨脹**: 如果龍吼可以無限生成房屋而不回收，存檔體積會迅速增加。
 
-## 2. 高級解決方案：使用 `ObjectRefHandle` 與 `SetPersistent`
+## 2. 高級解決方案：使用 `ObjectRefHandle` 與 `PlaceObjectAtMe` 的 `a_forcePersist`
 
 ### 確保生成物在存檔中保留
 如果你希望生成的房屋永遠存在：
 ```cpp
-auto newHouse = player->PlaceAtMe(houseBase, 1, true, false); // 第三個參數設為 true
+auto newHouse = player->PlaceObjectAtMe(houseBase, true); // 第二個參數 a_forcePersist 設為 true
 ```
 
 ### 智能回收機制
@@ -48,7 +48,7 @@ void SafeTransmute(RE::TESObjectREFR* a_barrel, RE::TESBoundObject* a_cheeseBase
     auto inventory = a_barrel->GetInventory();
     
     // 2. 生成起司
-    auto newCheese = a_barrel->PlaceAtMe(a_cheeseBase, 1, false, false);
+    auto newCheese = a_barrel->PlaceObjectAtMe(a_cheeseBase, false);
     
     // 3. 轉移物品
     for (auto& [item, data] : inventory) {
@@ -56,7 +56,7 @@ void SafeTransmute(RE::TESObjectREFR* a_barrel, RE::TESBoundObject* a_cheeseBase
         if (count > 0) {
             // 將物品從舊木桶移動到新生成的對象（如果起司也是容器）
             // 或者直接移動給玩家
-            a_barrel->RemoveItem(item, count, RE::ITEM_REMOVE_REASON::kMove, nullptr, RE::PlayerCharacter::GetSingleton());
+            a_barrel->RemoveItem(item, count, RE::ITEM_REMOVE_REASON::kStoreInContainer, nullptr, RE::PlayerCharacter::GetSingleton());
         }
     }
 

@@ -16,7 +16,7 @@ Skyrim 的對話系統由 `Topic`、`Info` 與 `Conditions` 三者緊密結合�
 
 這是對話系統的大腦。你可以設置：
 - `GetIsID`: 只有特定 NPC 能說這句話。
-- `GetQuestStage`: 只有任務進行到某階段時才出現對話。
+- `GetStage`: 只有任務進行到某階段時才出現對話。
 - `GetItemCount`: 玩家身上有特定物品時觸發。
 
 ---

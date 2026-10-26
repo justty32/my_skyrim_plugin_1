@@ -56,8 +56,8 @@ private:
         auto bedBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0x67890);
         if (bedBase && player) {
             // 在玩家面前生成，或在目標位置生成
-            // PlaceAtMe(對象, 數量, 是否強制持久化, 是否禁用)
-            player->PlaceAtMe(bedBase, 1, false, false);
+            // PlaceObjectAtMe(對象, 是否強制持久化)
+            player->PlaceObjectAtMe(bedBase, false);
             RE::DebugNotification("床鋪已生成！");
         }
     }
@@ -66,7 +66,7 @@ private:
 
 ## 3. 關鍵 API 標註
 -   **`RE::TESSpellCastEvent`**: 監聽施法（包含龍吼）。`include/RE/T/TESSpellCastEvent.h`
--   **`PlaceAtMe`**: 在某個引用位置生成新對象。`include/RE/T/TESObjectREFR.h`
+-   **`PlaceObjectAtMe`**（Papyrus 才叫 `PlaceAtMe`）: 在某個引用位置生成新對象。`include/RE/T/TESObjectREFR.h:454`
 
 ## 4. 實戰建議
 -   **物理碰撞**: 床生成後，引擎會自動處理其碰撞。

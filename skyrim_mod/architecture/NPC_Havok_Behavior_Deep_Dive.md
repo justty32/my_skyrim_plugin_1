@@ -54,8 +54,8 @@ Skyrim 使用 **Havok SDK** 來處理動畫邏輯。`.hkx` 是一種二進制序
 
 ```cpp
 void InspectBehavior(RE::Actor* a_actor) {
-    auto manager = a_actor->GetAnimationGraphManager();
-    if (manager) {
+    RE::BSTSmartPointer<RE::BSAnimationGraphManager> manager;
+    if (a_actor->GetAnimationGraphManager(manager) && manager) {
         // 獲取 Havok 內部的行為圖實例
         for (auto& graph : manager->graphs) {
             auto hkbGraph = graph->behaviorGraph;
@@ -71,7 +71,7 @@ void InspectBehavior(RE::Actor* a_actor) {
 
 - **`RE::hkbBehaviorGraph`**: `include/RE/H/hkbBehaviorGraph.h` - 行為圖主體。
 - **`RE::hkbStateMachine`**: `include/RE/H/hkbStateMachine.h` - 狀態機邏輯。
-- **`RE::hkbVariableValue`**: `include/RE/H/hkbVariableValue.h` - 行為圖變量。
+- **`RE::hkbVariableValue`**: `include/RE/B/BSAnimationGraphManager.h`（`union hkbVariableValue`） - 行為圖變量。
 - **`RE::BSAnimationGraphManager`**: `include/RE/B/BSAnimationGraphManager.h` - Skyrim 對 Havok 的包裝器。
 
 ---

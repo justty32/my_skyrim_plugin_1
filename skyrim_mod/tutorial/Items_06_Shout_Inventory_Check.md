@@ -39,7 +39,7 @@ void CheckInventoryAndReward() {
         auto swordBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0x445566);
         if (swordBase) {
             // 添加到玩家容器
-            // 參數：物品, 數量, 是否靜默(不彈出通知), 額外數據
+            // 參數：物品, 額外數據(ExtraDataList*), 數量, 來源參照
             player->AddObjectToContainer(swordBase, nullptr, 1, nullptr);
             RE::DebugNotification("音律不足，長劍來補！已添加鋼鐵長劍。");
         }

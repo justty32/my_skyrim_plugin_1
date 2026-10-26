@@ -43,7 +43,7 @@ ref->SetPosition({ 100.0f, 200.0f, 10.0f });
 auto inventory = ref->GetInventory();
 
 // 添加物品
-ref->AddItem(goldForm, 100, silent);
+ref->AddObjectToContainer(goldForm, nullptr, 100, nullptr); // C++ 無 AddItem（那是 Papyrus）
 
 // 移除物品
 ref->RemoveItem(swordForm, 1, reason, extraList, targetRef);

@@ -35,8 +35,8 @@ Skyrim 的天賦系統（Perks）結合了後台邏輯（數據記錄）與前�
 ## 3. 天賦的運作流程
 
 1.  **獲得**: 玩家在 UI 點擊，調用 `Actor::AddPerk(BGSPerk*)`。
-2.  **存儲**: `Actor` 維護一個 `perkArray` 列表。
-3.  **觸發**: 當引擎執行特定操作（如計算傷害）時，會調用 `RE::PerkEntry::ApplyPerk`。
+2.  **存儲**: NPC 的 perk 存在基底 `TESActorBase` 的 `BGSPerkRankArray::perks`；玩家另有 `PlayerCharacter` 的 `perks`／`addedPerks`（無 `perkArray`）。
+3.  **觸發**: 當引擎執行特定操作（如計算傷害）時，會調用 `RE::BGSEntryPoint::HandleEntryPoint`（無 `PerkEntry::ApplyPerk`）。
     - 引擎遍歷 Actor 身上的所有 Perk。
     - 檢查 Conditions 是否滿足。
     - 滿足則應用修改（例如：傷害 * 1.2）。
@@ -58,7 +58,7 @@ void ToggleGodPerk(RE::Actor* a_player, bool a_enable) {
 ```
 
 ### B. 攔截天賦效果 (進階)
-你可以 Hook `RE::BGSPerk::ApplyPerk`，在原本的天賦邏輯之外注入你自己的 C++ 運算。例如：實現一個根據現實時間改變威力的天賦。
+你可以 Hook `RE::BGSEntryPoint::HandleEntryPoint`（或各 entry 的 `BGSPerkEntry::ApplyPerkEntry`；無 `BGSPerk::ApplyPerk`），在原本的天賦邏輯之外注入你自己的 C++ 運算。例如：實現一個根據現實時間改變威力的天賦。
 
 ### C. 修改星座 UI
 透過 Hook `StatsMenu`，你可以動態隱藏某些星座，或者在玩家滿足隱藏條件時才顯示特定的神祕天賦。
@@ -70,7 +70,7 @@ void ToggleGodPerk(RE::Actor* a_player, bool a_enable) {
 - **`RE::BGSPerk`**: `include/RE/B/BGSPerk.h` - 數據核心。
 - **`RE::BGSPerkEntry`**: `include/RE/B/BGSPerkEntry.h` - 具體效果定義。
 - **`RE::StatsMenu`**: `include/RE/S/StatsMenu.h` - 技能樹 UI 類別。
-- **`RE::Actor::perkArray`**: 位於 `Actor` 類別中，儲存已習得的天賦。
+- **`RE::BGSPerkRankArray::perks`**: 位於 `TESActorBase`（NPC 基底）中，儲存已習得的天賦；玩家另見 `PlayerCharacter` 的 `perks`／`addedPerks`（無 `Actor::perkArray`）。
 
 ---
 

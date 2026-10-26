@@ -13,7 +13,7 @@
 ```cpp
 void TransmuteTarget() {
     // 1. 獲取準星指向的對象 (SKSE 提供的消息接口)
-    auto crosshairRef = SKSE::GetCrosshairRef(); 
+    auto crosshairRef = SKSE::GetCrosshairRef();  // 註：SKSE 無此函式，只有事件源 SKSE::GetCrosshairRefEventSource()（CrosshairRefEvent），僅示意
     if (!crosshairRef) return;
 
     // 2. 獲取其基礎數據
@@ -38,7 +38,7 @@ void TransmuteTarget() {
         auto cheeseBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0xFEDCB);
         if (cheeseBase) {
             // 在木桶原位生成
-            auto newCheese = crosshairRef->PlaceAtMe(cheeseBase, 1, false, false);
+            auto newCheese = crosshairRef->PlaceObjectAtMe(cheeseBase, false);
             RE::DebugNotification("哈瓦加！木桶變成了起司！");
         }
     } else {

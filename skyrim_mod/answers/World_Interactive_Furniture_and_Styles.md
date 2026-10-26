@@ -31,7 +31,7 @@
       if (node) {
           // 遍歷所有 NiTriShape，並修改其 BSLightingShaderProperty 的紋理數據
           UpdateNodeTexture(node, a_newTexture);
-          a_ref->Update3DModel();
+          a_ref->Update3DModel();  // 示意：TESObjectREFR 無 Update3DModel（只有 Actor::Update3DModel）
       }
   }
   ```

@@ -59,7 +59,7 @@ Skyrim 預設沒有「街舞」動作。你必須處理動畫資源的加載：
 - **問題**: 施放法術時，角色手部會有「發射」的動作，這會打斷舞蹈。
 - **解決方案**: 
     - 使用 `Instant` 施法時間。
-    - 在效果啟動時，短暫禁用（Disable）手部的法術節點，或使用 `RE::Actor::StopCasting()`。
+    - 在效果啟動時，短暫禁用（Disable）手部的法術節點，或使用 `RE::Actor::InterruptCast(bool)`。
 
 ### B. 角色移動與重力
 - **Root Motion**: 街舞通常包含大量位移（如地板動作）。
@@ -75,7 +75,7 @@ Skyrim 預設沒有「街舞」動作。你必須處理動畫資源的加載：
 
 ## 5. 核心類別與資源
 
-- **`RE::NotifyAnimationGraph`**: `include/RE/A/Actor.h` - 觸發動畫的核心。
+- **`RE::IAnimationGraphManagerHolder::NotifyAnimationGraph`**: `include/RE/I/IAnimationGraphManagerHolder.h` - 觸發動畫的核心。
 - **`RE::MagicTarget`**: `include/RE/M/MagicTarget.h` - 處理法術命中的接口。
 - **OAR Config**: 撰寫 `config.json` 來精確控制動畫觸發條件。
 

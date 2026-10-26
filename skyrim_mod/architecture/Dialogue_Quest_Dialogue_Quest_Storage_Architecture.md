@@ -68,7 +68,7 @@ Skyrim 的對話並非線性文本，而是由「話題」與「回應」構成�
 - **獲取當前話題**: 
     ```cpp
     auto topicManager = RE::MenuTopicManager::GetSingleton();
-    auto currentTopic = topicManager->lastTopic; // 獲取當前正在說的话題
+    auto currentTopic = topicManager->currentTopicInfo; // 獲取當前正在說的 INFO（TESTopicInfo*）
     ```
 - **檢查任務階段**:
     ```cpp
@@ -85,4 +85,4 @@ Skyrim 的對話並非線性文本，而是由「話題」與「回應」構成�
 - **`RE::TESTopic`**: `include/RE/T/TESTopic.h` - 話題定義。
 - **`RE::TESTopicInfo`**: `include/RE/T/TESTopicInfo.h` - 具體對話行。
 - **`RE::MenuTopicManager`**: `include/RE/M/MenuTopicManager.h` - 對話運行時管理器。
-- **`RE::Condition`**: `include/RE/C/Condition.h` - 決定對話/任務是否生效的條件數據。
+- **`RE::TESCondition`**: `include/RE/T/TESCondition.h` - 決定對話/任務是否生效的條件數據。

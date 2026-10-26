@@ -23,7 +23,7 @@
 3. 允許玩家使用滑鼠滾輪調整旋轉角度。
 
 ### 步驟三：實例生成與座標校準
-1. 當玩家確認放置時，調用 `PlaceAtMe` 生成真實物件。
+1. 當玩家確認放置時，調用 `PlaceObjectAtMe` 生成真實物件。
 2. **關鍵**: 獲取地面的坡度 (Slope) 並調整家具的 Z 軸旋轉，使其與地面貼合。
 
 ### 步驟四：存檔與數據持久化
@@ -49,16 +49,16 @@ RE::ObjectRefHandle PlaceFurniture(RE::TESForm* a_itemForm, RE::PlayerCharacter*
     pos.y += 150.0f * cos(angle);
 
     // 生成物件
-    auto handle = a_player->PlaceAtMe(a_itemForm, 1, false, false);
+    auto handle = a_player->PlaceObjectAtMe(a_itemForm->As<RE::TESBoundObject>(), false);
     
     // 設置座標與旋轉
     if (handle) {
         handle->SetPosition(pos);
-        handle->SetRotationZ(angle);
+        handle->SetAngle(RE::NiPoint3(0.0f, 0.0f, angle));
         RE::ConsoleLog::GetSingleton()->Print("家具已放置！");
     }
     
-    return handle;
+    return handle ? handle->CreateRefHandle() : RE::ObjectRefHandle();
 }
 ```
 

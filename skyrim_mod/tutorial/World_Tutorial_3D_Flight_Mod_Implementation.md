@@ -26,7 +26,7 @@
 
 ```cpp
 void OnUpdate(RE::PlayerCharacter* a_player) {
-    if (IsSpacePressed() && a_player->IsFalling()) {
+    if (IsSpacePressed() && a_player->IsInMidair()) {
         // 觸發起飛
         EnterFlightMode(a_player);
     }
@@ -52,7 +52,7 @@ void UpdateFlightPosition(RE::PlayerCharacter* a_player, float a_deltaTime) {
     
     // 套用座標
     RE::NiPoint3 currentPos = a_player->GetPosition();
-    a_player->SetPosition(currentPos + (moveVec * g_FlightSpeed * a_deltaTime), true);
+    a_player->SetPosition(currentPos + (moveVec * g_FlightSpeed * a_deltaTime));
     
     // 禁用重力下墜
     a_player->GetCharRuntimeData().zVelocity = 0.0f;

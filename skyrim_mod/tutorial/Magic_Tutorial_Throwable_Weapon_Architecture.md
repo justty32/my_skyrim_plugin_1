@@ -29,8 +29,8 @@
 3. 若有，則允許施放並移除一個物品；若無，則攔截施法。
 
 ### 步驟四：實現投擲回收
-1. 透過 C++ 監聽投影物的碰撞事件 (`RE::Projectile::OnImpact`)。
-2. 在碰撞座標點（牆壁或地面）動態生成一個可拾取的物品引用 (`PlaceAtMe`)。
+1. 透過 C++ 監聽投影物的碰撞事件 (`RE::Projectile::AddImpact`)。
+2. 在碰撞座標點（牆壁或地面）動態生成一個可拾取的物品引用 (`PlaceObjectAtMe`)。
 
 ---
 
@@ -39,13 +39,13 @@
 ```cpp
 void FireThrowable(RE::Actor* a_thrower, RE::BGSProjectile* a_proj) {
     RE::Projectile::LaunchData data;
-    data.projectile = a_proj;
+    data.projectileBase = a_proj;
     data.origin = a_thrower->GetPosition() + RE::NiPoint3(0, 0, 150); // 從手部位置發射
-    data.angles = a_thrower->GetAngle();
+    data.angleX = a_thrower->GetAngleX(); data.angleZ = a_thrower->GetAngleZ();
     data.shooter = a_thrower;
     
     // 手動發射
-    RE::Projectile::Launch(data);
+    RE::ProjectileHandle handle; RE::Projectile::Launch(&handle, data);
 }
 ```
 

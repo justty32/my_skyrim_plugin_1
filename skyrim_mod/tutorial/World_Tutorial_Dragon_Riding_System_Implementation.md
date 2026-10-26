@@ -18,7 +18,7 @@
 ```cpp
 void MountDragon(RE::PlayerCharacter* a_player, RE::Actor* a_dragon) {
     // 1. 將玩家設為龍的載具
-    a_player->SetVehicle(a_dragon);
+    a_player->SetVehicle(a_dragon); // CommonLibSSE-NG 無此成員；這是 Papyrus Actor.SetVehicle
     
     // 2. 鎖定玩家到龍的背部節點
     auto spineNode = a_dragon->Get3D()->GetObjectByName("NPC Spine2 [Spn2]");
@@ -46,7 +46,7 @@ void MountDragon(RE::PlayerCharacter* a_player, RE::Actor* a_dragon) {
         // 向鏡頭指的方向飛行
         newPos += GetForwardVector(camera) * flightSpeed;
     }
-    a_dragon->SetPosition(newPos, true);
+    a_dragon->SetPosition(newPos);
     ```
 
 ---

@@ -32,9 +32,9 @@
 書籍類物品最為特殊，因為它們包含大量的頁面內容。
 - **原始碼**: `include/RE/T/TESObjectBOOK.h`
 - **結構**:
-    - **`RE::TESObjectBOOK::Data`**: 定義了書籍的類型（書、信件、卷軸）、技能加成、是否已讀。
-    - **`itemText`**: 存儲了書籍的主體文字（HTML 標籤支持，如 `<font>`, `<br>`）。
-- **動態生成內容**: 你可以在 C++ 中攔截書籍開啟事件，並將 `itemText` 替換為動態生成的字符串（例如 AI 生成的信件）。
+    - **`RE::OBJ_BOOK`**（成員 `TESObjectBOOK::data`）: 定義了書籍的類型（書、信件、卷軸）、技能加成、是否已讀。
+    - **`TESDescription`（DESC）**: 存儲了書籍的主體文字（CommonLib 無 `itemText` 成員）（HTML 標籤支持，如 `<font>`, `<br>`）。
+- **動態生成內容**: 你可以在 C++ 中攔截書籍開啟事件，並將書籍的 DESC 文字替換為動態生成的字符串（例如 AI 生成的信件）。
 
 ---
 
@@ -55,7 +55,7 @@
 
 1.  **全局修改**: 直接操作 `TESBoundObject*` 的 `TESFullName` 或 `TESDescription` 成員。
 2.  **實例修改 (僅修改你手裡這把)**: 使用 `ExtraTextDisplayData` (見教學 15)，這不會影響其他同名物品。
-3.  **書籍內容**: 直接操作 `TESObjectBOOK->itemText`。
+3.  **書籍內容**: 操作 `TESObjectBOOK` 繼承的 `TESDescription`（DESC）。
 
 ## 7. 核心類別原始碼標註
 

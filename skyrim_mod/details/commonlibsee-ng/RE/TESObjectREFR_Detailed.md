@@ -12,9 +12,9 @@
 ### 核心成員偏移量 (Offsets)
 - **`0x00`**: 虛函數表 (VTable)。
 - **`0x14`**: FormID (32位唯一標識)。
-- **`0x40`**: `RE::TESObjectCELL* parentCell` - 指向該引用當前所在的單元。
-- **`0x48`**: `RE::ExtraDataList extraList` - **最核心組件**，儲存所有動態狀態。
-- **`0x68`**: `RE::NiAVObject* loadedData` - 指向內存中的 3D 模型樹。如果對象未加載，此處為空。
+- **`0x60`**: `RE::TESObjectCELL* parentCell` - 指向該引用當前所在的單元。
+- **`0x70`**: `RE::ExtraDataList extraList` - **最核心組件**，儲存所有動態狀態。
+- **`0x68`**: `RE::LOADED_REF_DATA* loadedData` - 3D 模型樹在 `loadedData->data3D`。如果對象未加載，此處為空。
 
 ---
 
@@ -43,7 +43,7 @@
 
 Ref 與 NIF 模型之間的關係是動態的：
 1.  **加載**: 當玩家靠近時，引擎讀取 NIF，將 `loadedData` 指針指向生成的 `NiNode`。
-2.  **更新**: 調用 `Update3DModel()` 會重新執行此過程。
+2.  **更新**: 調用 `Update3DModel()` 會重新執行此過程（註：此成員只在 `RE::Actor`）。
 3.  **卸載**: 玩家遠離後，`loadedData` 被設為空，節點樹從內存銷毀，但 `TESObjectREFR` 對象本身依然存在。
 
 ---
@@ -81,7 +81,7 @@ auto inventory = a_ref->GetInventory();
 ### C. 啟用與禁用
 ```cpp
 a_ref->Disable(); // 視覺消失，停止更新
-a_ref->Enable();  // 重新出現
+a_ref->Enable(false);  // 重新出現
 ```
 
 ---

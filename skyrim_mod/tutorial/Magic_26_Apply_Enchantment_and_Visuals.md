@@ -17,7 +17,7 @@ void IgniteRightHandWeapon() {
     auto player = RE::PlayerCharacter::GetSingleton();
     if (!player) return;
 
-    // 1. 獲取右手裝備的對象 (include/RE/P/PlayerCharacter.h)
+    // 1. 獲取右手裝備的對象 (include/RE/A/Actor.h)
     auto weaponRef = player->GetEquippedObject(false); // false 代表右手
     if (!weaponRef || !weaponRef->Is(RE::FormType::Weapon)) return;
 

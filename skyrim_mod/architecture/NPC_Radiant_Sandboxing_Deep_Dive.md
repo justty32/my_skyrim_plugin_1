@@ -24,7 +24,7 @@ NPC 不會隨機選擇動作，而是有一套隱藏的權重計算：
 
 ## 4. C++ 介入與擴展
 透過 C++，你可以實現「程序化地標 (Procedural Idle Markers)」：
-- **動態生成標記**: 在你的動態城鎮（教學 21）中，手動 `PlaceAtMe` 一些不可見的閒置點（Idle Markers），NPC 就會自動在那裡表現出靠牆、看書或修補建築的動作。
+- **動態生成標記**: 在你的動態城鎮（教學 21）中，手動 `PlaceObjectAtMe`（C++；`PlaceAtMe` 是 Papyrus） 一些不可見的閒置點（Idle Markers），NPC 就會自動在那裡表現出靠牆、看書或修補建築的動作。
 - **修改權重**: Hook `RE::AIProcess::Update` 可以在 NPC 選擇動作前攔截目標對象。
 
 ---

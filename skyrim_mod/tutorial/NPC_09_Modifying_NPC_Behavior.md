@@ -19,10 +19,10 @@ void TameNPC(RE::Actor* a_target) {
     // 原始碼路徑: include/RE/A/ActorValueOwner.h
     
     // 侵略性 (Aggression): 0-平和, 1-侵略, 2-激進, 3-瘋狂
-    a_target->SetActorValue(RE::ActorValue::kAggression, 0.0f);
+    a_target->AsActorValueOwner()->SetActorValue(RE::ActorValue::kAggression, 0.0f);
     
     // 自信度 (Confidence): 0-懦弱 (會逃跑), 4-魯莽 (永不逃跑)
-    a_target->SetActorValue(RE::ActorValue::kConfidence, 0.0f);
+    a_target->AsActorValueOwner()->SetActorValue(RE::ActorValue::kConfidence, 0.0f);
 
     // 2. 強制停止戰鬥
     // 原始碼路徑: include/RE/A/Actor.h
@@ -42,7 +42,7 @@ void TameNPC(RE::Actor* a_target) {
     // PlaceHolder: 0x玩家派系ID
     auto playerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0000001C);
     if (playerFaction) {
-        a_target->SetFactionRank(playerFaction, 1);
+        a_target->AddToFaction(playerFaction, 1);
     }
 
     // 5. 強制重新評估行為
@@ -64,9 +64,9 @@ void ForceFollowPlayer(RE::Actor* a_target) {
     
     if (a_target && followPackage) {
         // 將 Package 推入 NPC 的行為棧
-        auto process = a_target->currentProcess;
+        auto process = a_target->GetActorRuntimeData().currentProcess;
         if (process) {
-            process->SetCurrentPackage(followPackage);
+            process->SetCurrentPackage(followPackage);  // 註：AIProcess 無 SetCurrentPackage（只有 currentPackage 成員），僅示意
         }
         
         a_target->EvaluatePackage(true, false);

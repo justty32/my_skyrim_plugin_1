@@ -25,7 +25,7 @@ void AddGoldToPlayer(int amount) {
     auto gold = RE::TESForm::LookupByID<RE::TESBoundObject>(0xF); // 金幣的 FormID 永遠是 0xF
 
     if (player && gold) {
-        // (物品, 數量, 原因, ExtraData, 移動到目標)
+        // (物品, ExtraDataList, 數量, 來源引用)
         player->AddObjectToContainer(gold, nullptr, amount, nullptr);
         RE::DebugNotification(fmt::format("獲得了 {} 枚金幣", amount).c_str());
     }

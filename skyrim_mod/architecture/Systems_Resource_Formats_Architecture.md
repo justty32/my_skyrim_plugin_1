@@ -7,14 +7,14 @@ Skyrim 引擎（Gamebryo/Creation Engine）使用一套專有的二進制格式�
 ## 1. 檔案封裝：BSA (Bethesda Archive)
 為了提高讀取效率，引擎不直接從磁盤讀取數萬個小文件，而是將它們打包。
 - **機制**: BSA 本質上是一個帶有哈希索引的虛擬檔案系統。
-- **原始碼**: `include/RE/B/BSResource/` (涉及 `RE::BSResource::LooseFileStream` 與 `RE::BSResource::Archive`)
+- **原始碼**: `include/RE/L/LooseFileStream.h`、`include/RE/A/Archive.h`（`RE::BSResource::LooseFileStream` 與 `RE::Archive`；無 `RE/B/BSResource/` 目錄）
 - **優先級**: 「鬆散文件（Loose Files）」的讀取優先級高於 BSA。這就是為什麼你可以直接把模型扔進 `Data/Meshes` 來覆蓋遊戲原有的資源。
 
 ---
 
 ## 2. 3D 模型：NIF (NetImmerse Format)
 這是引擎最核心的 3D 數據載體。
-- **原始碼**: `include/RE/N/NiMain.h` (包含 `RE::NiNode`, `RE::NiTriShape`)
+- **原始碼**: `include/RE/N/NiNode.h`、`include/RE/N/NiTriShape.h`（無 `NiMain.h`）
 - **結構**: NIF 是一個「塊狀（Block-based）」結構。
     - **NiNode**: 骨骼節點，定義層級關係。
     - **NiTriShape**: 具體的幾何幾何數據（頂點、索引）。
@@ -53,12 +53,12 @@ Skyrim 使用 Havok 引擎處理物理碰撞與骨骼動畫。
 ```cpp
 void LoadCustomModel(const char* a_path) {
     // 透過 BSResource 系統查找資源 (BSA 或 Loose)
-    auto resourceEntry = RE::BSResource::EntryDB::GetSingleton();
+    // 註：CommonLibSSE-NG 無 BSResource::EntryDB::GetSingleton()（EntryDB 是模板）
     
     // 使用 NiStream 加載 NIF
     RE::NiStream nifStream;
-    if (nifStream.Load(a_path)) {
-        auto rootNode = nifStream.GetObjectAt<RE::NiNode>(0);
+    if (nifStream.Load3(a_path)) {
+        auto rootNode = netimmerse_cast<RE::NiNode*>(nifStream.topObjects[0].get());
         // 現在你可以將這個模型掛載到玩家手上或世界中
     }
 }

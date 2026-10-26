@@ -28,14 +28,14 @@ int AddNumbers(RE::StaticFunctionTag*, int a, int b) {
 
 ### B. 綁定函數
 透過 `IVirtualMachine::RegisterFunction` 進行註冊。
-- **原始碼**: `include/RE/B/BSScript/NativeFunction.h`
+- **原始碼**: `include/RE/N/NativeFunction.h`
 - **參數**:
     1.  `functionName`: 在腳本中調用的名字。
     2.  `className`: 腳本文件的名字（不含後綴）。
     3.  `functionPtr`: 你的 C++ 函數地址。
 
 ### C. SKSE 接口接入
-你不能在任何時候註冊函數，必須在 SKSE 發送 `kMsg_PapyrusSetup` 消息時進行。
+你不能在任何時候註冊函數，必須透過 `SKSE::GetPapyrusInterface()->Register(回調)` 交給 SKSE 在 VM 就緒時呼叫（SKSE 訊息列表無 `kMsg_PapyrusSetup`）。
 
 ```cpp
 bool BindFunctions(RE::BSScript::IVirtualMachine* a_vm) {
@@ -86,4 +86,4 @@ SKSE::GetPapyrusInterface()->Register(BindFunctions);
 - **`RE::BSScript::IVirtualMachine`**: `include/RE/I/IVirtualMachine.h` - 虛擬機接口。
 - **`RE::BSScript::Internal::VirtualMachine`**: `src/RE/V/VirtualMachine.cpp` - 引擎內部的具體實現。
 - **`SKSE::PapyrusInterface`**: `include/SKSE/Interfaces.h` - SKSE 提供的註冊入口。
-- **`RE::StaticFunctionTag`**: `include/RE/S/StaticFunctionTag.h` - 靜態函數標記位。
+- **`RE::StaticFunctionTag`**: `include/RE/T/TypeTraits.h` - 靜態函數標記位。

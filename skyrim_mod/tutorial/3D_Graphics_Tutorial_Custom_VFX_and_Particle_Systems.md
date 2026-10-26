@@ -40,12 +40,12 @@
 ```cpp
 void ApplyVisualEffect(RE::Actor* a_target, const char* a_artEditorID) {
     auto dataHandler = RE::TESDataHandler::GetSingleton();
-    auto artObj = dataHandler->LookupForm<RE::BGSArtObject>(a_artEditorID, "YourMod.esp");
+    auto artObj = RE::TESForm::LookupByEditorID<RE::BGSArtObject>(a_artEditorID);
 
     if (artObj && a_target) {
         // 將 ArtObject 附加到 NPC 身上
         a_target->ApplyArtObject(artObj);
-        RE::ConsoleLog::GetSingleton()->Print("特效已應用於 %s", a_target->GetFullName());
+        RE::ConsoleLog::GetSingleton()->Print("特效已應用於 %s", a_target->GetName());
     }
 }
 ```

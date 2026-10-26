@@ -44,9 +44,9 @@ NPC（角色）是 Skyrim 中數據結構最龐大、存儲最複雜的對象。
 ### B. 隨機路人 (Leveled NPCs)
 - **儲存策略**: 只有當他們與原始狀態不同（如：受傷、位移）且所在的單元尚未重置時，才會存儲。
 - **序列化標誌 (`ChangeFlags`)**:
-    - `kChanged_Actor_Stats`: 屬性發生過變化。
-    - `kChanged_Inventory`: 背包發生過變化。
-    - `kChanged_Position`: 位置發生過變化。
+    - `Actor::ChangeFlags::kDamageModifiers` 等: 屬性發生過變化。
+    - `TESObjectREFR::ChangeFlags::kInventory`: 背包發生過變化。
+    - `TESObjectREFR::ChangeFlags::kMoved`: 位置發生過變化。
 
 ---
 

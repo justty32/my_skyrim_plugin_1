@@ -37,13 +37,13 @@ void SnapModuleBToA(RE::TESObjectREFR* a_moduleA, RE::TESBoundObject* a_baseB) {
     targetPosB.z = posA.z + socketA.pos.z;
 
     // 4. 生成並放置模塊 B
-    auto moduleB = a_moduleA->PlaceAtMe(a_baseB, 1, true, false);
+    auto moduleB = a_moduleA->PlaceObjectAtMe(a_baseB, true);
     if (moduleB) {
         moduleB->SetPosition(targetPosB);
-        moduleB->SetAngle(0.0f, 0.0f, rotA + socketA.rotation);
+        moduleB->SetAngle(RE::NiPoint3{ 0.0f, 0.0f, rotA + socketA.rotation });
         
         // 5. 關鍵：激活物理與導航連通
-        moduleB->UpdateCollisionFilter();
+        moduleB->UpdateCollisionFilter(); // 註：CommonLibSSE-NG 無此成員，此處為示意
     }
 }
 ```
@@ -54,7 +54,7 @@ void SnapModuleBToA(RE::TESObjectREFR* a_moduleA, RE::TESBoundObject* a_baseB) {
 
 -   **解決方案 A (Edge Linking)**: 確保你的模組在設計時，Navmesh 的邊緣剛好切在模型邊界上。Skyrim 引擎會嘗試將極其靠近的兩個 Navmesh 邊緣視為「連通」。
 -   **解決方案 B (Navmesh Obstacle Manager)**: 
-    -   **原始碼**: `include/RE/N/NavMeshObstacleManager.h`
+    -   **原始碼**: `include/RE/N/NavMeshObstacleManager.h`（註：CommonLibSSE-NG 無此標頭，只有 RTTI 條目）
     -   調用該管理器的 `Update()`，讓引擎重新掃描拼接區域的物理碰撞，強制刷新尋路路徑。
 
 ## 4. 總結
@@ -65,10 +65,10 @@ void SnapModuleBToA(RE::TESObjectREFR* a_moduleA, RE::TESBoundObject* a_baseB) {
 ### 核心頭文件
 - `include/RE/N/NiPoint3.h` - 向量坐標運算。
 - `include/RE/N/NiMatrix3.h` - 旋轉矩陣處理。
-- `include/RE/N/NavMeshObstacleManager.h` - 導航更新管理。
+- `include/RE/N/NavMeshObstacleManager.h` - 導航更新管理。（註：CommonLibSSE-NG 無此標頭）
 
 ### 推薦使用的函數
 - `RE::TESObjectREFR::GetPosition()` / `GetAngle()`：獲取基點模塊狀態。
 - `RE::TESObjectREFR::SetPosition()` / `SetAngle()`：精確對齊新模塊。
-- `RE::NavMeshObstacleManager::GetSingleton()->Update()`：強制重新掃描導航物理。
-- `RE::TESObjectREFR::UpdateCollisionFilter()`：刷新物理層與導航剪裁層。
+- `RE::NavMeshObstacleManager::GetSingleton()->Update()`：強制重新掃描導航物理（註：CommonLibSSE-NG 無此類別定義）。
+- `RE::TESObjectREFR::UpdateCollisionFilter()`：刷新物理層與導航剪裁層（註：CommonLibSSE-NG 無此成員）。

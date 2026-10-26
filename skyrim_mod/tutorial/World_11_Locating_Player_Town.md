@@ -44,7 +44,7 @@ void IdentifyCurrentLocation() {
     // 4. 獲取當前 Cell (單元) 信息
     auto cell = player->GetParentCell();
     if (cell) {
-        if (cell->IsInterior()) {
+        if (cell->IsInteriorCell()) {
             RE::DebugNotification("玩家目前在室內。");
         }
     }
@@ -52,10 +52,10 @@ void IdentifyCurrentLocation() {
 ```
 
 ## 3. 關鍵 API 標註
--   **`GetCurrentLocation()`**: 獲取當前綁定的地理位置數據。`include/RE/P/PlayerCharacter.h`
+-   **`GetCurrentLocation()`**: 獲取當前綁定的地理位置數據。`include/RE/T/TESObjectREFR.h`
 -   **`BGSLocation`**: 存儲名稱、關鍵字（如「城鎮」、「地牢」）的對象。`include/RE/B/BGSLocation.h`
 -   **`TESObjectCELL`**: 遊戲地圖的物理劃分單元。`include/RE/T/TESObjectCELL.h`
 
 ## 4. 實戰建議
 -   **關鍵字過濾**: 大多數城鎮 Location 都帶有 `LocTypeTown` 或 `LocTypeCity` 關鍵字，你可以透過 `location->HasKeyword()` 來精確判斷。
--   **室內外判斷**: `cell->IsInterior()` 是判斷玩家是否在房子或地牢內的最可靠方法。
+-   **室內外判斷**: `cell->IsInteriorCell()` 是判斷玩家是否在房子或地牢內的最可靠方法。

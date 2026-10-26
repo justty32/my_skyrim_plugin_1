@@ -42,8 +42,8 @@ Actor 的肉體並非一個整體，而是分為多個「槽位（Slots）」。
 ## 4. 布娃娃系統 (Ragdoll / Havok Physics)
 
 布娃娃系統負責處理 Actor 失去意識或死亡後的物理模擬。
-- **類別**: `RE::bhkRagdollSystem`
-- **原始碼**: `include/RE/B/bhkRagdollSystem.h`
+- **類別**: `RE::hkaRagdollInstance`
+- **原始碼**: `include/RE/H/hkaRagdollInstance.h`
 - **工作原理**:
     1.  **物理約束 (Constraints)**: 在骨骼節點之間建立「鉸鏈（Hinges）」或「球窩接頭（Ball-and-Socket）」，限制關節旋轉的角度。
     2.  **狀態切換**: 
@@ -76,4 +76,4 @@ if (neck) {
 - **`RE::TESRace`**: `include/RE/T/TESRace.h` - 種族定義與視覺模板。
 - **`RE::BGSBipedObjectForm`**: `include/RE/B/BGSBipedObjectForm.h` - 槽位與蒙皮管理。
 - **`RE::NiNode`**: `include/RE/N/NiNode.h` - 骨骼節點容器。
-- **`RE::bhkRagdollSystem`**: `include/RE/B/bhkRagdollSystem.h` - 布娃娃物理核心。
+- **`RE::hkaRagdollInstance`**: `include/RE/H/hkaRagdollInstance.h` - 布娃娃物理核心。

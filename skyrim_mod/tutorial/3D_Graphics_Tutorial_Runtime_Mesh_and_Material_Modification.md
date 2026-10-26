@@ -19,7 +19,7 @@
 RE::NiNode* GetObject3D(RE::TESObjectREFR* a_ref) {
     if (!a_ref) return nullptr;
     // 獲取 3D 根節點。如果是 NPC，可能需要指定是獲取武器還是身體
-    return a_ref->Get3D(); 
+    return a_ref->Get3D() ? a_ref->Get3D()->AsNode() : nullptr; 
 }
 ```
 
@@ -40,12 +40,12 @@ void SwapTexture(RE::NiNode* a_root, const char* a_shapeName, const char* a_newT
     auto geometry = avObj->AsGeometry();
     if (geometry) {
         // 3. 獲取 Shader 屬性
-        auto effect = geometry->GetProperties().effect;
+        auto effect = geometry->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect];
         if (effect) {
             auto lightingShader = netimmerse_cast<RE::BSLightingShaderProperty*>(effect.get());
-            if (lightingShader && lightingShader->textureSet) {
+            if (lightingShader && lightingShader->material) {
                 // 4. 替換索引 0 (Diffuse) 的貼圖
-                lightingShader->textureSet->SetTexturePath(0, a_newTexturePath);
+                static_cast<RE::BSLightingShaderMaterialBase*>(lightingShader->material)->textureSet->SetTexturePath(RE::BSTextureSet::Texture::kDiffuse, a_newTexturePath);
             }
         }
     }
@@ -70,7 +70,7 @@ void DeformMesh(RE::NiNode* a_root, const char* a_shapeName, float a_zScale) {
         // 在 CommonLibSSE-NG 中，存取底層 vertex data 需要使用特定的偏移或逆向結構
         // 這裡提供概念性代碼 (具體 API 可能因 CommonLib 版本而異)
         
-        auto vertexCount = triShape->vertexCount;
+        auto vertexCount = triShape->GetTrishapeRuntimeData().vertexCount;
         // 假設我們有辦法取得頂點數組指針 vertices (RE::NiPoint3*)
         /*
         for (uint32_t i = 0; i < vertexCount; ++i) {
@@ -79,7 +79,7 @@ void DeformMesh(RE::NiNode* a_root, const char* a_shapeName, float a_zScale) {
         */
 
         // 2. 更新邊界框 (極為重要，否則物件會憑空消失)
-        // triShape->UpdateBound();
+        // triShape->UpdateWorldBound();
     }
 }
 ```

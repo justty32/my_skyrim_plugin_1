@@ -20,14 +20,14 @@ void CheckAndTriggerCare() {
     if (!player) return;
 
     // 1. 檢查玩家血量 (百分比)
-    float healthPct = player->GetActorValue(RE::ActorValue::kHealth) / player->GetBaseActorValue(RE::ActorValue::kHealth);
+    float healthPct = player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kHealth) / player->AsActorValueOwner()->GetBaseActorValue(RE::ActorValue::kHealth);
     
     if (healthPct < 0.3f) { // 低於 30% 血量
         
         // 2. 遍歷當前單元內的所有 NPC
         auto cell = player->GetParentCell();
         if (cell) {
-            for (auto& ref : cell->runtimeData.references) {
+            for (auto& ref : cell->GetRuntimeData().references) {
                 auto npc = ref->As<RE::Actor>();
                 
                 // 3. 過濾條件
@@ -39,7 +39,7 @@ void CheckAndTriggerCare() {
                     
                     // 檢查距離與視線
                     float distance = player->GetPosition().GetDistance(npc->GetPosition());
-                    bool canSee = npc->HasLineOfSight(player);
+                    bool canSee = npc->HasLineOfSight(player, losUnk);  // 第二參數是 bool&，需先宣告 bool losUnk
 
                     if (isFemale && distance < 500.0f && canSee) {
                         // 4. 執行反應
@@ -54,10 +54,10 @@ void CheckAndTriggerCare() {
 
 void TriggerResponse(RE::Actor* a_npc, const char* a_text) {
     // 讓 NPC 看向玩家 (LookIK)
-    a_npc->SetLookAt(RE::PlayerCharacter::GetSingleton());
+    a_npc->SetLookAt(RE::PlayerCharacter::GetSingleton());  // 註：SetLookAt 是 Papyrus Actor 函式，C++ Actor 無此成員
 
     // 使用 SubtitleManager 顯示文字 (參考教學 10)
-    RE::SubtitleManager::GetSingleton()->AddSubtitle(a_npc, a_text, 3.0f, true);
+    RE::SubtitleManager::GetSingleton()->AddSubtitle(a_npc, a_text, 3.0f, true);  // 註：NG 無 AddSubtitle，僅示意
     
     // 讓 NPC 動嘴巴
     a_npc->NotifyAnimationGraph("TalkingStart");
@@ -72,7 +72,7 @@ void TriggerResponse(RE::Actor* a_npc, const char* a_text) {
 性別數據儲存在 `TESNPC`（模板）中而非 `Actor`（實體）中。這就是為什麼我們需要 `npc->GetActorBase()->GetSex()`。
 
 ### B. SetLookAt (看向目標)
-這是引擎內建的 LookIK 系統。當你調用此函數後，NPC 的頸部骨骼會動態旋轉以追蹤目標，直到你調用 `ClearLookAt()`。
+這是引擎內建的 LookIK 系統（`SetLookAt`／`ClearLookAt` 是 Papyrus Actor 函式，C++ 無同名成員）。當你調用此函數後，NPC 的頸部骨骼會動態旋轉以追蹤目標，直到你調用 `ClearLookAt()`。
 
 ### C. 執行頻率
 不要在 `Main::Update` 中每一幀都執行這個掃描。建議使用一個簡單的計數器，每 60 幀（約 1 秒）執行一次。
@@ -82,10 +82,10 @@ void TriggerResponse(RE::Actor* a_npc, const char* a_text) {
 ### 核心頭文件
 - `include/RE/T/TESNPC.h` - 性別數據。
 - `include/RE/S/SubtitleManager.h` - 字幕控制。
-- `include/RE/A/Actor.h` - `HasLineOfSight` 與 `SetLookAt`。
+- `include/RE/A/Actor.h` - `HasLineOfSight`（`SetLookAt` 不在此檔，是 Papyrus）。
 
 ### 推薦使用的函數
 - `RE::Actor::GetActorBase()->GetSex()`：精確獲取 NPC 性別。
-- `RE::Actor::HasLineOfSight(Target)`：檢查中間是否有障礙物遮擋。
-- `RE::Actor::SetLookAt(Target)`：啟動頭部追蹤物理效果。
-- `RE::SubtitleManager::AddSubtitle(...)`：在不使用 ESP 的情況下顯示對白。
+- `RE::Actor::HasLineOfSight(Target, bool&)`：檢查中間是否有障礙物遮擋。
+- `Actor.SetLookAt(Target)`（Papyrus）：啟動頭部追蹤物理效果。
+- `RE::SubtitleManager::AddSubtitle(...)`（NG 無此成員）：在不使用 ESP 的情況下顯示對白。

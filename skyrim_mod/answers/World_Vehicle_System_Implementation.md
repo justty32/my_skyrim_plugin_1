@@ -15,7 +15,7 @@ Skyrim 引擎原生並不支援傳統意義上的「載具」（如汽車、飛�
 - **原理**: 使用 `RE::bhkWorld` 在 C++ 中手動施加衝量 (Impulse) 與力 (Force)。
 - **核心代碼**:
   ```cpp
-  auto body = v_ref->GetPhysicsObject();
+  auto body = v_ref->GetPhysicsObject();  // 示意：NG 無 GetPhysicsObject；hkpRigidBody::ApplyLinearImpulse 取 hkVector4
   if (body) {
       // 根據玩家輸入施加前進力
       RE::NiPoint3 force = { 0, 5000.0f, 0 }; 
@@ -60,7 +60,7 @@ Skyrim 引擎原生並不支援傳統意義上的「載具」（如汽車、飛�
 ## 5. 核心類別原始碼標註
 
 - **`RE::bhkRigidBody`**: `include/RE/B/bhkRigidBody.h` (物理核心)
-- **`RE::Actor::SetVehicle`**: 引擎內部預留的部分載具接口。
+- **`SetVehicle`**: Papyrus `Actor.SetVehicle(ObjectReference)`，引擎內部預留的部分載具接口（CommonLibSSE-NG 無 `RE::Actor::SetVehicle`）。
 - **`RE::PlayerCharacter`**: 處理玩家騎乘狀態。
 
 ---

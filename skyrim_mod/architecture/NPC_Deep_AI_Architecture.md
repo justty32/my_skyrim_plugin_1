@@ -17,7 +17,7 @@
 一旦 NPC 進入戰鬥，決策權就移交給了戰鬥控制器。
 - **原始碼**: `include/RE/C/CombatController.h`
 - **組成**:
-    - **`CombatTargetSelector`**: 決定誰是下一個目標。
+    - **`CombatTargetSelectorStandard`**: 決定誰是下一個目標。
     - **`CombatBehaviorController`**: 決定下一個動作（防禦、重擊、後撤）。
 - **Hook 價值**: 這是製作「戰鬥 AI 增強」模組的核心。你可以 Hook `PickNextBehavior` 來強迫 NPC 在低血量時執行特定的逃跑或求援邏輯。
 
@@ -25,7 +25,7 @@
 
 ## 3. 行為樹：`BGSProcedureTree`
 這是 Package 內部的具體執行步驟。
-- **原始碼**: `include/RE/B/BGSProcedureTree.h`
+- **原始碼**: `include/RE/B/BGSProcedureTreeBranch.h`（另有 `Sequence`／`Procedure`／`ConditionalItem`；無 `BGSProcedureTree.h`）
 - **機制**: 定義了諸如「移動到某處」、「播放動畫」、「等待」等原子操作。
 - **深層修改**: 你可以透過 C++ 動態修改 NPC 當前正在執行的 Procedure，實現極其精細的動作控制。
 
@@ -33,7 +33,7 @@
 
 ## 4. 尋路與路徑：`Pathing`
 NPC 是如何計算 A* 尋路的？
-- **原始碼**: `include/RE/P/Pathing.h`
+- **原始碼**: 無對應標頭（CommonLibSSE-NG 無 `Pathing.h`／`RE::Pathing`；相關僅 `RE/P/PathingCell.h`）
 - **機制**: 引擎根據 Navmesh 計算一條路徑點（Path Points）隊列。
 - **Hook 價值**: 你可以攔截路徑計算，讓 NPC 故意避開某些區域（如玩家佈下的陷阱區），或者引導 NPC 走一條更具策略性的路線。
 
@@ -49,4 +49,4 @@ NPC 是如何計算 A* 尋路的？
 
 - **`RE::AIProcess`**: `include/RE/A/AIProcess.h` - AI 運行時。
 - **`RE::CombatController`**: `include/RE/C/CombatController.h` - 戰鬥決策。
-- **`RE::Pathing`**: `include/RE/P/Pathing.h` - 尋路邏輯。
+- **`RE::Pathing`**: 尋路邏輯（註：CommonLibSSE-NG 無此類別與標頭；最接近的是 `RE/P/PathingCell.h`）。

@@ -41,7 +41,7 @@ auto player = RE::PlayerCharacter::GetSingleton();
 auto currentCell = player->GetParentCell();
 
 if (currentCell) {
-    if (currentCell->IsInterior()) {
+    if (currentCell->IsInteriorCell()) {
         // 處理室內邏輯 (例如：自動收起武器)
     } else {
         // 處理室外邏輯 (例如：動態改變視距)

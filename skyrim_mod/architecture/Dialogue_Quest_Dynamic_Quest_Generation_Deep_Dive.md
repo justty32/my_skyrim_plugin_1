@@ -29,6 +29,6 @@
 ---
 
 ## 5. 核心類別原始碼標註
-- **`RE::BGSQuestAlias`**: `include/RE/B/BGSQuestAlias.h` - 任務變量基類。
+- **`RE::BGSBaseAlias`**: `include/RE/B/BGSBaseAlias.h` - 任務變量基類。
 - **`RE::BGSRefAlias`**: `include/RE/B/BGSRefAlias.h` - 對應世界引用的別名。
 - **`RE::BGSLocAlias`**: `include/RE/B/BGSLocAlias.h` - 對應區域位置的別名。

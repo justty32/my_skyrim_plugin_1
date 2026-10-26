@@ -39,7 +39,7 @@ NPC 的所有行為都由 `RE::TESPackage` 驅動。
             // 檢查 NPC 周圍是否有曬魚架
             if (FindNearbyObject(a_actor, "WKS_FishRack")) {
                 // 將曬魚 Package 推入 NPC 的行為堆疊
-                a_actor->GetActorRuntimeData().currentProcess->PushPackage(g_FishRackPackage);
+                a_actor->GetActorRuntimeData().currentProcess->SetRunOncePackage(g_FishRackPackage, a_actor);  // NG 無 PushPackage
             }
         }
     }

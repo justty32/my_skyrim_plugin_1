@@ -44,11 +44,11 @@ Skyrim 的劇情核心是 `RE::TESQuest`。它不只是「任務清單」，更�
 ```cpp
 void AdvanceQuest(const char* a_editorID) {
     auto dataHandler = RE::TESDataHandler::GetSingleton();
-    auto quest = dataHandler->LookupForm<RE::TESQuest>(a_editorID, "YourMod.esp");
+    auto quest = RE::TESForm::LookupByEditorID<RE::TESQuest>(a_editorID);
     
     if (quest && quest->IsEnabled()) {
         // 將任務推進到下一個階段
-        quest->SetCurrentStageID(20);
+        // quest->SetCurrentStageID(20);  // 註：這是 Papyrus（Quest.psc），C++ TESQuest 無此成員
     }
 }
 ```

@@ -48,8 +48,8 @@ void InitLua() {
 
     // 導出 Actor 類別
     g_lua.new_usertype<RE::Actor>("Actor",
-        "GetName", [](RE::Actor& a) { return a.GetFullName(); },
-        "GetHealth", [](RE::Actor& a) { return a.GetActorValue(RE::ActorValue::kHealth); }
+        "GetName", [](RE::Actor& a) { return a.GetDisplayFullName(); },
+        "GetHealth", [](RE::Actor& a) { return a.AsActorValueOwner()->GetActorValue(RE::ActorValue::kHealth); }
     );
 
     // 導出獲取玩家的函數

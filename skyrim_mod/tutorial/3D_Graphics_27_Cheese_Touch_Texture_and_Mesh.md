@@ -20,13 +20,13 @@ void ApplyCheeseTexture(RE::TESObjectREFR* a_itemRef) {
     
     if (a_itemRef && cheeseTextureSet) {
         // 2. 創建材質覆蓋數據
-        auto extraTexture = new RE::ExtraTextureSet(cheeseTextureSet);
+        auto extraTexture = new RE::ExtraTextureSet(cheeseTextureSet);  // 註：CommonLibSSE-NG 無 RE::ExtraTextureSet，此行僅示意
         
         // 3. 掛載到物品的 ExtraDataList
         a_itemRef->extraList.Add(extraTexture);
         
         // 4. 強制刷新視覺
-        a_itemRef->Update3DModel();
+        a_itemRef->Update3DModel();  // 註：Update3DModel() 只在 RE::Actor，TESObjectREFR 無此成員
         RE::DebugNotification("武器已被起司化！");
     }
 }
@@ -43,8 +43,8 @@ void AttachCheeseDecoration(RE::Actor* a_player) {
 
     // 2. 加載起司模型 (include/RE/N/NiStream.h)
     RE::NiStream stream;
-    if (stream.Load("Meshes\\Clutter\\Food\\CheeseWheel01.nif")) {
-        auto cheeseMesh = stream.GetObjectAt<RE::NiAVObject>(0);
+    if (stream.Load3("Meshes\\Clutter\\Food\\CheeseWheel01.nif")) {
+        auto cheeseMesh = netimmerse_cast<RE::NiAVObject*>(stream.topObjects[0].get());
         
         if (cheeseMesh) {
             // 3. 調整裝飾品大小與位置 (縮小到像個吊飾)
@@ -56,7 +56,7 @@ void AttachCheeseDecoration(RE::Actor* a_player) {
             weaponNiNode->AttachChild(cheeseMesh, true);
             
             // 5. 更新模型狀態
-            cheeseMesh->Update(nullptr);
+            RE::NiUpdateData updateData; cheeseMesh->Update(updateData);
             RE::DebugNotification("添加了起司裝飾品。");
         }
     }
@@ -65,7 +65,7 @@ void AttachCheeseDecoration(RE::Actor* a_player) {
 
 ## 3. 關鍵 API 標註
 -   **`RE::BGSTextureSet`**: 材質定義集。`include/RE/B/BGSTextureSet.h`
--   **`RE::ExtraTextureSet`**: 實體引用的材質覆蓋組件。`include/RE/E/ExtraTextureSet.h`
+-   **`RE::ExtraTextureSet`**: 實體引用的材質覆蓋組件。（CommonLibSSE-NG 無此類別與標頭）
 -   **`RE::NiStream`**: NIF 檔案讀取流。`include/RE/N/NiStream.h`
 -   **`RE::NiNode::AttachChild()`**: 將一個 3D 對象設為另一個的子節點。`include/RE/N/NiNode.h`
 

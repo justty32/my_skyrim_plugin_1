@@ -22,7 +22,7 @@ lua.open_libraries(sol::lib::base, sol::lib::package, sol::lib::math);
 
 // 導出 CommonLibSSE 類別
 lua.new_usertype<RE::Actor>("Actor",
-    "GetHealth", [](RE::Actor& a) { return a.GetActorValue(RE::ActorValue::kHealth); },
+    "GetHealth", [](RE::Actor& a) { return a.AsActorValueOwner()->GetActorValue(RE::ActorValue::kHealth); },
     "SetPos", &RE::Actor::SetPosition
 );
 ```

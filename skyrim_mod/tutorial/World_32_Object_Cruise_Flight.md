@@ -29,12 +29,12 @@ void StartObjectCruise(RE::TESObjectREFR* a_target) {
 
     // 3. 核心：啟動 TranslateTo 平滑移動
     // 注意：TranslateTo 是異步的，引擎會自動處理每一幀的位移
-    // 參數：目標位置, 目標旋轉, 線速度, 旋轉速度
+    // Papyrus 參數：目標 XYZ, 目標角度 XYZ, afSpeed, afMaxRotationSpeed；CommonLibSSE-NG 無 C++ TranslateTo
     RE::NiPoint3 currentRot = a_target->GetAngle();
     a_target->TranslateTo(waypoints[0], currentRot, 300.0f, 0.0f);
 
     // 4. 循環邏輯 (進階)
-    // 你需要監聽 RE::TESMoveFinishEvent (移動完成事件)
+    // 你需要監聽 Papyrus 的 OnTranslationComplete 事件 (CommonLibSSE-NG 無 TESMoveFinishEvent)
     // 當物體到達 waypoints[0] 時，在事件回調中再次調用 TranslateTo 指向 waypoints[1]
     
     RE::DebugNotification("巡航模式啟動：物體已進入軌道。");
@@ -57,12 +57,12 @@ void StartObjectCruise(RE::TESObjectREFR* a_target) {
 ## 4. 原始碼參考與核心函數
 
 ### 核心頭文件
-- `include/RE/T/TESObjectREFR.h` - 位移核心。
+- `ObjectReference.psc` - 位移核心（TranslateTo 系列是 Papyrus）。
 - `include/RE/N/NiPoint3.h` - 空間座標。
 
 ### 推薦使用的函數
-- `RE::TESObjectREFR::TranslateTo(...)`：讓物體像載具一樣移動的最穩定的 API。
-- `RE::TESObjectREFR::StopTranslation()`：立刻停止飛行並讓物體摔回地面。
+- Papyrus `ObjectReference.TranslateTo(...)`：讓物體像載具一樣移動的最穩定的 API。
+- Papyrus `ObjectReference.StopTranslation()`：立刻停止飛行並讓物體摔回地面。
 - `RE::TESObjectREFR::IsSearching()`：檢查物體是否正在進行路徑位移。
 
 ## 5. 擴展思路

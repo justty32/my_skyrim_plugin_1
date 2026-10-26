@@ -73,7 +73,7 @@
 - **`RE::BGSProjectile`**: `include/RE/B/BGSProjectile.h` - 飛行物理。
 - **`RE::BGSExplosion`**: `include/RE/B/BGSExplosion.h` - 爆炸效果。
 - **`RE::Projectile::LaunchData`**: 發射參數結構。
-- **`RE::AnimationEvent`**: 用於同步投擲動作。
+- **`RE::BSAnimationGraphEvent`**: 用於同步投擲動作。
 
 ---
 *文件路徑：architectures/classified/Magic/Throwable_Weapon_Architecture.md*

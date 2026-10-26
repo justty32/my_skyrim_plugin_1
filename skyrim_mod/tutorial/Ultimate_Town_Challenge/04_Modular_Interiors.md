@@ -28,16 +28,16 @@ void GenerateRandomRoom(RE::TESObjectCELL* a_targetCell) {
         for (int y = 0; y < 3; y++) {
             RE::NiPoint3 tilePos = { x * 300.0f, y * 300.0f, 0.0f };
             
-            // 使用 PlaceAtMe 並指定目標 Cell
+            // 使用 PlaceObjectAtMe 並指定目標 Cell
             // 注意：這是進階用法，通常需要先將玩家傳送到該單元
-            auto tile = player->PlaceAtMe(floorBase, 1, true, false);
+            auto tile = player->PlaceObjectAtMe(floorBase, true);
             tile->SetPosition(tilePos);
         }
     }
     
     // 添加光源 (否則室內是漆黑的)
     auto lightBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0x000163BE); // 蠟燭光源
-    player->PlaceAtMe(lightBase, 1, true, false)->SetPosition({150, 150, 100});
+    player->PlaceObjectAtMe(lightBase, true)->SetPosition({150, 150, 100});
 }
 ```
 
@@ -65,11 +65,11 @@ void GenerateRandomRoom(RE::TESObjectCELL* a_targetCell) {
 
 ### 核心頭文件
 - `include/RE/T/TESObjectCELL.h` - 單元管理。
-- `include/RE/P/PlayerCharacter.h` - 用於 PlaceAtMe 調用的主體。
+- `include/RE/P/PlayerCharacter.h` - 用於 PlaceObjectAtMe 調用的主體。
 - `include/RE/T/TESBoundObject.h` - 模塊模板。
 
 ### 推薦使用的函數
-- `RE::PlayerCharacter::GetSingleton()->PlaceAtMe(...)`：在指定單元內生成對象。
+- `RE::PlayerCharacter::GetSingleton()->PlaceObjectAtMe(...)`：在指定單元內生成對象。
 - `RE::TESObjectREFR::SetPosition(NiPoint3)`：在室內單元的相對座標系中放置物體。
 - `RE::TESObjectREFR::GetParentCell()`：獲取當前所在的室內單元指針。
-- `RE::TESObjectCELL::IsInterior()`：驗證是否成功加載進室內空間。
+- `RE::TESObjectCELL::IsInteriorCell()`：驗證是否成功加載進室內空間。

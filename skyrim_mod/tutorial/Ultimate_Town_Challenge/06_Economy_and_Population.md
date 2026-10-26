@@ -18,11 +18,11 @@ void SetupBlacksmith(RE::TESObjectREFR* a_forgeRef, RE::BGSLocation* a_townLoc) 
 
     // 1. 生成鐵匠 NPC (PlaceHolder: 鐵匠模板 ID)
     auto smithBase = RE::TESForm::LookupByID<RE::TESNPC>(0x00012345);
-    auto smith = player->PlaceAtMe(smithBase, 1, true, false)->As<RE::Actor>();
+    auto smith = player->PlaceObjectAtMe(smithBase, true)->As<RE::Actor>();
 
     // 2. 生成商箱 (通常放置在地下，玩家摸不到的地方)
     auto chestBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0x00023456); // 鐵匠商箱
-    auto chest = player->PlaceAtMe(chestBase, 1, true, false);
+    auto chest = player->PlaceObjectAtMe(chestBase, true);
     
     auto forgePos = a_forgeRef->GetPosition();
     forgePos.z -= 500.0f; // 埋入地下 500 單位
@@ -34,7 +34,7 @@ void SetupBlacksmith(RE::TESObjectREFR* a_forgeRef, RE::BGSLocation* a_townLoc) 
         // 你需要獲取一個商人派系 (JobBlacksmithFaction)，將 NPC 加入該派系，
         // 並將箱子的 Ownership 設為該派系。
         auto smithFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x00034567);
-        smith->SetFactionRank(smithFaction, 1);
+        smith->AddToFaction(smithFaction, 1);
         
         auto extraOwnership = new RE::ExtraOwnership(smithFaction);
         chest->extraList.Add(extraOwnership);
@@ -61,7 +61,7 @@ void SetupBlacksmith(RE::TESObjectREFR* a_forgeRef, RE::BGSLocation* a_townLoc) 
 - `include/RE/A/AIProcess.h` - 行為包執行。
 
 ### 推薦使用的函數
-- `RE::Actor::SetFactionRank(Faction, Rank)`：將 NPC 納入城鎮管理體系。
+- `RE::Actor::AddToFaction(TESFaction*, std::int8_t)`：將 NPC 納入城鎮管理體系。
 - `RE::TESObjectREFR::AddObjectToContainer(...)`：為商箱填充貨物。
 - `RE::Actor::EvaluatePackage(bool, bool)`：啟動商人的沙盒工作行為。
 - `RE::BGSLocation::HasKeyword(Keyword)`：檢查 NPC 是否處於正確的城鎮區域。

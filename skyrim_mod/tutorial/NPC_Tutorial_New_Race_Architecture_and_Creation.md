@@ -44,7 +44,7 @@ void AdjustRaceHeight(RE::Actor* a_actor, float a_newHeight) {
         race->data.height[1] = a_newHeight; // 女性身高
         
         // 僅修改單一 Actor 的縮放
-        a_actor->SetObjectScale(a_newHeight);
+        a_actor->SetScale(a_newHeight);
         a_actor->Update3DModel();
     }
 }

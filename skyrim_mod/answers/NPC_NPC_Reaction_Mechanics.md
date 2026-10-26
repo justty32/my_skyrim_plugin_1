@@ -8,18 +8,19 @@
 
 NPC 不會無緣無故說話，他們必須首先「感知」到事件。
 - **偵測等級**: NPC 的 `AIProcess` 每一幀都在掃描周圍的 Actor。
-- **原始碼**: `include/RE/D/DetectionData.h`
+- **原始碼**: `include/RE/D/DetectionState.h`（NG 無 `DetectionData`）
 - **內置觸發器**: 引擎內置了許多「偵測回調」，例如：
     - `OnItemSteal`: 偵測到偷竊。
     - `OnWeaponDraw`: 偵測到拔刀。
     - `OnActorHealthChange`: 偵測到血量變化。
+    - （以上三個名稱為示意；原版 Papyrus 與 CommonLibSSE-NG 皆無同名事件）
 
 ---
 
 ## 2. 邏輯分配：故事管理器 (BGSStoryManager)
 
 這是反應系統的「調度中心」。
-- **原始碼**: `include/RE/B/BGSStoryManager.h`
+- **原始碼**: `include/RE/B/BGSStoryEventManager.h`（NG 無 `BGSStoryManager.h`）
 - **運作流程**:
     1.  發生事件（如玩家血量變低）。
     2.  引擎向故事管理器發送一個 **Event Node**。
@@ -35,7 +36,7 @@ NPC 不會無緣無故說話，他們必須首先「感知」到事件。
 
 一旦選定了符合條件的 NPC：
 - **`RE::MenuTopicManager`**: 負責將對話內容（`TESTopicInfo`）發送給該 NPC。
-- **`Say()` 函數**: 引擎調用 `NPC->Say(TESTopicInfo*)`。
+- **`Say()` 函數**: 引擎調用 `NPC->Say(TESTopicInfo*)`（示意；CommonLibSSE-NG 無此成員，Papyrus 對應 `ObjectReference.Say(Topic, ...)`）。
 - **視覺聯動**: NPC 自動播放 `TalkingStart` 動畫，並將頭部轉向（LookIK）玩家。
 
 ---
@@ -48,6 +49,6 @@ NPC 不會無緣無故說話，他們必須首先「感知」到事件。
 - **強行發話**: 直接調用 API 讓 NPC 開口。
 
 ## 5. 核心類別原始碼標註
-- **`RE::DetectionData`**: `include/RE/D/DetectionData.h` - 感知數據。
+- **`RE::DetectionState`**: `include/RE/D/DetectionState.h` - 感知數據（NG 無 `DetectionData`）。
 - **`RE::MenuTopicManager`**: `include/RE/M/MenuTopicManager.h` - 語音分發。
-- **`RE::Actor::Say`**: `include/RE/A/Actor.h` - 讓 Actor 開口的底層函數。
+- **`Say`**: Papyrus `ObjectReference.Say`（`ObjectReference.psc`）- 讓 Actor 開口；CommonLibSSE-NG 無 `RE::Actor::Say`。

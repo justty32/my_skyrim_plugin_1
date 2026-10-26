@@ -85,5 +85,5 @@ private:
 -   **`RE::NiPoint3` 向量運算**: 計算發射軌跡。`include/RE/N/NiPoint3.h`
 
 ## 5. 擴展思路
--   **震動效果**: 每一枚火球落地時，調用 `RE::PlayerCharacter::GetSingleton()->ShakeCamera()` 增加打擊感。
+-   **震動效果**: 每一枚火球落地時，調用 `RE::ShakeCamera(強度, 位置, 時長)` 增加打擊感。
 -   **環境燃燒**: 在火球落點處 `PlaceAtMe` 一個微小的「噴火陷阱」，讓地面燃燒數秒。

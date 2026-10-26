@@ -27,12 +27,12 @@ void SpawnCarriage(RE::NiPoint3 a_startPos) {
     
     // 1. 生成馬車本體 (PlaceHolder ID)
     auto carriageBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0xCARRIAGE_ID);
-    spawnedCarriage = player->PlaceAtMe(carriageBase, 1, true, false);
+    spawnedCarriage = player->PlaceObjectAtMe(carriageBase, true).get();
     spawnedCarriage->SetPosition(a_startPos);
 
     // 2. 生成隱形座位 (PlaceHolder ID: 一個沒有模型的椅子)
     auto invisibleSeatBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0xSEAT_ID);
-    playerSeat = player->PlaceAtMe(invisibleSeatBase, 1, true, false);
+    playerSeat = player->PlaceObjectAtMe(invisibleSeatBase, true).get();
 
     // 3. 將座位掛載到馬車模型上 (參考教學 27)
     auto carriageNode = spawnedCarriage->Get3D()->AsNode();
@@ -56,13 +56,13 @@ public:
 
         // 如果玩家點擊了我們的馬車
         if (a_event->actionRef.get() == RE::PlayerCharacter::GetSingleton() && 
-            a_event->objectReference.get() == spawnedCarriage) {
+            a_event->objectActivated.get() == spawnedCarriage) {
             
             // 強迫玩家使用我們綁定在馬車上的座位
             auto player = RE::PlayerCharacter::GetSingleton();
             // 在 C++ 中觸發 UseFurniture 行為
             // 注意：底層依賴於 AIProcess 或 Activate 邏輯
-            playerSeat->Activate(player, 0, nullptr, 1);
+            playerSeat->ActivateRef(player, 0, nullptr, 1, false);
             
             RE::DebugNotification("你坐上了巡航馬車！");
             return RE::BSEventNotifyControl::kStop; // 攔截默認交互
@@ -84,8 +84,8 @@ void UpdateCarriageMovement() {
     RE::NiPoint3 nextWaypoint = { 1000.0f, 2000.0f, 0.0f }; // 假設的目標
     
     // 2. 讓馬車平滑移動到目標點
-    // TranslateTo(目標位置, 目標旋轉, 速度X, 速度Y, 速度Z, 旋轉速度)
-    // 原始碼: include/RE/T/TESObjectREFR.h
+    // Papyrus 簽章: TranslateTo(afX, afY, afZ, afXAngle, afYAngle, afZAngle, afSpeed, afMaxRotationSpeed)
+    // CommonLibSSE-NG 無 C++ TranslateTo；這是 Papyrus ObjectReference.TranslateTo
     RE::NiPoint3 rot = spawnedCarriage->GetAngle();
     spawnedCarriage->TranslateTo(nextWaypoint, rot, 200.0f, 200.0f, 0.0f, 0.0f);
 
@@ -124,6 +124,6 @@ void UpdateCarriageMovement() {
 - `include/RE/N/NiTransform.h` - 世界與局部座標變換。
 
 ### 推薦使用的函數
-- `RE::TESObjectREFR::TranslateTo(...)`：引擎提供的最平滑的動態移動 API。
-- `RE::TESObjectREFR::Activate(...)`：模擬玩家按下 E 鍵。
+- Papyrus `ObjectReference.TranslateTo(...)`（CommonLibSSE-NG 無 C++ 成員）：引擎提供的最平滑的動態移動 API。
+- `RE::TESObjectREFR::ActivateRef(...)`：模擬玩家按下 E 鍵。
 - `RE::NiAVObject::world.translate`：獲取子節點（座位）經過父節點（馬車）位移後的絕對世界座標。

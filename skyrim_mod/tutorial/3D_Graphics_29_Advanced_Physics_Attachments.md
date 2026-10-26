@@ -18,17 +18,17 @@ void AttachPhysicsCheese(RE::Actor* a_player) {
     // 1. 加載具備物理屬性的起司模型
     // 注意：該 NIF 必須包含 bhkRigidBody 且設為 Dynamic 類型
     RE::NiStream stream;
-    if (!stream.Load("Meshes\\Clutter\\Food\\CheesePendant_Physics.nif")) return;
+    if (!stream.Load3("Meshes\\Clutter\\Food\\CheesePendant_Physics.nif")) return;
     
-    auto cheeseMesh = stream.GetObjectAt<RE::NiAVObject>(0);
+    auto cheeseMesh = netimmerse_cast<RE::NiAVObject*>(stream.topObjects[0].get());
     auto weaponNode = a_player->Get3D(false); // 右手武器節點
 
     if (cheeseMesh && weaponNode) {
         // 2. 獲取物理世界 (include/RE/B/bhkWorld.h)
-        auto physicsWorld = a_player->GetParentCell()->GetHavokWorld();
+        auto physicsWorld = a_player->GetParentCell()->GetbhkWorld();
         
         // 3. 建立物理連接 (Ball-and-Socket Constraint)
-        // 原始碼參考: include/RE/B/bhkConstraint.h
+        // 原始碼參考: include/RE/H/hkpConstraintInstance.h（NG 無 bhkConstraint.h）
         
         // 概念步驟：
         // A. 獲取武器的物理剛體 (RigidBody A)
@@ -41,7 +41,7 @@ void AttachPhysicsCheese(RE::Actor* a_player) {
         
         // 5. 關鍵：激活 Havok 模擬
         // 調用物理更新，讓起司受重力影響並開始擺動
-        cheeseMesh->Update(nullptr);
+        RE::NiUpdateData updateData; cheeseMesh->Update(updateData);
         RE::DebugNotification("物理起司吊墜已掛載，試著揮揮劍吧！");
     }
 }
@@ -63,8 +63,8 @@ void AttachPhysicsCheese(RE::Actor* a_player) {
 要實現擺動，你必須在 NifSkope 中將其 `bhkRigidBody` 的 `Motion System` 改為 **`MO_SYS_BOX`** 或其他動態類型，並賦予它一定的 **質量 (Mass)**。
 
 ## 4. 關鍵 API 標註
--   **`RE::bhkConstraint`**: 所有物理約束的基類。`include/RE/B/bhkConstraint.h`
--   **`RE::bhkBallAndSocketConstraint`**: 球窩關節實現。
+-   **`RE::bhkConstraint`**: 所有物理約束的基類。（NG 無此類別宣告與標頭，Havok 層見 `include/RE/H/hkpConstraintInstance.h`）
+-   **`RE::bhkBallAndSocketConstraint`**: 球窩關節實現。（NG 只有 RTTI／VTABLE 位址，無類別宣告）
 -   **`RE::bhkRigidBody`**: 物理剛體實體。`include/RE/B/bhkRigidBody.h`
 
 ## 5. 實戰建議

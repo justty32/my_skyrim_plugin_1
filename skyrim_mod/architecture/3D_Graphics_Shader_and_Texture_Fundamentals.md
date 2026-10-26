@@ -20,7 +20,7 @@
 ---
 
 ## 3. 動態材質覆蓋的底層：`ExtraTextureSet`
-在教程 27 中，我們使用了這個類別。
+在教程 27 中，我們使用了這個類別。（註：CommonLibSSE-NG 無 `ExtraTextureSet` 類別，也無對應 ExtraDataType。）
 - **機制**: 引擎在渲染每個實體前，會檢查它的 `ExtraDataList`。
 - **邏輯**: 如果發現裡面有 `ExtraTextureSet`，引擎會**臨時屏蔽** NIF 模型文件裡寫死的貼圖路徑，強行讓顯示卡去讀取你指定的「起司貼圖集」。
 - **優點**: 這種操作不需要修改磁盤上的模型文件，非常安全。
@@ -39,7 +39,7 @@
 ```cpp
 void TargetSpecificMesh(RE::NiAVObject* a_root) {
     // 使用 Visit 工具遍歷
-    RE::BSVisit::TraverseScenegraphGeometries(a_root, [](RE::BSTriShape* a_mesh) {
+    RE::BSVisit::TraverseScenegraphGeometries(a_root, [](RE::BSGeometry* a_mesh) {
         // 檢查網格名稱，例如 "Sword"
         if (a_mesh->name.contains("Sword")) {
             // 只對這個網格施加材質覆蓋
@@ -54,5 +54,5 @@ void TargetSpecificMesh(RE::NiAVObject* a_root) {
 ## 6. 核心類別原始碼標註
 - **`RE::BSLightingShaderProperty`**: `include/RE/B/BSLightingShaderProperty.h` - 渲染控制。
 - **`RE::BSShaderTextureSet`**: `include/RE/B/BSShaderTextureSet.h` - 貼圖路徑清單。
-- **`RE::ExtraTextureSet`**: `include/RE/E/ExtraTextureSet.h` - 動態材質覆蓋器。
+- **`RE::ExtraTextureSet`**: `include/RE/E/ExtraTextureSet.h` - 動態材質覆蓋器。（註：此類別與標頭在 CommonLibSSE-NG 不存在）
 - **`RE::BSVisit`**: `include/RE/B/BSVisit.h` - 遍歷模型樹的工具。

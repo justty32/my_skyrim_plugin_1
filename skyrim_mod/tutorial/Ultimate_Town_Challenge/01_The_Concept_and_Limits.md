@@ -9,14 +9,14 @@
 要用代碼建城，你需要依序完成以下步驟：
 
 ### 第一步：地基與建築 (Statics)
-你需要大量的坐標數據，精確地 `PlaceAtMe` 生成房屋外殼、城牆、地板。
+你需要大量的坐標數據，精確地 `PlaceObjectAtMe` 生成房屋外殼、城牆、地板。
 ```cpp
 void BuildTownStructures(RE::NiPoint3 centerPos) {
     auto player = RE::PlayerCharacter::GetSingleton();
     
     // 1. 生成酒館外殼 (PlaceHolder: 0x酒館模型ID)
     auto tavernBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0x12345);
-    auto tavern = player->PlaceAtMe(tavernBase, 1, true, false); // 必須設為持久化(Persistent)
+    auto tavern = player->PlaceObjectAtMe(tavernBase, true); // 必須設為持久化(Persistent)
     tavern->SetPosition({centerPos.x + 1000, centerPos.y + 1000, centerPos.z});
 }
 ```
@@ -57,7 +57,7 @@ void CreateTownLocation() {
 
 ### 推薦使用的函數
 - `RE::TESForm::LookupByID<T>(FormID)`：獲取建築模板。
-- `RE::TESObjectREFR::PlaceAtMe(BaseForm, Count, Persistent, Disabled)`：在世界中生成物體。
+- `RE::TESObjectREFR::PlaceObjectAtMe(TESBoundObject* a_baseToPlace, bool a_forcePersist)`：在世界中生成物體（四參數的 `PlaceAtMe` 是 Papyrus 簽章）。
 - `RE::TESObjectREFR::SetPosition(NiPoint3)`：設置物體物理坐標。
-- `RE::TESObjectREFR::SetAngle(float x, float y, float z)`：設置旋轉角度。
+- `RE::TESObjectREFR::SetAngle(const NiPoint3& a_angle)`：設置旋轉角度。
 - `RE::IFormFactory::GetConcreteFormFactoryByType<RE::BGSLocation>()`：獲取區域工廠。

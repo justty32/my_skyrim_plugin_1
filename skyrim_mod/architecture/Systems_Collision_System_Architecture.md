@@ -20,7 +20,7 @@ Skyrim 的物理交互由 **Havok Physics** 引擎驅動。碰撞系統決定了
 ## 2. 碰撞層 (Collision Layers) 與過濾器
 
 這是開發中最常遇到的部分。引擎透過「層」來決定哪些東西會互相碰撞。
-- **原始碼**: `include/RE/M/MaterialIDs.h` (涉及 Layer 定義)
+- **原始碼**: `include/RE/C/CollisionLayers.h`（`RE::COL_LAYER`）
 - **常用層級**:
     - **`L_STATIC`**: 建築、地形。NPC 和玩家會被阻擋。
     - **`L_ANIMSTATIC`**: 帶有動畫的靜態物體（如開關的門）。
@@ -53,19 +53,19 @@ Skyrim 的物理交互由 **Havok Physics** 引擎驅動。碰撞系統決定了
 你可以動態讓一個物體變得「不可觸碰」。
 ```cpp
 void MakeGhost(RE::TESObjectREFR* a_ref) {
-    auto collObj = a_ref->GetCollideObject();
-    if (collObj) {
-        auto rigidBody = collObj->GetRigidBody();
+    auto root = a_ref->Get3D();
+    if (root) {
+        // CommonLibSSE-NG：SetCollisionLayer 在 NiAVObject 上，不在 bhkRigidBody
         // 將層級設為 NULL，物體將穿過一切
-        rigidBody->SetCollisionLayer(RE::COL_LAYER::kNone);
-        a_ref->UpdateCollisionFilter();
+        root->SetCollisionLayer(RE::COL_LAYER::kUnidentified);
+        // 註：CommonLibSSE-NG 無 TESObjectREFR::UpdateCollisionFilter()
     }
 }
 ```
 
 ### B. 手動射線偵測
 ```cpp
-// 偽代碼：檢測前方是否有牆壁
+// 偽代碼：檢測前方是否有牆壁（註：CommonLibSSE-NG 無 HavokPick／HavokWorld；實際入口是 RE::TES::GetSingleton()->Pick(RE::bhkPickData&)）
 RE::HavokPick hitInfo;
 if (RE::HavokWorld::GetSingleton()->Raycast(startPos, endPos, hitInfo)) {
     auto hitRef = hitInfo.GetReference();
@@ -78,7 +78,7 @@ if (RE::HavokWorld::GetSingleton()->Raycast(startPos, endPos, hitInfo)) {
 ## 6. 技術總結
 - **數據存儲**: 碰撞形狀儲存在 NIF 裡。
 - **邏輯計算**: 由 Havok 引擎在背景線程或主循環物理階段計算。
-- **更新關鍵**: 任何對物理屬性的修改，都必須調用 `UpdateCollisionFilter()` 才能在物理世界生效。
+- **更新關鍵**: 任何對物理屬性的修改，都必須調用 `UpdateCollisionFilter()`（註：CommonLibSSE-NG 無此函式，只有 `NiAVObject::SetCollisionLayer`／`SetCollisionLayerAndGroup`）才能在物理世界生效。
 
 ## 7. 核心類別原始碼標註
 - **`RE::bhkWorld`**: `include/RE/B/bhkWorld.h` - 物理世界容器。

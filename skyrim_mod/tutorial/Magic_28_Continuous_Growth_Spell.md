@@ -26,7 +26,7 @@ public:
             
             // 2. 獲取法術當前照射的目標 (MagicTarget)
             // 在 Concentration 法術中，我們可以透過目標身上的 ActiveEffect 找到它
-            auto targetRef = SKSE::GetMessagingInterface()->GetCrosshairRef(); // 簡化：取準星目標
+            auto targetRef = SKSE::GetMessagingInterface()->GetCrosshairRef(); // 簡化：取準星目標（註：SKSE 無此函式，準星參照要接 SKSE::GetCrosshairRefEventSource()，僅示意）
             
             if (targetRef && targetRef->Is(RE::FormType::ActorCharacter)) {
                 auto targetActor = targetRef->As<RE::Actor>();

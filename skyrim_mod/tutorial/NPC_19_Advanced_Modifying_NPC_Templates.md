@@ -18,7 +18,7 @@ void BuffAllGuards() {
     if (guardBase) {
         // 2. 修改基礎屬性
         // 增加 100 點生命值偏移量
-        guardBase->baseID.baseStats.healthOffset = 100;
+        guardBase->actorData.healthOffset = 100;
         
         // 3. 修改身高 (1.0 是標準)
         guardBase->height = 1.1f; 
@@ -39,10 +39,10 @@ void BuffAllGuards() {
 修改 NPC 模板的臉部是非常複雜的，涉及 `RE::TESNPC::FaceData` 結構。在純 C++ 中，不建議動態修改臉部頂點，這極易導致遊戲崩潰。
 
 ## 4. 關鍵 API 標註
--   **`RE::TESNPC`**: 成員包括 `height`, `weight`, `race`, `baseStats` 等。`include/RE/T/TESNPC.h`
+-   **`RE::TESNPC`**: 成員包括 `height`, `weight`, `race`, `actorData`（ACTOR_BASE_DATA）等。`include/RE/T/TESNPC.h`
 -   **`RE::ActorValue`**: 用於指定要修改的屬性類型。`include/RE/A/ActorValues.h`
 
 ## 5. 警告與限制
 -   **存檔副作用**: 修改模板數據是「破壞性」的。如果你的插件在運行時修改了模板，這些修改可能會永久滲透進玩家的存檔。
--   **性能**: 修改模板本身不耗性能，但如果你嘗試在修改後立刻遍歷世界上所有實體並執行 `Update3D()`，會造成短暫卡頓。
+-   **性能**: 修改模板本身不耗性能，但如果你嘗試在修改後立刻遍歷世界上所有實體並執行 `Update3DModel()`，會造成短暫卡頓。
 -   **推薦時機**: 建議在 `kDataLoaded` 事件中進行一次性的模板修改，而不是在每一幀中頻繁變更。

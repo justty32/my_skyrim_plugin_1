@@ -20,7 +20,7 @@ Skyrim 的物品（Items）是一個由多個組件複合而成的複雜對象�
 - 定義了物品在世界中掉落時使用的 `.nif` 文件路徑。
 
 ### B. 第一人稱模型 (1st Person Model)
-- 對於武器，還包含 `RE::TESModelTextureSwap`，定義了玩家拿在手裡時看到的精細模型。
+- 對於武器，還包含 `firstPersonModelObject`（`TESObjectSTAT*`），定義了玩家拿在手裡時看到的精細模型。
 
 ---
 
@@ -58,7 +58,7 @@ Skyrim 的物品（Items）是一個由多個組件複合而成的複雜對象�
 物品與世界的交互通過特定的入口函數實現：
 
 - **`OnActivate`**: 玩家點擊（撿起）物品時觸發。
-- **`OnEquip` / `OnUnequip`**: 當 Actor 穿上或脫下該物品時觸發。
+- **`OnEquipped` / `OnUnequipped`**: 當 Actor 穿上或脫下該物品時觸發。
 - **`OnHit`**: 武器擊中目標時觸發。
 - **`OnContainerChanged`**: 物品被移動（存入箱子或丟棄）時觸發。
 

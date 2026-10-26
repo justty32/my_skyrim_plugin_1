@@ -41,10 +41,10 @@ public:
 
 ### B. FormType (類型枚舉)
 `RE::FormType` 是一個龐大的枚舉，標識了表單的具體類別。
-- `kActorCharacter` (62): 代表一個活著的角色。
-- `kWeapon` (41): 代表武器。
-- `kSpell` (22): 代表法術。
-- `kReference` (61): 代表世界中的對象引用。
+- `ActorCharacter` (62): 代表一個活著的角色。
+- `Weapon` (41): 代表武器。
+- `Spell` (22): 代表法術。
+- `Reference` (61): 代表世界中的對象引用。
 
 ### C. 狀態標記 (RecordFlags)
 `formFlags` 決定了對象當前的狀態，這對於判斷對象是否有效至關重要：
@@ -68,7 +68,7 @@ void OnInteract(RE::TESForm* a_target) {
         // 2. 安全轉換
         auto actor = a_target->As<RE::Actor>();
         if (actor) {
-            actor->Kill(); // 殺死該角色
+            // actor->Kill(); 殺死該角色——註：Kill 是 Papyrus `Actor.Kill`，CommonLibSSE-NG 無 C++ `Actor::Kill()`
         }
     }
 }

@@ -19,7 +19,7 @@ void ForceNPCtoSleep(RE::Actor* a_npc, RE::TESObjectREFR* a_bed) {
     
     if (sleepPackage) {
         // 2. 獲取 NPC 的 AI 進程
-        auto process = a_npc->currentProcess;
+        auto process = a_npc->GetActorRuntimeData().currentProcess;
         if (process) {
             // 強行將家具設置為該 Package 的執行目標
             // 注意：這通常涉及修改 AI 堆棧，最穩定的做法是臨時更改 NPC 的優先級
@@ -29,7 +29,7 @@ void ForceNPCtoSleep(RE::Actor* a_npc, RE::TESObjectREFR* a_bed) {
             a_npc->EvaluatePackage(true, true);
             
             // 4. 動態指令：如果 NPC 就在床邊，可以直接強迫進入家具交互
-            a_npc->UseFurniture(a_bed);
+            a_npc->UseFurniture(a_bed);  // 註：Actor 無 UseFurniture，僅示意
         }
     }
 }
@@ -47,18 +47,18 @@ void ForceNPCtoSleep(RE::Actor* a_npc, RE::TESObjectREFR* a_bed) {
 故事管理器（Story Manager）通常是被動觸發的（如玩家升級）。本教學教你如何主動「欺騙」引擎，讓它以為發生了某個事件，從而啟動關聯的 Radiant 任務。
 
 ## 1. 核心邏輯：QueueEvent
--   使用 `RE::BGSStoryManager::QueueEvent` 函數。
+-   使用 `RE::BGSStoryManager::QueueEvent` 函數（NG 無此類別；對應 API 是 `RE::BGSStoryEventManager::AddEvent<T>()`）。
 -   構造對應的事件數據（Event Data）。
 
 ## 2. 代碼實現：強行觸發「僱傭兵復仇」劇情
 
 ```cpp
 void TriggerBountyHunt(RE::Actor* a_targetNPC) {
-    auto storyManager = RE::BGSStoryManager::GetSingleton();
+    auto storyManager = RE::BGSStoryEventManager::GetSingleton();
     if (!storyManager) return;
 
     // 1. 獲取“殺死 NPC”節點的 ID (PlaceHolder)
-    // 原始碼: include/RE/B/BGSStoryManager.h
+    // 原始碼: include/RE/B/BGSStoryEventManager.h
     
     // 2. 準備數據包 (這部分非常依賴引擎底層結構)
     // 模擬 a_targetNPC 被殺死的事件，這會觸發所有監聽該節點的 Radiant 任務

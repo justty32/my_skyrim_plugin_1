@@ -39,7 +39,7 @@
     // 透過 C++ 或腳本切換裝潢狀態
     void UpgradeHouse(RE::TESObjectREFR* a_oldMarker, RE::TESObjectREFR* a_newMarker) {
         a_oldMarker->Disable(); // 隱藏所有舊東西
-        a_newMarker->Enable();  // 顯示所有新東西
+        a_newMarker->Enable(false);  // 顯示所有新東西
     }
     ```
 

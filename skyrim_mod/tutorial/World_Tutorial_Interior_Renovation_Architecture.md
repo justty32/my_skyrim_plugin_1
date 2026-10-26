@@ -47,7 +47,7 @@ Int Property RenovationCost = 500 Auto
 Event OnActivate(ObjectReference akActionRef)
     If akActionRef == Game.GetPlayer()
         If Game.GetPlayer().GetGoldAmount() >= RenovationCost
-            Game.GetPlayer().RemoveItem(Game.GetGold(), RenovationCost)
+            Game.GetPlayer().RemoveItem(Game.GetForm(0x0000000F), RenovationCost)
             
             ; 執行裝修切換
             OldFurnitureMarker.Disable()

@@ -48,7 +48,7 @@
 
 由於基礎武器的傷害是固定的，我們必須動態修改它。
 
-1. **攔截傷害計算**: Hook `RE::TESObjectWEAP::GetDamage()`。
+1. **攔截傷害計算**: Hook `RE::TESObjectWEAP::GetAttackDamage()`（繼承自 `TESAttackDamageForm` 的虛擬函式）。
 2. **讀取組件數據**: 從該武器實例的 `ExtraDataList` 中讀取保存的組件 ID。
 3. **加權計算**: 
    - `最終傷害 = 劍身基礎傷害 * 材質倍率 + 附魔加成`。

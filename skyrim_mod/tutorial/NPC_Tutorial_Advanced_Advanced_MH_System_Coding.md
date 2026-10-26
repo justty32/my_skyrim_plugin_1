@@ -39,7 +39,7 @@
         // 發送事件讓行為圖切換到疲勞狀態
         monster->NotifyAnimationGraph("ForceExhausted");
         // 同時大幅降低轉身速度
-        monster->SetActorValue(RE::ActorValue::kSpeedMult, 50.0f);
+        monster->AsActorValueOwner()->SetActorValue(RE::ActorValue::kSpeedMult, 50.0f);
     }
     ```
 

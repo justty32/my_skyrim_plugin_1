@@ -59,7 +59,7 @@ Skyrim 引擎原生僅支援陸地移動與簡化的游泳。要實作真正的 
 - **`RE::PlayerCharacter`**: 位移控制的核心。
 - **`RE::PlayerCamera`**: 獲取飛行方向的依據。
 - **`RE::NiPoint3`**: 3D 座標與向量運算。
-- **`RE::CharacterProxy`**: 處理飛行時的物理碰撞。
+- **`RE::bhkCharacterProxy`**: 處理飛行時的物理碰撞。
 
 ---
 *文件路徑：architectures/classified/World/Answers/3D_Flight_System_Architecture.md*

@@ -29,7 +29,7 @@ BSA 文件為了實現極速查找，使用了基於「路徑哈希 (Hashing)」
 當遊戲啟動並讀取一個帶有 `.bsa` 的插件（ESP）時，會經歷以下步驟：
 
 ### 第一步：掛載 (Mounting)
-引擎的 `RE::BSResource::Archive` 管理器會打開 BSA 文件的句柄，讀取 Header 和所有的哈希記錄，並在內存中建立一張「**哈希 -> 偏移量**」的快速查詢表。
+引擎的 `RE::Archive`（不在 `BSResource` 命名空間）會打開 BSA 文件的句柄，讀取 Header 和所有的哈希記錄，並在內存中建立一張「**哈希 -> 偏移量**」的快速查詢表。
 
 ### 第二步：路徑解析 (Path Resolution)
 當代碼請求 `"Textures\Sky\Cloud.dds"` 時：
@@ -53,11 +53,11 @@ BSA 文件為了實現極速查找，使用了基於「路徑哈希 (Hashing)」
 透過 `RE::BSResource` 命名空間，你可以檢測文件是否存在於 BSA 中：
 
 ```cpp
-auto resourceDB = RE::BSResource::EntryDB::GetSingleton();
+// CommonLibSSE-NG 無 BSResource::FileSystem 與 EntryDB::GetSingleton()；改用 BSResourceNiBinaryStream 試開
 const char* filePath = "meshes\\actors\\character\\skeleton.nif";
 
 // 引擎會自動幫你處理：它是來自 BSA 還是 Loose Files
-if (RE::BSResource::FileSystem::GetSingleton()->GetEntry(filePath)) {
+if (RE::BSResourceNiBinaryStream stream(filePath); stream.good()) {
     // 文件存在，可以安全加載
 }
 ```
@@ -73,7 +73,7 @@ if (RE::BSResource::FileSystem::GetSingleton()->GetEntry(filePath)) {
 
 ## 5. 核心類別原始碼標註
 
-- **`RE::BSResource::Archive`**: `include/RE/B/BSResourceArchive.h` - 單個封裝包的處理類。
-- **`RE::BSResource::FileSystem`**: `include/RE/B/BSResourceFileSystem.h` - 虛擬檔案系統總控。
-- **`RE::BSResource::Stream`**: `include/RE/B/BSResourceStream.h` - 數據讀取流。
+- **`RE::Archive`**: `include/RE/A/Archive.h` - 單個封裝包的處理類。
+- **`RE::BSResource::FileSystem`**: 虛擬檔案系統總控（註：CommonLibSSE-NG 無此類別與標頭）。
+- **`RE::BSResource::Stream`**: `include/RE/S/Stream.h` - 數據讀取流。
 - **`RE::BSResource::Entry`**: `include/RE/B/BSResourceEntry.h` - 檔案項紀錄。

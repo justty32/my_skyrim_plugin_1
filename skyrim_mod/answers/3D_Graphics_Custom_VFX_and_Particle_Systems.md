@@ -14,11 +14,11 @@
     - **透明度混合 (Alpha Blending)**: 控制特效如何與背景融合。
 
 ### B. 粒子系統 (Particle Systems)
-- **類別**: `BSParticleSystem`
+- **類別**: `NiParticleSystem`（另有 `BSStripParticleSystem`）
 - **工作原理**: 發射大量的微小面片，並根據控制器（Controllers）決定它們的生命週期、速度、顏色變化與縮放。
 - **關鍵控制器**: 
     - `BSPSysSimpleColorModifier`: 控制粒子從出生到死亡的顏色漸變。
-    - `BSPSysGravityModifier`: 模擬重力。
+    - `NiPSysGravityModifier`: 模擬重力。
 
 ---
 
@@ -51,7 +51,7 @@ void SpawnEffect(RE::BGSArtObject* a_art, RE::Actor* a_target) {
 
 - **Overdraw (過度渲染)**: 畫面中出現過多重疊的半透明粒子會導致 FPS 驟降。
 - **動態光源**: 部分特效（如火球）會帶有 `NiPointLight`，能照亮周圍環境，但每個場景的光源數量有限，過多會造成閃爍。
-- **物理碰撞**: 粒子預設沒有碰撞。若要實現「碰到地面後彈起」的效果，需加入 `BSPSysCollisionModifier`。
+- **物理碰撞**: 粒子預設沒有碰撞。若要實現「碰到地面後彈起」的效果，需加入 `NiPSysColliderManager`＋`NiPSysPlanarCollider`／`NiPSysSphericalCollider`。
 
 ---
 

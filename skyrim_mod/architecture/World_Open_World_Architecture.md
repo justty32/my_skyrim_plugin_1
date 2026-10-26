@@ -45,7 +45,7 @@ Skyrim 使用兩套座標系統：
 ```cpp
 auto player = RE::PlayerCharacter::GetSingleton();
 auto currentCell = player->GetParentCell();
-if (currentCell && !currentCell->IsInterior()) {
+if (currentCell && !currentCell->IsInteriorCell()) {
     auto grid = currentCell->GetCoordinates();
     // grid->cellX, grid->cellY
 }
@@ -86,4 +86,4 @@ if (currentCell && !currentCell->IsInterior()) {
 - **`RE::TESWorldSpace`**: `include/RE/T/TESWorldSpace.h` - 管理整個網格系統。
 - **`RE::GridArray`**: `include/RE/G/GridArray.h` - 實際管理內存中加載單元的陣列（通常是 5x5）。
 - **`RE::TESObjectCELL`**: `include/RE/T/TESObjectCELL.h` - 單個網格容器。
-- **`RE::BGSReferenceLoadEvent`**: 監聽物體加載完成的事件。
+- **`RE::TESObjectLoadedEvent`**: 監聽物體加載完成的事件（無 `BGSReferenceLoadEvent`）。

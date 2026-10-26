@@ -14,7 +14,7 @@
 - **內容**: 一個 `SPEL` 可以包含多個效果。例如：一個法術可以同時造成「火焰傷害」和「恐懼效果」。
 
 ### B. MGEF (MagicEffect - 效果原型)
-- **原始碼**: `include/RE/M/MagicEffect.h`
+- **原始碼**: `include/RE/E/EffectSetting.h`（類別 `RE::EffectSetting`）
 - **職責**: 定義效果的邏輯。它是法術的「基因」。
 - **關鍵屬性**: 
     - **Archetype**: 效果的類型（如：Value Modifier, Summon, Script）。
@@ -60,22 +60,22 @@
 ```cpp
 void TweakSpell(RE::SpellItem* a_spell) {
     // 獲取數據結構
-    auto data = a_spell->GetSpellData();
-    data->cost = 0; // 變為 0 消耗法術
+    auto& data = a_spell->data;  // CommonLib 無 GetSpellData()
+    data.costOverride = 0; // 變為 0 消耗法術
 }
 ```
 
 ### B. 動態替換視覺效果
-透過 Hook `MagicEffect` 的 `GetCastingArt()`，你可以讓玩家在施放普通火球時，手上顯示出神話級別的特效。
+透過改寫 `EffectSetting` 的 `data.castingArt`（CommonLib 無 `GetCastingArt()`），你可以讓玩家在施放普通火球時，手上顯示出神話級別的特效。
 
 ---
 
 ## 5. 核心類別原始碼標註
 
 - **`RE::SpellItem`**: `include/RE/S/SpellItem.h` - 法術容器。
-- **`RE::MagicEffect`**: `include/RE/M/MagicEffect.h` - 邏輯定義。
+- **`RE::EffectSetting`**: `include/RE/E/EffectSetting.h` - 邏輯定義。
 - **`RE::BGSProjectile`**: `include/RE/B/BGSProjectile.h` - 物理表現。
-- **`RE::EffectItem`**: `include/RE/E/EffectItem.h` - SPEL 與 MGEF 的連接點。
+- **`RE::Effect`**: `include/RE/E/Effect.h`（內含 `Effect::EffectItem`） - SPEL 與 MGEF 的連接點。
 
 ---
 

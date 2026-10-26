@@ -27,7 +27,7 @@
 3. 將組件作為子節點掛載到 `BladeMarker` 與 `HiltMarker` 下。
 
 ### 步驟四：動態數值 Hook
-1. Hook `RE::TESObjectWEAP::GetDamage()`。
+1. Hook `RE::TESObjectWEAP::GetAttackDamage()`。
 2. 從該武器實例的 `ExtraDataList` 讀取組件 ID。
 3. 根據組件計算最終傷害並回傳給引擎。
 
@@ -44,18 +44,18 @@ void AttachWeaponComponent(RE::NiNode* a_weaponRoot, const char* a_markerName, c
 
     // 加載新的 NIF
     RE::NiStream nifStream;
-    if (nifStream.Load(a_nifPath)) {
-        auto newPart = nifStream.GetObjectAt(0)->AsNode();
+    if (nifStream.Load3(a_nifPath)) {
+        auto newPart = nifStream.topObjects[0]->AsNode();
         
         // 移除舊組件（如果有）
         auto markerNode = marker->AsNode();
-        markerNode->DetachAllChildren();
+        markerNode->DetachAllChildren();  // 註：NiNode 無 DetachAllChildren，需逐一 DetachChildAt
         
         // 附加新組件
         markerNode->AttachChild(newPart, true);
         
         // 更新矩陣與渲染
-        a_weaponRoot->Update(RE::NiUpdateData{});
+        RE::NiUpdateData updateData; a_weaponRoot->Update(updateData);
     }
 }
 ```

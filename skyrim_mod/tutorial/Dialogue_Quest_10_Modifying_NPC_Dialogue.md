@@ -5,7 +5,7 @@
 ## 1. 核心邏輯
 1.  監聽對話選單開啟事件 (`RE::DialogueMenu`)。
 2.  獲取當前正在對話的 NPC。
-3.  **動態語音/字幕**: 使用 `RE::Debug::Notification` 或操作 `SubtitleManager`。
+3.  **動態語音/字幕**: 使用 `RE::DebugNotification` 或操作 `SubtitleManager`。
 4.  **對話攔截**: 使用 Hook 技術攔截 NPC 選擇對話分支的邏輯。
 
 ## 2. 代碼實現
@@ -43,7 +43,7 @@ void ForceSubtitle(RE::Actor* a_speaker, const char* a_text) {
     if (subtitleManager) {
         // 強制添加一條字幕
         // 參數：說話者, 文字, 顯示時長, 是否強制
-        subtitleManager->AddSubtitle(a_speaker, a_text, 5.0f, true);
+        subtitleManager->AddSubtitle(a_speaker, a_text, 5.0f, true);  // 註：NG SubtitleManager 無 AddSubtitle（只有 KillSubtitles 與 subtitles 陣列），此行僅示意
     }
 }
 ```
@@ -80,5 +80,5 @@ struct BuildDialogueList {
 
 ## 4. 實戰建議
 -   **純插件限制**: 完全“新建”一段有語音、有口型的對話而不使用 ESP 是極其困難的，因為口型數據 (.lip) 和音頻路徑是高度依賴數據加載器的。
--   **替代方案**: 許多 Mod 使用 C++ 插件監聽對話，然後根據選擇的選項調用 `Actor::StartConversation()` 或 `RE::Debug::SendAnimationEvent()` 來模擬反應。
+-   **替代方案**: 許多 Mod 使用 C++ 插件監聽對話，然後根據選擇的選項調用 `Actor::StartConversation()`（NG 無此函式）或 `NotifyAnimationGraph()`（Papyrus 對應 `Debug.SendAnimationEvent`） 來模擬反應。
 -   **動態文本**: 如果你正在製作 AI 對話 Mod，你會頻繁使用 `SubtitleManager` 來顯示 AI 生成的文本，並配合 `NotifyAnimationGraph("TalkingStart")` 來讓 NPC 動嘴。

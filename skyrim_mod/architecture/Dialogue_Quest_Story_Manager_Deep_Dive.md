@@ -3,7 +3,7 @@
 故事管理器（Story Manager）是 Skyrim 的「事件中心」，負責將遊戲中發生的零散行為轉化為有條理的任務與劇情。
 
 ## 1. 核心組件：Event Nodes (事件節點)
-- **原始碼**: `include/RE/B/BGSStoryManager.h`
+- **原始碼**: `include/RE/B/BGSStoryManagerEventNode.h`
 - **機制**: 引擎預設了幾十種「節點類型」，例如：
     - **`Kill Actor`**: 玩家殺死了一個 NPC。
     - **`Level Up`**: 玩家升級。
@@ -29,6 +29,6 @@
 ---
 
 ## 5. 核心類別原始碼標註
-- **`RE::BGSStoryManager`**: `include/RE/B/BGSStoryManager.h` - 全局管理單例。
-- **`RE::Condition`**: `include/RE/C/Condition.h` - 決定節點是否通過的核心判定類。
+- **`RE::BGSStoryTeller`**: `include/RE/B/BGSStoryTeller.h` - 全局管理單例。
+- **`RE::TESCondition`**: `include/RE/T/TESCondition.h` - 決定節點是否通過的核心判定類。
 - **`RE::TESQuest`**: `include/RE/T/TESQuest.h` - 任務的載體。

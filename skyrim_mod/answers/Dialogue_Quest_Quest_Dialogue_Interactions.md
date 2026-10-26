@@ -12,10 +12,10 @@
 - **生命週期控制**:
     - **開始任務**: `quest->Start()`。這會初始化任務腳本並將其置於“運行”狀態。
     - **停止/結束任務**: `quest->Stop()`。這會將任務標記為已完成或失敗，並清理動態數據。
-    - **階段控制 (Stages)**: `quest->SetStage(std::uint16_t a_stage)`。這是推動任務進度的核心方法。
+    - **階段控制 (Stages)**: Papyrus `Quest.SetStage(int)`（C++ `TESQuest` 無此成員）。這是推動任務進度的核心方法。
 - **目標管理 (Objectives)**:
-    - **原始碼**: `include/RE/B/BGSQuestObjective.h`
-    - 任務目標是 UI 上顯示的清單。透過 `SetObjectiveDisplayed(index, true)` 來更新玩家的日誌。
+    - **原始碼**: `include/RE/T/TESQuest.h`（`BGSQuestObjective` 定義於此）
+    - 任務目標是 UI 上顯示的清單。透過 Papyrus `Quest.SetObjectiveDisplayed(index, true)`（C++ 無此成員） 來更新玩家的日誌。
 
 ---
 
@@ -68,7 +68,7 @@ void OnDialogueComplete(RE::StaticFunctionTag*, RE::Actor* a_npc, RE::TESQuest* 
 
     // 1. 推動任務到最後階段
     if (a_quest) {
-        a_quest->SetStage(100); // 假設 100 是結束階段
+        // a_quest->SetStage(100);  // TESQuest 無 SetStage；需經 Papyrus Quest.SetStage
     }
 
     // 2. 讓 NPC 做出“交出物品”的動作
@@ -91,7 +91,7 @@ void OnDialogueComplete(RE::StaticFunctionTag*, RE::Actor* a_npc, RE::TESQuest* 
 ## 6. 核心類別原始碼標註
 
 - **`RE::TESQuest`**: `include/RE/T/TESQuest.h` - 任務邏輯核心。
-- **`RE::BGSStoryManager`**: `include/RE/B/BGSStoryManager.h` - 處理動態任務觸發（如：當玩家殺死 10 個敵人時自動開始任務）。
+- **`RE::BGSStoryManagerTreeForm`**: `include/RE/B/BGSStoryManagerTreeForm.h`（CommonLib 無 `BGSStoryManager` 類別） - 處理動態任務觸發（如：當玩家殺死 10 個敵人時自動開始任務）。
 - **`RE::TESTopicInfo`**: `include/RE/T/TESTopicInfo.h` - 對話後的腳本觸發點。
 - **`RE::InventoryChanges`**: `include/RE/I/InventoryChanges.h` - 處理複雜的物品交換與裝備邏輯。
 ```

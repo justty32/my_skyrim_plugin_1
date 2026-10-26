@@ -41,7 +41,7 @@
 #include <RE/Skyrim.h>
 
 void OnHarvest(RE::TESFlora* a_flora, RE::Actor* a_harvester) {
-    if (a_harvester->IsPlayer()) {
+    if (a_harvester->IsPlayerRef()) {
         // 假設玩家具備雙倍收成天賦
         auto produce = a_flora->produceItem;
         if (produce) {

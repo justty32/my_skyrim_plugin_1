@@ -22,7 +22,7 @@
 這是系統最獨特的部分：使用法術作為加工手段。
 
 ### A. 監聽法術命中
-透過 Hook `RE::MagicTarget::OnMagicEffectHit` 來偵測大鍋受到的法術影響：
+透過 Hook `RE::MagicTarget::AddTarget`（虛擬 01；CommonLib 無 `OnMagicEffectHit`） 來偵測大鍋受到的法術影響：
 - **火焰 (Fire)**: 增加「溫度」數值。過高會導致失敗（爆炸），適中則啟動反應。
 - **冰霜 (Frost)**: 降低「溫度」或用於「驟冷」定型。
 - **閃電 (Shock)**: 增加「能量/電荷」值。用於激發特定高等材料的活性。
@@ -58,7 +58,7 @@ struct BrewingState {
 
 ```cpp
 RE::AlchemyItem* CreateResult(const BrewingState& a_state) {
-    auto factory = RE::IFormFactory::GetConcreteFormFactory<RE::AlchemyItem>();
+    auto factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::AlchemyItem>();
     auto potion = factory->Create();
     
     // 根據 a_state.temperature 決定藥效倍率

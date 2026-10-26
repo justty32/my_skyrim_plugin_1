@@ -7,7 +7,7 @@ Skyrim 的所有介面（HUD、選單、清單）都是基於 **Adobe Flash (Act
 ## 1. 核心類別架構
 
 - **`RE::IMenu`**: 所有自定義選單的基底類別。你需要繼承它來定義選單的行為。
-- **`RE::GFXMovieView`**: 代表 Flash 檔案（.swf）的視圖對象，負責與 ActionScript 通訊。
+- **`RE::GFxMovieView`**: 代表 Flash 檔案（.swf）的視圖對象，負責與 ActionScript 通訊。
 - **`RE::UI`**: 管理所有選單的單例，負責選單的註冊、開啟與關閉。
 
 ---
@@ -33,11 +33,11 @@ public:
         auto loader = RE::BSScaleformManager::GetSingleton();
         
         // 加載位於 Data/Interface/MyMenu.swf 的檔案
-        loader->LoadMovie(this, view, "MyMenu");
+        loader->LoadMovie(this, uiMovie, "MyMenu");
         
         // 設置選單屬性 (是否攔截滑鼠、是否暫停遊戲)
-        menuFlags.set(RE::UI_MENU_FLAGS::kPauseGame, false);
-        menuFlags.set(RE::UI_MENU_FLAGS::kAllowCursor, true);
+        menuFlags.set(false, RE::UI_MENU_FLAGS::kPausesGame);
+        menuFlags.set(true, RE::UI_MENU_FLAGS::kUsesCursor);
     }
 
     // 處理來自 ActionScript 的調用

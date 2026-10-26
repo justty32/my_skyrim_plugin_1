@@ -7,17 +7,17 @@
 
 ### 1. 屬性值 (Actor Values)
 管理生命值（Health）、魔法值（Magicka）、體力值（Stamina）以及各類技能等級。
-- **`GetActorValue(ActorValue)`**: 獲取當前值。
-- **`SetActorValue(ActorValue, value)`**: 設置基礎值。
-- **`RestoreActorValue(modifier, ActorValue, value)`**: 恢復屬性值（例如喝藥水）。
+- **`AsActorValueOwner()->GetActorValue(ActorValue)`**: 獲取當前值。
+- **`AsActorValueOwner()->SetActorValue(ActorValue, value)`**: 設置基礎值。
+- **`AsActorValueOwner()->RestoreActorValue(modifier, ActorValue, value)`**: 恢復屬性值（例如喝藥水）。
 
 ### 2. AI 與 行為
-- **`currentProcess` (AIProcess)**: 處理角色的當前動作、目標、路徑規劃等。
+- **`GetActorRuntimeData().currentProcess` (AIProcess)**: 處理角色的當前動作、目標、路徑規劃等。
 - **`EvaluatePackage()`**: 強制重新評估角色的行為包（Package）。
 - **`IsInCombat()`**: 檢查角色是否處於戰鬥狀態。
 
 ### 3. 戰鬥與魔法
-- **`GetCombatTarget()`**: 獲取當前的戰鬥目標。
+- **`GetActorRuntimeData().currentCombatTarget`** (`ActorHandle`): 獲取當前的戰鬥目標（`GetCombatTarget()` 是 Papyrus，C++ 無此成員）。
 - **`AddSpell(SpellItem*)`**: 給角色添加法術。
 - **`IsCasting(MagicItem*)`**: 檢查是否正在施法。
 
@@ -27,7 +27,7 @@
 - **`Update3DModel()`**: 當裝備改變時更新角色的 3D 模型。
 
 ## 狀態標誌 (Flags)
-`Actor` 有大量的狀態標誌，分佈在 `boolBits` 和 `boolFlags` 中：
+`Actor` 有大量的狀態標誌，分佈在 `GetActorRuntimeData().boolBits` 和 `.boolFlags` 中：
 - `IsDead()`: 是否死亡。
 - `IsSneaking()`: 是否在潛行。
 - `IsEssential()`: 是否為無敵（重要）NPC。
@@ -35,7 +35,7 @@
 
 ## 常用成員函數
 
-- **`Kill()` / `Resurrect()`**: 殺死或復活角色。
+- **`KillImmediate()` / `Resurrect(bool, bool)`**: 殺死或復活角色。
 - **`HasPerk(BGSPerk*)`**: 檢查是否具有特定天賦。
 - **`GetRace()`**: 獲取角色的種族。
 

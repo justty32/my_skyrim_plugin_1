@@ -13,7 +13,7 @@ Radiant AI 是 Bethesda 引擎的核心技術之一，旨在讓遊戲世界感�
 - **機理**: 引擎會檢查 NPC 所在區域的「家具（Markers）」。如果附近有一把椅子且 NPC 具備 `Sandboxing` 屬性，他會“自主”決定去坐下。
 
 ### B. Sandboxing (沙盒行為)
-- **原始碼**: `include/RE/T/TESPackage.h` (涉及 `PackageType::kSandbox`)
+- **原始碼**: `include/RE/T/TESPackage.h` (涉及 `PACKAGE_TYPE::kSandbox`)
 - **運作邏輯**:
     1.  定義一個半徑（Radius）或區域（Location）。
     2.  NPC 在區域內掃描可交互對象（如：烹飪鍋、磨刀石、椅子）。
@@ -26,7 +26,7 @@ Radiant AI 是 Bethesda 引擎的核心技術之一，旨在讓遊戲世界感�
 這是讓遊戲世界響應玩家行為的系統。例如：當你殺死一個 NPC 的配偶，他可能會僱傭殺手來報復。
 
 ### A. 故事管理器 (BGSStoryManager)
-- **原始碼**: `include/RE/B/BGSStoryManager.h`
+- **原始碼**: 無對應標頭（CommonLibSSE-NG 無 `BGSStoryManager` 類別，只有 `BGSStoryManagerBranchNode`／`QuestNode`／`EventNode`）
 - **機制**: 監聽遊戲內的「節點（Nodes）」。常見節點包括：`Kill Actor`, `Level Up`, `Pickpocket`。
 - **匹配邏輯**: 當觸發節點時，管理員會掃描所有具備 `Radiant` 標籤的任務，檢查其 **Conditions**。如果條件匹配，任務會自動開始。
 
@@ -45,7 +45,7 @@ Radiant AI 是 Bethesda 引擎的核心技術之一，旨在讓遊戲世界感�
 
 ```cpp
 void TriggerRevengeQuest(RE::Actor* a_victim) {
-    auto storyManager = RE::BGSStoryManager::GetSingleton();
+    auto storyManager = RE::BGSStoryManager::GetSingleton();  // 示意：CommonLibSSE-NG 無此類別，需自行 RE 位址
     // 注入一個自定義的“犯罪”節點
     // ...
 }
@@ -65,7 +65,7 @@ void TriggerRevengeQuest(RE::Actor* a_victim) {
 
 ## 5. 核心類別原始碼標註
 
-- **`RE::BGSStoryManager`**: `include/RE/B/BGSStoryManager.h` - 劇情分發器。
+- **`RE::BGSStoryManager`**: 劇情分發器（註：CommonLibSSE-NG 無此類別／標頭，只有 `RE/B/BGSStoryManagerQuestNode.h` 等節點表單）。
 - **`RE::TESPackage`**: `include/RE/T/TESPackage.h` - 行為單元。
 - **`RE::BGSScene`**: `include/RE/B/BGSScene.h` - 處理 NPC 之間的動態對話與小劇場。
 - **`RE::BGSRefAlias`**: `include/RE/B/BGSRefAlias.h` - 任務對象自動綁定。

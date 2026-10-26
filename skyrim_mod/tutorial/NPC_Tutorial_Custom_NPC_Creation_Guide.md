@@ -41,11 +41,11 @@ void PowerUpMyNPC(RE::Actor* a_actor) {
     auto base = a_actor->GetActorBase();
     if (base && base->IsUnique()) {
         // 增加生命值上限
-        base->AddActorValueModifier(RE::ACTOR_VALUE_MODIFIER::kPermanent, RE::ActorValue::kHealth, 100.0f);
+        base->ModActorValue(RE::ActorValue::kHealth, 100.0f);
         
         // 修改等級限制
         base->SetLevelMult(2.0f); // 玩家等級的兩倍
-        RE::ConsoleLog::GetSingleton()->Print("NPC '%s' 已強化！", a_actor->GetFullName());
+        RE::ConsoleLog::GetSingleton()->Print("NPC '%s' 已強化！", a_actor->GetDisplayFullName());
     }
 }
 ```

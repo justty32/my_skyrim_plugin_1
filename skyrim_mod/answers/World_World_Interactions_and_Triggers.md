@@ -9,7 +9,7 @@ Skyrim 的沉浸感很大程度上來自於與環境的交互。從踩到陷阱�
 - **類別**: `RE::TESObjectREFR` (Base Form 類型為 `BGSTriggerInstance`)
 - **關鍵組件**: 
     - **Primitive**: 定義區域的物理形狀（立方體、球體）。
-    - **原始碼**: `include/RE/B/BGSPrimitive.h`
+    - **原始碼**: `include/RE/E/ExtraPrimitive.h`（`BGSPrimitive` 在 NG 只有前向宣告）
 - **事件流程**:
     1. 物理引擎檢測到 `Actor` 的碰撞。
     2. 發送 `OnTriggerEnter` 事件。
@@ -21,7 +21,7 @@ Skyrim 的沉浸感很大程度上來自於與環境的交互。從踩到陷阱�
 陷阱是觸發器與動作對象（如箭矢發射器、擺錘）的結合。
 - **機制**: 陷阱通常由一個「傳感器（如地壓板、細線）」和一個「啟動器」組成。
 - **傳感器**: 也是一種 `TESObjectREFR`，繼承了 `Activate` 邏輯。
-- **動作觸發**: 當玩家踩到壓力板時，傳感器調用 `Activate()`，這會向關聯的啟動器發送 `RE::UI_MESSAGE_TYPE::kActivate` 消息。
+- **動作觸發**: 當玩家踩到壓力板時，傳感器調用 `Activate()`，這會對關聯的啟動器呼叫 `ActivateRef()`（`RE::UI_MESSAGE_TYPE` 沒有 `kActivate`）。
 
 ---
 
@@ -39,15 +39,15 @@ Skyrim 的沉浸感很大程度上來自於與環境的交互。從踩到陷阱�
 任何可交互的 `TESObjectREFR` (箱子、門) 都可以帶有鎖。
 - **原始碼**: `include/RE/E/ExtraLock.h`
 - **數據結構 (`RE::REFR_LOCK`)**:
-    - **`level`**: 鎖的難度（新手、專家、大師）。
-    - **`key`**: 關聯的鑰匙 FormID。
-    - **`isLocked`**: 鎖定狀態標記。
+    - **`baseLevel`**: 鎖的難度（新手、專家、大師）。
+    - **`key`**: 關聯的鑰匙（`TESKey*`）。
+    - **`flags`**: 鎖定狀態標記（`Flag::kLocked`，讀用 `IsLocked()`）。
 - **C++ 介入**:
     ```cpp
     auto lock = ref->extraList.GetByType<RE::ExtraLock>();
-    if (lock && lock->lock->isLocked) {
+    if (lock && lock->lock->IsLocked()) {
         // 插件可以直接強制開鎖
-        lock->lock->isLocked = false;
+        lock->lock->SetLocked(false);
     }
     ```
 
@@ -59,7 +59,7 @@ Skyrim 的沉浸感很大程度上來自於與環境的交互。從踩到陷阱�
 1.  **Input**: 發送 `InputEvent` 到引擎。
 2.  **Pick**: 引擎射線檢測，找到準星指向的 `RE::TESObjectREFR`。
 3.  **Check**: 檢查 `ExtraLock`。如果鎖住了且玩家沒鑰匙，進入開鎖界面（`LockpickingMenu`）。
-4.  **Activate**: 如果沒鎖，調用 `ref->Activate(player, ...)`。
+4.  **Activate**: 如果沒鎖，調用 `ref->ActivateRef(player, ...)`。
 5.  **Teleport**: 如果有 `ExtraTeleport`，執行單元跳轉。
 
 ---
@@ -74,5 +74,5 @@ Skyrim 的沉浸感很大程度上來自於與環境的交互。從踩到陷阱�
 
 - **`RE::ExtraLock`**: `include/RE/E/ExtraLock.h` - 鎖定數據。
 - **`RE::TESObjectDOOR`**: `include/RE/T/TESObjectDOOR.h` - 門的定義。
-- **`RE::BGSPrimitive`**: `include/RE/B/BGSPrimitive.h` - 觸發區域幾何體。
-- **`RE::REFR_LOCK`**: `include/RE/R/REFR_LOCK.h` - 具體的鎖狀態。
+- **`RE::BGSPrimitive`**: `include/RE/E/ExtraPrimitive.h`（NG 只有前向宣告）- 觸發區域幾何體。
+- **`RE::REFR_LOCK`**: `include/RE/E/ExtraLock.h` - 具體的鎖狀態。

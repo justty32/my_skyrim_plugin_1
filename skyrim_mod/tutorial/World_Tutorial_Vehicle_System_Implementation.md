@@ -18,7 +18,7 @@
 - **方案 B (物理衝量)**: 最真實但難度最高。手動對 `RE::bhkRigidBody` 施加力道。
 
 ### 步驟二：實作玩家依附 (Attachment)
-1. 當玩家點擊載具時，調用 `RE::Actor::SetVehicle()`。
+1. 當玩家點擊載具時，調用 Papyrus `Actor.SetVehicle()`（CommonLibSSE-NG 無 C++ 版）。
 2. 將玩家的位移權限移交給載具。
 3. 播放「駕駛」動畫（如：手扶方向盤）。
 

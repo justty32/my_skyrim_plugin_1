@@ -48,7 +48,7 @@ void SetNPCRelationship(RE::Actor* a_actor, int a_rank) {
     auto npc = a_actor->GetActorBase();
     if (npc) {
         // 修改 NPC 的數值
-        npc->SetLevelMult(1.5f); // 設置等級倍率
+        // npc->SetLevelMult(1.5f);  // CommonLib 無此成員；等級倍率存於 actorData.level（kPCLevelMult 旗標）
         
         // 檢查是否為 Unique (唯一角色)
         if (npc->IsUnique()) {
@@ -72,7 +72,7 @@ void SetNPCRelationship(RE::Actor* a_actor, int a_rank) {
 ## 6. 核心類別原始碼標註
 
 - **`RE::TESNPC`**: `include/RE/T/TESNPC.h`
-- **`RE::Package`**: `include/RE/T/TESPackage.h`
+- **`RE::TESPackage`**: `include/RE/T/TESPackage.h`
 - **`RE::TESFaction`**: `include/RE/T/TESFaction.h`
 
 ---

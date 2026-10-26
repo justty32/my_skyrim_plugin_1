@@ -81,7 +81,7 @@ void LinkDoors(RE::TESObjectREFR* doorA, RE::TESObjectREFR* doorB) {
 
 ## 4. 關鍵 API 標註
 -   **`RE::ExtraTeleport`**: 儲存傳送數據的容器。`include/RE/E/ExtraTeleport.h`
--   **`RE::DoorTeleportData`**: 具體的傳送目標實體與座標。`include/RE/D/DoorTeleportData.h`
+-   **`RE::DoorTeleportData`**: 具體的傳送目標實體與座標。`include/RE/E/ExtraTeleport.h`（定義在此，無獨立標頭）
 -   **`CreateRefHandle()`**: 為 `TESObjectREFR` 創建安全引用句柄，用於跨單元鏈接。
 
 ## 5. 總結與自動化思路
@@ -90,8 +90,8 @@ void LinkDoors(RE::TESObjectREFR* doorA, RE::TESObjectREFR* doorB) {
 
 1.  讀取 ESP 中預留的 100 個空白室內單元 ID。
 2.  每次在野外生成一棟房屋，就從池子裡提取一個未使用的室內單元。
-3.  在野外房屋模型前 `PlaceAtMe` 一扇外部門。
-4.  在室內單元的固定位置 `PlaceAtMe` 一扇內部門。
+3.  在野外房屋模型前 `PlaceObjectAtMe` 一扇外部門。
+4.  在室內單元的固定位置 `PlaceObjectAtMe` 一扇內部門。
 5.  調用 `LinkDoors` 將它們雙向綁定。
 6.  在室內單元中動態生成床鋪、火爐與家具（參考教程 04）。
 
@@ -101,7 +101,7 @@ void LinkDoors(RE::TESObjectREFR* doorA, RE::TESObjectREFR* doorB) {
 
 ### 核心頭文件
 - `include/RE/E/ExtraTeleport.h` - 傳送數據容器。
-- `include/RE/D/DoorTeleportData.h` - 目錄詳情。
+- `include/RE/E/ExtraTeleport.h` - 目錄詳情（`DoorTeleportData` 定義在此，無獨立標頭）。
 - `include/RE/T/TESObjectDOOR.h` - 門的定義。
 - `include/RE/B/BSPointerHandle.h` - 引用句柄管理。
 
@@ -109,4 +109,4 @@ void LinkDoors(RE::TESObjectREFR* doorA, RE::TESObjectREFR* doorB) {
 - `RE::TESObjectREFR::CreateRefHandle()`：創建安全的門句柄。
 - `RE::ExtraDataList::Add(ExtraData)`：為門附加傳送組件。
 - `RE::TESObjectREFR::GetPosition()`：獲取門的物理座標以計算傳送落點。
-- `RE::TESObjectREFR::Activate(Activator, ...)`：透過插件腳本觸發開門動作。
+- `RE::TESObjectREFR::ActivateRef(TESObjectREFR* a_activator, std::uint8_t, TESBoundObject*, std::int32_t, bool)`（`Activate(akActivator, ...)` 是 Papyrus）：透過插件腳本觸發開門動作。

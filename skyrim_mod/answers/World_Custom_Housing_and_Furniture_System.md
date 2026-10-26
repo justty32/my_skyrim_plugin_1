@@ -26,13 +26,13 @@
 1.  **計算座標**: 取得虛擬光標的 `Position` 與 `Rotation`。
 2.  **生成實體**: 
     ```cpp
-    auto factory = RE::IFormFactory::GetConcreteFormFactory<RE::TESObjectSTAT>();
+    auto factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::TESObjectSTAT>();
     auto furniture = factory->Create(); // 或者從 FormList 中查找現有模型
     
     // 在世界中生成
-    auto handle = player->PlaceAtMe(furniture, 1, false, false);
+    auto handle = player->PlaceObjectAtMe(furniture, false);
     ```
-3.  **導航網格切換 (Navmesh Cutting)**: 這是最難的部分。大的家具會阻擋 NPC 路徑。你需要使用 `RE::NavMeshObstacleManager` 動態添加障礙物塊，讓 NPC 繞道。
+3.  **導航網格切換 (Navmesh Cutting)**: 這是最難的部分。大的家具會阻擋 NPC 路徑。你需要使用 `RE::NavMeshObstacleManager`（CommonLibSSE-NG 只有 RTTI 條目，無類別宣告）動態添加障礙物塊，讓 NPC 繞道。
 
 ---
 
@@ -41,7 +41,7 @@
 由於玩家放置的家具不在原始 ESP 中，必須手動保存。
 - **方案**: 監聽 `kSaveGame` 事件。
 - **內容**: 將所有玩家放置的家具 `FormID`、`Position`、`Rotation` 序列化並寫入 `SKSE Co-save` 檔案中。
-- **讀取**: 在 `kLoadGame` 時，解析檔案並重新生成所有物件。
+- **讀取**: 在 `kPostLoadGame` 時，解析檔案並重新生成所有物件。
 
 ---
 

@@ -27,7 +27,7 @@
       auto process = a_actor->GetActorRuntimeData().currentProcess;
       if (process && process->middleHigh) {
           // 暫停動畫更新
-          a_actor->GetHostileAnimationGraph()->SetSpeed(0.01f);
+          a_actor->GetHostileAnimationGraph()->SetSpeed(0.01f);  // 示意：NG 無 GetHostileAnimationGraph()/SetSpeed
           // 延時後恢復
           ScheduleTask(a_duration, [=](){ a_actor->GetHostileAnimationGraph()->SetSpeed(1.0f); });
       }
@@ -35,14 +35,14 @@
   ```
 
 ### B. 鏡頭震動 (Screen Shake)
-- **技術**: 呼叫 `RE::PlayerCamera::StartCameraShake()`，震動強度應與武器類型（如大劍 > 片手劍）掛鉤。
+- **技術**: 呼叫 Papyrus `Game.ShakeCamera(akSource, afStrength, afDuration)`（CommonLibSSE-NG 無 `PlayerCamera::StartCameraShake`），震動強度應與武器類型（如大劍 > 片手劍）掛鉤。
 
 ---
 
 ## 3. 魔物交互：部位破壞與硬直
 
 ### A. 定點傷害系統 (Locational Damage)
-- **技術**: 攔截 `RE::Projectile::HandleHit` 或 `RE::Actor::HandleHit`。
+- **技術**: 攔截 `RE::Projectile::HandleHits(hkpCollidable*)` 或 `RE::Actor::HandleHealthDamage(Actor*, float)`（NG 無 `HandleHit`）。
 - **邏輯**: 透過 `RE::NiAVObject` 獲取命中點的節點名稱（如 `NPC Head`, `NPC L Wing`）。
 - **破壞機制**: 為特定部位設置隱藏的「部位生命值」。當該數值歸零，觸發特效（火花、斷裂模型切換）並強制魔物進入長硬直 (Stagger)。
 
@@ -54,8 +54,8 @@
 
 ## 4. 核心類別原始碼標註
 
-- **`RE::Actor::HandleHit`**: 攔截傷害與打擊反饋。
-- **`RE::IAnimationGraphManager`**: 控制動畫播放速度與狀態切換。
+- **`RE::Actor::HandleHealthDamage`**: 攔截傷害與打擊反饋（NG 無 `Actor::HandleHit`）。
+- **`RE::IAnimationGraphManagerHolder`**: 控制動畫播放速度與狀態切換。
 - **`RE::bhkWorld`**: 用於精確的物理碰撞檢測（部位判定）。
 
 ---

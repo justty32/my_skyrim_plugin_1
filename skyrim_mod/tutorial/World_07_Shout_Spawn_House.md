@@ -6,7 +6,7 @@
 1.  攔截特定龍吼施放事件。
 2.  利用 `Raycast` (射線檢測) 獲取地形精確坐標，或直接獲取準星指向位置。
 3.  計算偏移量（Offset），確保房屋底部與地面齊平。
-4.  調用 `PlaceAtMe` 生成房屋。
+4.  調用 `PlaceObjectAtMe` 生成房屋。
 
 ## 2. 代碼實現
 
@@ -18,7 +18,7 @@ void SpawnHouseAtCrosshair() {
     // 1. 獲取準星指向的物理坐標
     // 在純 C++ 中，我們通常通過玩家的視線射線來計算
     RE::NiPoint3 spawnPos;
-    auto crosshairRef = SKSE::GetCrosshairRef();
+    auto crosshairRef = GetCrosshairTarget(); // SKSE 無 GetCrosshairRef()；需訂閱 SKSE::CrosshairRefEvent 自行保存（SKSE/API.h:36）
     
     if (crosshairRef) {
         spawnPos = crosshairRef->GetPosition();
@@ -39,11 +39,11 @@ void SpawnHouseAtCrosshair() {
         spawnPos.z += 100.0f; 
 
         // 4. 生成並設置旋轉（讓房屋面向玩家）
-        auto newHouse = player->PlaceAtMe(houseBase, 1, false, false);
+        auto newHouse = player->PlaceObjectAtMe(houseBase, false);
         if (newHouse) {
             newHouse->SetPosition(spawnPos);
             // 讓房屋的旋轉角度與玩家一致
-            newHouse->SetAngle(0.0f, 0.0f, player->GetAngleZ());
+            newHouse->SetAngle(RE::NiPoint3(0.0f, 0.0f, player->GetAngleZ()));
             
             RE::DebugNotification("房屋已拔地而起！");
         }

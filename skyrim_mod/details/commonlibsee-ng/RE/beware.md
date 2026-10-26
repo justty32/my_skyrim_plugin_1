@@ -46,7 +46,7 @@ Skyrim 的邏輯層大部分是**單線程**運作的。
 
 ### A. 防止存檔膨脹 (Save Bloat)
 - **禁區**: 頻繁生成被標記為 `Persistent` 的對象卻不回收。
-- **建議**: 動態生成的物體（`PlaceAtMe`）如果不再需要，務必調用 `SetDelete(true)`。
+- **建議**: 動態生成的物體（`PlaceObjectAtMe`）如果不再需要，務必調用 `SetDelete(true)`。
 
 ### B. 序列化一致性
 - **建議**: 如果你的插件使用 `SKSE::Serialization` 存儲數據，請確保版本兼容性。當你修改了數據結構後，必須處理舊版本存檔的讀取邏輯。

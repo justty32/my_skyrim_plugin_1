@@ -38,11 +38,11 @@
 
 ```cpp
 void HandleReload(RE::Actor* a_actor) {
-    if (!a_actor->IsPlayer()) return;
+    if (!a_actor->IsPlayerRef()) return;
 
     // 檢查是否有備用彈藥
     auto ammo = RE::TESForm::LookupByID<RE::TESBoundObject>(AMMO_FORM_ID);
-    if (a_actor->GetItemCount(ammo) > 0) {
+    if (RE::PlayerCharacter::GetSingleton()->GetItemCount(ammo) > 0) {
         // 播放換彈動畫
         a_actor->NotifyAnimationGraph("ReloadStart");
         RE::DebugNotification("正在換彈...");

@@ -71,7 +71,7 @@ Actor 透過 `InventoryChanges` 管理隨身攜帶的物品。
 
 - **原始碼**: `include/RE/A/AIProcess.h`
 - **組成**:
-    - **MiddleHighProcess**: 處理當前正在裝備的武器、施放的法術狀態。
+    - **MiddleHighProcessData**: 處理當前正在裝備的武器、施放的法術狀態。
     - **Combat-Data**: 當前對玩家的仇恨值、戰鬥目標。
 
 ---

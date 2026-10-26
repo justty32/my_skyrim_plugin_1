@@ -45,7 +45,7 @@
 - **物理組件**:
     - **Shape (碰撞形狀)**: 簡化的幾何體（如方塊、球體或複雜凸包），用於計算碰撞。
     - **Mass (質量)**: 決定了物品被撞擊時的移動慣性。
-    - **Material (物理材質)**: 這是一個關鍵枚舉（如 `MAT_METAL`, `MAT_WOOD`），決定了碰撞音效、火花效果以及摩擦力。
+    - **Material (物理材質)**: 這是一個關鍵枚舉（如 `RE::MATERIAL_ID::kMetalSolid`, `RE::MATERIAL_ID::kWood`），決定了碰撞音效、火花效果以及摩擦力。
     - **原始碼**: `include/RE/M/MaterialIDs.h`
 
 ---
@@ -60,8 +60,8 @@ void AnalyzeModel(RE::TESObjectREFR* a_ref) {
     if (!root) return;
 
     // 遍歷所有節點，尋找特定的 Mesh
-    RE::BSVisit::TraverseScenegraphGeometries(root, [](RE::BSTriShape* a_geometry) {
-        auto shaderProp = a_geometry->GetShaderProperty();
+    RE::BSVisit::TraverseScenegraphGeometries(root, [](RE::BSGeometry* a_geometry) {
+        auto shaderProp = a_geometry->lightingShaderProp_cast();
         if (shaderProp) {
             // 在這裡動態修改貼圖或光照屬性
         }

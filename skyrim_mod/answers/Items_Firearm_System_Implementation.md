@@ -14,7 +14,7 @@
 ### B. 彈匣管理 (Magazine Logic)
 Skyrim 的原生物品欄無法記錄單一武器的「剩餘彈頭數」。
 - **技術方案**: 
-    1. **ExtraData 儲存**: 使用 `RE::ExtraDataList` 為每個武器實例 (REFR) 附加一個 `ExtraInt` 來紀錄當前彈藥。
+    1. **ExtraData 儲存**: 使用 `RE::ExtraDataList` 為每個武器實例 (REFR) 附加一個自訂 `BSExtraData` 子類來紀錄當前彈藥（CommonLib 無 `ExtraInt`）。
     2. **C++ 映射表**: 在插件中維護一個 `std::map<RE::ObjectRefHandle, int>`。
     3. **邏輯**: 每次射擊（觸發 `WeaponSwing` 事件）時，將該數值 `-1`。
 
@@ -67,7 +67,7 @@ Skyrim 的原生物品欄無法記錄單一武器的「剩餘彈頭數」。
 
 - **自定義選單**: 建立一個基於 `RE::IMenu` 的 Flash (.swf) 視圖。
 - **數據推播**: 
-    - 在每一幀（`Main::Update`）或數據變更時，透過 `RE::GFXMovieView::SetVariable` 將彈藥數傳送給 UI。
+    - 在每一幀（`Main::Update`）或數據變更時，透過 `RE::GFxMovieView::SetVariable`（繼承自 `GFxMovie`） 將彈藥數傳送給 UI。
     - **範例**: `_root.AmmoCount.text = currentMagSize.toString();`
 
 ---
@@ -88,7 +88,7 @@ Skyrim 的原生物品欄無法記錄單一武器的「剩餘彈頭數」。
 
 - **`RE::TESObjectWEAP`**: `include/RE/T/TESObjectWEAP.h`
 - **`RE::ExtraDataList`**: `include/RE/E/ExtraDataList.h`
-- **`RE::GFXMovieView`**: `include/RE/G/GFXMovieView.h` (UI 核心)
+- **`RE::GFxMovieView`**: `include/RE/G/GFxMovieView.h` (UI 核心)
 - **`RE::Projectile`**: `include/RE/P/Projectile.h`
 
 ---

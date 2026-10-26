@@ -13,20 +13,20 @@ auto player = RE::PlayerCharacter::GetSingleton();
 
 ### 1. 技能與等級 (Skills)
 - **`AddSkillExperience(ActorValue, experience)`**: 手動增加某個技能（如 `kOneHanded`）的經驗值。
-- **`skills` (PlayerSkills)**: 存儲了玩家各項技能的當前等級、經驗和傳奇等級（Legendary Level）。
+- **`GetInfoRuntimeData().skills` (PlayerSkills)**: 存儲了玩家各項技能的當前等級、經驗和傳奇等級（Legendary Level）。
 
 ### 2. 任務與目標 (Quests)
 - **`objectives`**: 當前活躍的任務目標列表。
 - **`questTargets`**: 指向地圖和羅盤上的任務標記。
 
 ### 3. 罪行系統 (Crime)
-- **`crimeGoldMap`**: 存儲玩家在各個派系（Faction）中的賞金。
-- **`stolenItemValueMap`**: 存儲玩家身上偷竊物品的總價值。
+- **`GetCrimeValue().crimeGoldMap`**: 存儲玩家在各個派系（Faction）中的賞金。
+- **`GetCrimeValue().stolenItemValueMap`**: 存儲玩家身上偷竊物品的總價值。
 
 ### 4. 遊戲狀態
 - **`IsGodMode()`**: 檢查是否開啟了上帝模式。
 - **`GetGrabbedRef()`**: 獲取玩家當前正用“念力”抓取的對象引用。
-- **`isInThirdPersonMode`**: 檢查玩家是否處於第三人稱視角。
+- **`GetPlayerRuntimeData().playerFlags.isInThirdPersonMode`**: 檢查玩家是否處於第三人稱視角。
 
 ### 5. 跨版本兼容性
 與 `Actor` 類似，`PlayerCharacter` 使用了 `GetPlayerRuntimeData()` 來獲取在不同 Skyrim 版本中可能位置變化的數據（例如 `addedPerks`, `questLog`, `playerFlags` 等）。

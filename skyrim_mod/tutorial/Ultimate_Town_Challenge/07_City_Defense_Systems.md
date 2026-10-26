@@ -22,10 +22,10 @@ public:
     }
 
     RE::BSEventNotifyControl ProcessEvent(const RE::TESCombatEvent* a_event, RE::BSTEventSource<RE::TESCombatEvent>*) override {
-        if (!a_event || !a_event->actor || !a_event->target) return RE::BSEventNotifyControl::kContinue;
+        if (!a_event || !a_event->actor || !a_event->targetActor) return RE::BSEventNotifyControl::kContinue;
 
         auto aggressor = a_event->actor.get()->As<RE::Actor>();
-        auto target = a_event->target.get()->As<RE::Actor>();
+        auto target = a_event->targetActor.get()->As<RE::Actor>();
 
         // 1. 檢查戰鬥是否涉及我們的城鎮 (假設我們保存了城鎮的中心座標)
         // 這裡簡化為判斷玩家是否在場
@@ -56,7 +56,7 @@ private:
             RE::NiPoint3 defPos1 = player->GetPosition();
             defPos1.x += 1000.0f; // 前方 1000 單位
 
-            auto ballista = player->PlaceAtMe(ballistaBase, 1, true, false);
+            auto ballista = player->PlaceObjectAtMe(ballistaBase, true);
             ballista->SetPosition(defPos1);
             
             RE::DebugNotification("警報！偵測到巨龍！防禦弩車已部署！");
@@ -82,5 +82,5 @@ private:
 ### 推薦使用的函數
 - `RE::Actor::GetRace()`：判斷攻擊者類型。
 - `RE::Actor::IsInCombat()`：檢查實時戰鬥狀態。
-- `RE::TESObjectREFR::PlaceAtMe(...)`：動態刷出防禦塔實體。
+- `RE::TESObjectREFR::PlaceObjectAtMe(...)`：動態刷出防禦塔實體。
 - `RE::Actor::StopCombat()`：強迫衛兵停止逃離並重新進入戰鬥。

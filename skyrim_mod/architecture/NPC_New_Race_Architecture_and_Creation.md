@@ -7,7 +7,7 @@
 ## 1. 核心類別：`RE::TESRace`
 
 - **原始碼**: `include/RE/T/TESRace.h`
-- **本質**: 一個全局 Form (FormType: 19)，所有 NPC (`TESNPC`) 都必須引用一個 Race。
+- **本質**: 一個全局 Form (`RE::FormType::Race` = 0x0E = 14)，所有 NPC (`TESNPC`) 都必須引用一個 Race。
 
 ---
 
@@ -15,7 +15,7 @@
 
 ### A. Biped Data (身體構造與骨架)
 這是決定種族是否能穿戴裝備的核心。
-- **骨架路徑**: `data.skeletonModels`。男性與女性通常有不同的 NIF 路徑。
+- **骨架路徑**: `skeletonModels`（`TESRace` 直接成員，不在 `data` 內）。男性與女性通常有不同的 NIF 路徑。
 - **槽位定義 (Biped Object)**: 定義該種族具備哪些部分（如：頭、身、手、足、尾巴）。
 - **縮放 (Scaling)**: `data.height` 和 `data.weight` 影響 NPC 的實際 3D 比例。
 
@@ -26,7 +26,7 @@
 ### C. Stats & Skills (數值與天賦)
 - **初始數值**: 生命、魔法、耐力的基礎值與回覆率。
 - **技能加成**: 每個種族通常有 6 個技能加成（如：諾德人 +10 雙手武器）。
-- **特點 (Spells/Perks)**: 透過 `TESRace::spells` 列表添加種族主動或被動技能。
+- **特點 (Spells/Perks)**: 透過 `TESRace` 繼承自 `TESSpellList` 的 `actorEffects->spells` 列表添加種族主動或被動技能。
 
 ### D. Movement Data (移動屬性)
 - 定義了走路、跑步、游泳與潛行時的速度與動畫頻率。
@@ -78,7 +78,7 @@ void CheckActorRace(RE::Actor* a_actor) {
 ## 5. 技術挑戰：動態種族切換
 
 如果你要開發一個「變身」模組（如：狼人、吸血鬼大君）：
-1. **呼叫 `SetRace`**: `Actor::SetRace(RE::TESRace* a_race, bool a_isPlayer)`。
+1. **呼叫 `SetRace`**: Papyrus `Actor.SetRace(Race akRace = None)`（CommonLibSSE-NG 無 C++ `Actor::SetRace`，只有位址 `RE::Offset::Actor::SwitchRace`）。
 2. **3D 更新**: 切換種族後必須調用 `Update3DModel()`，否則模型會發生扭曲或崩潰。
 3. **能力過渡**: 注意移除舊種族的 `Constant Effect` 法術，並添加新種族的。
 
@@ -87,5 +87,5 @@ void CheckActorRace(RE::Actor* a_actor) {
 ## 6. 核心類別原始碼標註
 
 - **`RE::TESRace`**: `include/RE/T/TESRace.h`
-- **`RE::BIPED_MODEL`**: `include/RE/B/BipedObjects.h`
+- **`RE::BIPED_MODEL`**: `include/RE/B/BGSBipedObjectForm.h`
 - **`RE::TESNPC`**: `include/RE/T/TESNPC.h` (種族的引用者)

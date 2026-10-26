@@ -48,7 +48,7 @@
 2.  **邏輯分佈**:
     - 如果節點名稱包含 `Tail`，將傷害累計至「尾部生命值」。
     - 當累計傷害 > 閾值時，執行：
-        - `victim->PlayAnimation("SeverTail")`。
+        - `victim->NotifyAnimationGraph("SeverTail")`。
         - 在座標點 `DropItem("BrokenTail")`。
 
 ---

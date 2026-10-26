@@ -25,7 +25,7 @@ void MakeObstacleActive(RE::TESObjectREFR* a_buildingRef) {
     // 2. 更新碰撞過濾器
     // 這會強制物理引擎重新評估該物體的碰撞體，
     // 並向 NavMeshObstacleManager 發送訊號，切斷下方的尋路網格。
-    a_buildingRef->UpdateCollisionFilter();
+    a_buildingRef->UpdateCollisionFilter(); // 註：CommonLibSSE-NG 無此成員，此處為示意
 
     // 進階：有時需要手動通知導航管理器
     // (注意：這部分 API 在不同版本的 CommonLibSSE 中可能有所不同，需查閱 NavMeshObstacleManager)
@@ -35,18 +35,18 @@ void MakeObstacleActive(RE::TESObjectREFR* a_buildingRef) {
 ```
 
 ## 3. 實戰建議與限制
--   **模型要求**: 不是隨便一個模型生成後調用 `UpdateCollisionFilter` 就會剪裁 Navmesh。該模型必須在 Creation Kit 或 NifSkope 中設定好相應的 `NavCut` 邊界框。
+-   **模型要求**: 不是隨便一個模型生成後調用 `UpdateCollisionFilter`（NG 無此成員）就會剪裁 Navmesh。該模型必須在 Creation Kit 或 NifSkope 中設定好相應的 `NavCut` 邊界框。
 -   **性能消耗**: 動態剪裁 Navmesh 是極度消耗 CPU 的操作。如果你瞬間生成了 100 棟房子並同時剪裁，遊戲會嚴重卡頓。建議採用**「異步/分批生成」**的策略。
 ---
 
 ## 4. 原始碼參考與核心函數
 
 ### 核心頭文件
-- `include/RE/N/NavMeshObstacleManager.h` - 導航障礙物管理器。
+- `include/RE/N/NavMeshObstacleManager.h` - 導航障礙物管理器。（註：CommonLibSSE-NG 無此標頭）
 - `include/RE/T/TESObjectREFR.h` - 碰撞更新接口。
 
 ### 推薦使用的函數
-- `RE::TESObjectREFR::UpdateCollisionFilter()`：通知引擎重新計算對象物理，並標記為導航剪裁物。
-- `RE::NavMeshObstacleManager::GetSingleton()`：獲取導航管理單例。
+- `RE::TESObjectREFR::UpdateCollisionFilter()`：通知引擎重新計算對象物理，並標記為導航剪裁物（註：CommonLibSSE-NG 無此成員）。
+- `RE::NavMeshObstacleManager::GetSingleton()`：獲取導航管理單例（註：CommonLibSSE-NG 無此類別定義）。
 - `RE::TESObjectREFR::Get3D()`：獲取 NiAVObject，確保物理數據已加載。
-- `RE::NiAVObject::UpdateDescending(...)`：遞歸更新模型節點物理標記。
+- `RE::NiAVObject::UpdateDownwardPass(NiUpdateData&, std::uint32_t)`：遞歸更新模型節點物理標記。

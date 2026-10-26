@@ -10,7 +10,7 @@
 **`SpellItem` (法術) -> `MagicEffect` (效果定義) -> `Projectile` (物理投射物) -> `Impact` (碰撞) -> `ActiveEffect` (作用於目標)**
 
 ### A. MagicEffect：邏輯核心
-- **原始碼**: `include/RE/M/MagicEffect.h`
+- **原始碼**: `include/RE/E/EffectSetting.h`（類別 `RE::EffectSetting`）
 - 定義了法術的屬性（如：抗性檢查、傷害數值）以及它關聯的投射物類型。
 
 ### B. Projectile：物理載體
@@ -64,7 +64,7 @@ Skyrim 將投射物分為幾種不同的物理模型，定義在 `RE::BGSProject
 你可以透過 Hook 投射物的 `Init` 函數，動態改變所有火球的飛行速度，實現“子彈時間”效果。
 
 ### B. 追蹤投射物
-監聽 `RE::TESSpellCastEvent`，你可以獲取新生成的投射物 Handle，進而實現「追蹤導彈」邏輯。
+監聽 `RE::TESSpellCastEvent`，你可以得知誰施放了哪個法術（事件只帶 `object`／`spell`，沒有投射物 Handle），進而實現「追蹤導彈」邏輯。
 
 ```cpp
 void MakeHoming(RE::Projectile* a_projectile, RE::Actor* a_target) {
@@ -75,7 +75,7 @@ void MakeHoming(RE::Projectile* a_projectile, RE::Actor* a_target) {
     targetPos.z += 100.0f; // 指向胸口
     
     // 更新投射物的方向向量
-    a_projectile->linearVelocity = CalculateVelocity(a_projectile->GetPosition(), targetPos);
+    a_projectile->GetProjectileRuntimeData().linearVelocity = CalculateVelocity(a_projectile->GetPosition(), targetPos);
 }
 ```
 

@@ -59,7 +59,7 @@ void MonitorDialogue() {
     auto topicManager = RE::MenuTopicManager::GetSingleton();
     
     // 獲取當前 NPC 正在說的那句 INFO
-    auto currentInfo = topicManager->lastTopic; 
+    auto currentInfo = topicManager->currentTopicInfo; 
     
     if (currentInfo) {
         // 你可以透過 INFO 獲取它所屬的 DIAL (話題)
@@ -76,7 +76,7 @@ void MonitorDialogue() {
 - **`RE::TESTopic`**: `include/RE/T/TESTopic.h` - 話題藍圖。
 - **`RE::TESTopicInfo`**: `include/RE/T/TESTopicInfo.h` - 具體對白與條件。
 - **`RE::MenuTopicManager`**: `include/RE/M/MenuTopicManager.h` - 運行時對話調度中心。
-- **`RE::DialogueResponse`**: `include/RE/D/DialogueResponse.h` - 封裝了文字與聲音文件的結構。
+- **`RE::DialogueResponse`**: `include/RE/D/DialogueItem.h` - 封裝了文字與聲音文件的結構。
 
 ---
 

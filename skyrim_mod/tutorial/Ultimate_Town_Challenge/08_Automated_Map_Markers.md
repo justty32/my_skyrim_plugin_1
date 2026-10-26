@@ -19,7 +19,7 @@ void CreateTownMapMarker(RE::NiPoint3 a_position, const char* a_townName) {
     if (!markerBase) return;
 
     // 2. 生成標記實體
-    auto markerRef = player->PlaceAtMe(markerBase, 1, true, false);
+    auto markerRef = player->PlaceObjectAtMe(markerBase, true);
     if (!markerRef) return;
 
     markerRef->SetPosition(a_position);
@@ -29,15 +29,15 @@ void CreateTownMapMarker(RE::NiPoint3 a_position, const char* a_townName) {
     auto markerData = new RE::MapMarkerData();
     
     // 設置圖標類型為 "城鎮 (City/Town)"
-    markerData->flags.Set(RE::MapMarkerData::Flag::kType_City);
+    markerData->type = RE::MARKER_TYPE::kCity;
     
     // 設置狀態：已發現 (Visible) 且可快速旅行 (CanTravelTo)
-    markerData->flags.Set(RE::MapMarkerData::Flag::kVisible);
-    markerData->flags.Set(RE::MapMarkerData::Flag::kCanTravelTo);
+    markerData->flags.set(RE::MapMarkerData::Flag::kVisible);
+    markerData->flags.set(RE::MapMarkerData::Flag::kCanTravelTo);
 
     // 設置名稱 (這將顯示在世界地圖上)
     // 註：引擎中 MapMarkerData 的名稱設置可能涉及 TESFullName 或獨立字符串，具體視版本而定。
-    // markerData->originalName = RE::BSFixedString(a_townName); // 簡化示意
+    // markerData->locationName.fullName = a_townName; // 簡化示意
 
     extraMarker->mapData = markerData;
 
@@ -51,7 +51,7 @@ void CreateTownMapMarker(RE::NiPoint3 a_position, const char* a_townName) {
 ## 3. 關鍵 API 標註
 -   **`MapMarker (0x10)`**: 引擎中寫死的地圖標記佔位符。
 -   **`RE::ExtraMapMarker`**: 儲存地圖圖標狀態的 ExtraData 容器。`include/RE/E/ExtraMapMarker.h`
--   **`RE::MapMarkerData`**: 定義圖標類型（如城鎮、礦坑）、可見度與名稱。`include/RE/M/MapMarkerData.h`
+-   **`RE::MapMarkerData`**: 定義圖標類型（如城鎮、礦坑）、可見度與名稱。`include/RE/E/ExtraMapMarker.h`（定義在此，無獨立標頭）
 
 ## 4. 總結
 將 `MapMarker` 放置在你動態生成的城市中心（或者傳送門入口），玩家就能隨時打開 M 鍵地圖，看到這個由純代碼鍛造出來的奇蹟之城，並隨時傳送回來。
@@ -62,11 +62,11 @@ void CreateTownMapMarker(RE::NiPoint3 a_position, const char* a_townName) {
 
 ### 核心頭文件
 - `include/RE/E/ExtraMapMarker.h` - 地圖標記數據。
-- `include/RE/M/MapMarkerData.h` - 標記標誌與圖標類型。
+- `include/RE/E/ExtraMapMarker.h` - 標記標誌與圖標類型（`MapMarkerData`／`MARKER_TYPE` 定義在此，無獨立標頭）。
 - `include/RE/T/TESObjectREFR.h` - 實體屬性操作。
 
 ### 推薦使用的函數
-- `RE::MapMarkerData::flags.Set(Flag)`：激活「可見」與「可傳送」狀態。
+- `RE::MapMarkerData::flags.set(Flag)`：激活「可見」與「可傳送」狀態。
 - `RE::ExtraDataList::Add(ExtraData)`：將標記邏輯掛載到隱藏實體上。
 - `RE::TESObjectREFR::SetPosition(NiPoint3)`：決定地圖上標記的物理落點。
 - `RE::TESForm::LookupByID<RE::TESBoundObject>(0x10)`：獲取引擎標準地圖標記模板。

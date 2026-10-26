@@ -9,7 +9,7 @@
 ### A. 獨特 NPC (Unique NPCs)
 - **定義**: 有名字、有故事、通常與任務掛鉤（如：巴爾古夫領主、萊迪亞）。
 - **標誌**: `TESNPC` 表單中勾選了 `Unique` 標籤。
-- **原始碼**: `include/RE/T/TESNPC.h` (Record Flags)
+- **原始碼**: `include/RE/T/TESActorBaseData.h`（`ACTOR_BASE_DATA::Flag::kUnique`，`TESNPC` 繼承之）
 - **特徵**:
     - **唯一性**: 在整個遊戲世界中只會有一個實例。
     - **持久化**: 他們的動態數據（如：好感度、當前血量、位置）會被永久保存在存檔中。
@@ -31,7 +31,7 @@
 ### 第一階段：誕生 (Spawning)
 1.  **靜態放置**: 在 ESP 中預先擺放的 NPC。
 2.  **動態生成**: 透過 `Leveled List` 觸發。
-3.  **插件生成**: 透過 C++ 的 `PlaceAtMe` 生成（見教學 18）。
+3.  **插件生成**: 透過 C++ 的 `PlaceObjectAtMe` 生成（`PlaceAtMe` 是 Papyrus）（見教學 18）。
 
 ### 第二階段：活動 (Activation)
 - **加載 3D**: 當玩家靠近時，引擎讀取 NIF 模型，將數據對象轉化為可見實體。
@@ -39,7 +39,7 @@
 
 ### 第三階段：死亡與清理 (Death & Cleanup)
 這是區分路人的關鍵點：
-1.  **死亡狀態**: 設置 `ActorState::IsDead`。
+1.  **死亡狀態**: `Actor::IsDead()` 回傳真（`ActorState` 無 `IsDead`）。
 2.  **屍體清理 (Corpse Cleanup)**:
     - **路人**: 玩家離開 Cell 且遊戲時間經過 `iHoursToRespawnCell`（預設 240 小時）後，引擎直接銷毀該對象。
     - **獨特 NPC**: 屍體通常會保留很久，或者被轉移到專門的「死者之廳（Dead Body Cleanup Cell）」。
@@ -55,7 +55,7 @@
 
 ### 2. 行為包堆疊 (Package Stack)
 每個 NPC 都有一個 Package 清單。引擎會從上往下掃描，檢查每個 Package 的 **Conditions（條件）**。
-- **條件檢查**: `GetTimeOfDay`, `IsInLocation`, `GetGlobalValue`。
+- **條件檢查**: `GetCurrentTime`, `GetInCurrentLoc`, `GetGlobalValue`。
 - **第一個符合條件的 Package** 會被推入 `AIProcess` 執行。
 
 ### 3. 戰鬥接管 (Combat Overrides)

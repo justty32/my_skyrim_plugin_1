@@ -77,7 +77,7 @@ void SaveMonsterData(SKSE::SerializationInterface* a_intfc) {
 
 - **`RE::NiAVObject`**: 模型節點的基底。
 - **`SKSE::SerializationInterface`**: 存檔擴展接口。
-- **`RE::CharacterProxy`**: 處理角色的物理膠囊體。
+- **`RE::bhkCharacterProxy`**: 處理角色的物理膠囊體。
 
 ---
 *文件路徑：architectures/classified/NPC/Answers/Advanced_MH_AI_and_Physics_Implementation.md*

@@ -16,7 +16,7 @@ struct Inventory_ProcessMessage {
         // 檢查是否為物品選中/點擊事件 (kInventory_SelectItem)
         if (a_message->type == RE::UI_MESSAGE_TYPE::kUserEvent) {
             // 獲取當前選中的條目
-            auto entryData = a_menu->GetSelectedData();
+            auto entryData = a_menu->GetSelectedData();  // 註：InventoryMenu 無 GetSelectedData；實際為 GetRuntimeData().itemList->GetSelectedItem()
             if (entryData && entryData->object->formID == 0xMY_ITEM_ID) {
                 // 執行學習火球術邏輯
                 LearnFireball();

@@ -63,7 +63,7 @@ void LearnFireball() {
 
 ## 3. 關鍵 API 標註
 -   **`AddSpell()`**: 給 Actor 添加永久法術。`include/RE/A/Actor.h`
--   **`GetItemCount()`**: 檢查背包物品數量。`include/RE/T/TESObjectREFR.h`
+-   **`GetItemCount()`**: 檢查背包物品數量。`include/RE/P/PlayerCharacter.h`
 -   **`kDataLoaded`**: 遊戲數據（ESP/ESM）加載完成後的消息。
 
 ## 4. 實戰建議

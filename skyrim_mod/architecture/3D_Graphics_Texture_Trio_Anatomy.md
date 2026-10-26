@@ -42,9 +42,9 @@
 
 ### A. 獲取當前貼圖
 ```cpp
-auto shaderProp = geometry->GetShaderProperty()->As<RE::BSLightingShaderProperty>();
+auto shaderProp = geometry->lightingShaderProp_cast();
 if (shaderProp) {
-    auto textureSet = shaderProp->textureSet.get();
+    auto textureSet = static_cast<RE::BSLightingShaderMaterialBase*>(shaderProp->material)->textureSet.get(); // textureSet 在材質上
     const char* diffusePath = textureSet->GetTexturePath(RE::BSTextureSet::Texture::kDiffuse);
 }
 ```
@@ -55,16 +55,16 @@ if (shaderProp) {
 ```cpp
 void ChangeTexture(RE::BSTriShape* a_mesh, const char* a_newDdsPath) {
     // 1. 創建新的貼圖集 (include/RE/B/BSShaderTextureSet.h)
-    auto factory = RE::IFormFactory::GetConcreteFormFactoryByType<RE::BSShaderTextureSet>();
-    auto newSet = factory->Create()->As<RE::BSShaderTextureSet>();
+    // BSShaderTextureSet 不是 TESForm，不走 IFormFactory
+    auto newSet = RE::BSShaderTextureSet::Create();
 
     // 2. 設置新路徑 (例如：將 Diffuse 換成起司貼圖)
     newSet->SetTexturePath(RE::BSTextureSet::Texture::kDiffuse, a_newDdsPath);
     
     // 3. 應用到渲染屬性
-    auto shaderProp = a_mesh->GetShaderProperty()->As<RE::BSLightingShaderProperty>();
+    auto shaderProp = a_mesh->lightingShaderProp_cast();
     if (shaderProp) {
-        shaderProp->textureSet.reset(newSet);
+        static_cast<RE::BSLightingShaderMaterialBase*>(shaderProp->material)->SetTextureSet(RE::NiPointer<RE::BSTextureSet>(newSet));
     }
 }
 ```

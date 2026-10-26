@@ -39,7 +39,7 @@
 ```papyrus
 Scriptname MyQuestScript extends Quest
 
-QuestProperty Property Itself Auto
+Quest Property Itself Auto
 ReferenceAlias Property TargetAlias Auto
 
 Function StartTheQuest()

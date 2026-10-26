@@ -11,7 +11,7 @@ NPC 的行為由以下核心組件共同驅動：
 
 ### A. AIProcess：NPC 的大腦
 - **原始碼**: `include/RE/A/AIProcess.h`
-- 每個 `Actor` 都有一個 `currentProcess` 成員。它負責存儲 NPC 當前的感知數據、戰鬥狀態、路徑規劃以及正在執行的行為。
+- 每個 `Actor` 都有一個 `currentProcess` 成員（NG 經 `GetActorRuntimeData().currentProcess` 存取）。它負責存儲 NPC 當前的感知數據、戰鬥狀態、路徑規劃以及正在執行的行為。
 - **分層處理**: 引擎根據 NPC 與玩家的距離，將 AI 進程分為四個等級（High, Middle-High, Middle-Low, Low），距離越遠，運算頻率越低。
 
 ### B. TESPackage：行為藍圖
@@ -21,7 +21,7 @@ NPC 的行為由以下核心組件共同驅動：
 - 每個 Package 都有其優先級（Priority）和觸發條件（Conditions）。
 
 ### C. BGSProcedureTree：行為步驟
-- **原始碼**: `include/RE/B/BGSProcedureTree.h`
+- **原始碼**: `include/RE/B/BGSProcedureTreeBranch.h`、`include/RE/I/IProcedureTreeItem.h`（NG 無單一 `BGSProcedureTree` 類別）
 - 這是現代化 Skyrim（從 Fallout 3 開始引入）使用的複雜行為樹。一個 `TESPackage` 內部可能包含一個過程樹，定義了具體的動作順序。
 
 ---
@@ -32,7 +32,7 @@ NPC 依靠感官來與世界交互。
 
 - **Detection Level**: 標誌著 NPC 對玩家的發現程度（Hidden, Detecting, Alert, Lost）。
 - **Detection Data**: 
-    - **原始碼**: `include/RE/D/DetectionData.h`
+    - **原始碼**: `include/RE/D/DetectionState.h`（NG 無 `DetectionData`）
     - 存儲了 NPC 的視覺範圍、聽覺閾值以及對特定目標的威脅評估。
 
 ---

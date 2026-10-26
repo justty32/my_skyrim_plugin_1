@@ -47,6 +47,7 @@
 ```cpp
 // 攔截玩家採集動作
 void HarvestCrop(RE::TESFlora* a_flora, RE::Actor* a_harvester) {
+    // 示意：NG 的 TESFlora 無 GetHarvested/SetHarvested/Update3DModel；採集狀態是 reference 的 RecordFlags::kHarvested
     // 檢查植物是否已被採集
     if (!a_flora->GetHarvested()) {
         // 執行自定義邏輯：例如根據玩家農業技能給予雙倍產出

@@ -50,7 +50,7 @@ void EnableNavmeshCut(RE::TESObjectREFR* a_ref) {
     auto activeNode = a_ref->Get3D();
     if (activeNode) {
         // 強制物理系統更新，這會告訴 AI 這裡現在是不可通行的
-        a_ref->UpdateCollisionFilter();
+        a_ref->UpdateCollisionFilter();  // 註：NG 無 UpdateCollisionFilter，僅示意
     }
 }
 ```

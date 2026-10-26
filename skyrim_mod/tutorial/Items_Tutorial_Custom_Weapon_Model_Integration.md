@@ -43,7 +43,7 @@
 #include <RE/Skyrim.h>
 
 void LogWeaponModel(RE::Actor* a_actor) {
-    auto weapon = a_actor->GetEquippedWeapon(false); // 獲取右手武器
+    auto weapon = skyrim_cast<RE::TESObjectWEAP*>(a_actor->GetEquippedObject(false)); // 獲取右手武器
     if (weapon) {
         auto modelPath = weapon->GetModel();
         RE::ConsoleLog::GetSingleton()->Print("當前裝備武器模型: %s", modelPath);

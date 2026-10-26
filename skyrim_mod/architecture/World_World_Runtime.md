@@ -55,7 +55,7 @@ NPC 如何在複雜地形旅行？
     - 這是遊戲世界的“底圖”，標註了哪些地方可以走，哪些地方是障礙。
 - **Pathing (路徑查找)**:
     - NPC 使用 A* 算法在 Navmesh 上尋找最短路徑。
-    - **動態障礙**: 如果路徑上出現了玩家放置的建築（如你的龍吼生成的床），NPC 的 AI 會檢測到碰撞並嘗試繞路，這發生在 `RE::Pathing` 模塊中。
+    - **動態障礙**: 如果路徑上出現了玩家放置的建築（如你的龍吼生成的床），NPC 的 AI 會檢測到碰撞並嘗試繞路，這發生在 引擎尋路模塊中（CommonLibSSE-NG 無 `RE::Pathing`）。
 
 ---
 
@@ -66,7 +66,7 @@ Skyrim 的事件系統基於觀察者模式（Observer Pattern）。
 - **原始碼**: `include/RE/B/BSTEvent.h`
 - **觸發過程**:
     1.  **引擎動作**: 例如 `Actor::Die()` 函數被調用。
-    2.  **事件發射**: 該函數內部會調用 `DeathEventSource::SendEvent()`。
+    2.  **事件發射**: 該函數內部會調用 `ScriptEventSourceHolder` 的 `BSTEventSource<TESDeathEvent>::SendEvent()`。
     3.  **分發**: 遍歷所有已註冊的 `BSTEventSink`，並調用他們的 `ProcessEvent` 方法。
     4.  **順序**: 某些事件是同步的（立即執行），某些是異步的（推入下一幀隊列）。
 

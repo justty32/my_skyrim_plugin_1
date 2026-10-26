@@ -20,7 +20,7 @@
 這是存檔體積最大的部分。
 - **機制**: 引擎會為每個發生變化的 Form（如你移動過的椅子、死掉的強盜）創建一個 `ChangeForm` 記錄。
 - **ChangeFlags**: 每個記錄都有一個 32 位的位掩碼，標識哪些字段發生了變化（如：座標變了、背包變了、或是被 Disable 了）。
-- **原始碼**: `include/RE/B/BGSChangeForm.h`
+- **原始碼**: 無對應標頭（CommonLibSSE-NG 無 `BGSChangeForm.h`／`ChangeForm` 類別；REFR 旗標見 `RE/T/TESObjectREFR.h` 的 `ChangeFlags`）
 
 ### D. 全球變數與表格 (Globals & Map)
 - 存儲遊戲中所有 `TESGlobal` 的當前數值。
@@ -36,7 +36,7 @@
 ## 2. ChangeForms 的運作流程
 
 1.  **偵測變化**: 當玩家在遊戲中與物體交互（如：撿起一個蘋果）。
-2.  **標記 Flag**: 該蘋果的 `RE::TESObjectREFR` 被標記為 `kChanged_Inventory`。
+2.  **標記 Flag**: 該蘋果的 `RE::TESObjectREFR` 被標記為 `RE::TESObjectREFR::ChangeFlags::kInventory`。
 3.  **序列化**: 保存時，引擎發現 Flag 被激活，將蘋果的當前狀態寫入 ESS。
 4.  **加載回溯**: 讀檔時，引擎先加載 ESP 裡的初始蘋果，然後讀取 ESS 裡的 `ChangeForm` 覆蓋掉初始數據。
 
@@ -64,4 +64,4 @@
 - **`RE::BGSSaveLoadManager`**: `include/RE/B/BGSSaveLoadManager.h` - 存檔管理中心。
 - **`RE::BGSLoadGameBuffer`**: `include/RE/B/BGSLoadGameBuffer.h` - 讀取緩衝區。
 - **`RE::BGSSaveFormBuffer`**: `include/RE/B/BGSSaveFormBuffer.h` - 寫入緩衝區。
-- **`RE::ChangeForm`**: `include/RE/C/ChangeForm.h` - 單個變化記錄。
+- **`RE::ChangeForm`**: 單個變化記錄（註：CommonLibSSE-NG 無此類別與標頭）。

@@ -20,7 +20,7 @@
 ## 2. 自定義載入畫面 (Custom Loading Screens)
 
 ### A. 數據定義 (`RE::TESLoadScreen`)
-- **FormType**: 60。
+- **FormType**: `RE::FormType::LoadScreen`（0x51 = 81）。
 - **內容**: 定義了要顯示的 3D 模型、背景圖片以及隨機出現的提示文字（Loading Tip）。
 - **條件**: 你可以設置條件，例如：只有當玩家進入「冬堡」時，才顯示與魔法相關的載入畫面。
 
@@ -41,7 +41,7 @@ struct LoadingHandler : public RE::BSTEventSink<RE::TESCellFullyLoadedEvent> {
 ## 3. 轉場效果優化
 
 1.  **黑屏淡入淡出 (Fade To Black)**: 
-    - 使用 `RE::Main::GetSingleton()->ScreenFadeOut()`。
+    - 使用 Papyrus `Game.FadeOutGame(...)`（CommonLibSSE-NG 的 `RE::Main` 無 `ScreenFadeOut`）。
     - 這能遮蓋物件生成時的閃爍感。
 2.  **背景音樂銜接**: 在載入期間，透過 `RE::BSSoundHandle` 控制音樂不會因為切換區域而中斷。
 

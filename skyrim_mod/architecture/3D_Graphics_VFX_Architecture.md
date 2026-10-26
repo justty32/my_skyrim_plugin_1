@@ -6,9 +6,9 @@
 
 ## 1. 特效的組成部分
 
-### A. 數據定義：`BGSVisualEffect` (ESP)
+### A. 數據定義：`BGSReferenceEffect` (ESP RFCT)
 - **作用**: 它是特效的「身份證」，定義了特效的持續時間、優先級以及關聯的模型路徑。
-- **原始碼**: `include/RE/B/BGSVisualEffect.h`
+- **原始碼**: `include/RE/B/BGSReferenceEffect.h`
 
 ### B. 視覺載體：粒子系統 (NIF)
 - **內容**: 特效的核心通常是包含 `NiParticleSystem` 塊的 NIF 文件。
@@ -46,11 +46,11 @@
 你可以繞過法術系統，直接給一個 Actor 施加視覺效果。
 
 ```cpp
-void ApplyEffect(RE::Actor* a_target, RE::BGSVisualEffect* a_vfx) {
+void ApplyEffect(RE::Actor* a_target, RE::BGSReferenceEffect* a_vfx) {
     if (a_target && a_vfx) {
         // 使用 ReferenceEffect 管理器
         // 原始碼: include/RE/R/ReferenceEffect.h
-        a_target->ApplyVisualEffect(a_vfx, 10.0f); // 持續 10 秒
+        a_target->ApplyArtObject(a_vfx->data.artObject, 10.0f); // 持續 10 秒（Papyrus 對應是 VisualEffect.Play）
     }
 }
 ```
@@ -71,7 +71,7 @@ void TintEffect(RE::ReferenceEffect* a_effect) {
 
 ## 5. 核心類別原始碼標註
 
-- **`RE::BGSVisualEffect`**: `include/RE/B/BGSVisualEffect.h` - 靜態數據。
+- **`RE::BGSReferenceEffect`**: `include/RE/B/BGSReferenceEffect.h` - 靜態數據。
 - **`RE::ReferenceEffect`**: `include/RE/R/ReferenceEffect.h` - 運行時實例。
 - **`RE::ModelReferenceEffect`**: `include/RE/M/ModelReferenceEffect.h` - 基於模型的特效控制。
 - **`RE::ShaderReferenceEffect`**: `include/RE/S/ShaderReferenceEffect.h` - 基於全屏或蒙皮 Shader 的特效。
@@ -81,4 +81,4 @@ void TintEffect(RE::ReferenceEffect* a_effect) {
 ## 6. 技術總結
 1.  **想改特效樣子**：修改 `Effects` 文件夾下的 NIF 或貼圖。
 2.  **想改觸發條件**：在 ESP 中修改 `Magic Effect` 的關聯項目。
-3.  **想用插件控制**：操作 `ApplyVisualEffect` 接口或直接介入 `ReferenceEffect` 列表。
+3.  **想用插件控制**：操作 `ApplyArtObject`／`ApplyEffectShader` 接口或直接介入 `ReferenceEffect` 列表。

@@ -52,12 +52,12 @@ NIF 文件由一系列相互鏈接的「塊（Blocks）」組成。你可以將�
 
 ```cpp
 RE::NiStream nifStream;
-if (nifStream.Load("Meshes\\Example.nif")) {
+if (nifStream.Load3("Meshes\\Example.nif")) {
     // 獲取根節點
-    auto root = nifStream.GetObjectAt<RE::NiNode>(0);
+    auto root = nifStream.topObjects[0]->AsNode();
     
     // 你可以手動遍歷並修改 Block
-    for (auto& child : root->children) {
+    for (auto& child : root->GetChildren()) {
         if (child && child->name == "WeaponEffect") {
             // 找到特定的 Block 並進行操作
         }

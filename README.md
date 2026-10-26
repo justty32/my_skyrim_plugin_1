@@ -134,9 +134,8 @@ scripts\test_packaging.ps1
 
 ### Quest engine：pure-core 離線驗證
 
-`feat/quest-prf-random-20260824` 從 pinned `origin/main`（`ea6bfeb`）只新增
-`src/core/DeterministicRandom.{h,cpp}`：它釘死並實作 SPEC 附錄 B 的 canonical
-framing、SHA-256、uint64→`[0,1)` 與 chance 比較。沒有移植
+`src/core/DeterministicRandom.{h,cpp}` 釘死並實作 SPEC 附錄 B 的 canonical
+framing、SHA-256、uint64→`[0,1)` 與 chance 比較。main 沒有
 `origin/feature/court-wizard` 的 `QuestEngine`/`Ports`/`QuestState`、demo、tests、
 CLI harness 或 Skyrim adapter。詳細範圍見
 [`research/QUEST_ENGINE_AUDIT.md`](research/QUEST_ENGINE_AUDIT.md#5-2026-08-24-prf-primitive-provenance-and-scope)。
@@ -187,14 +186,14 @@ save-wide `master_seed` 的產生/co-save lifecycle。離線通過不代表 runt
 
 ### 當前分支
 
-全部七條分支的實編結果與處置在 **[BRANCHES.md](BRANCHES.md)**（2026-08-02 逐條交叉編譯過）。摘要：
+分支現況與處置在 **[BRANCHES.md](BRANCHES.md)**。摘要：
 
 | Branch | 功能 | 狀態 |
 | --- | --- | --- |
 | `main` | DaylightDungeon（FollowLight + AmbientBoost + NpcGenerator） | ✅ 主線，編得過 |
 | `feature/court-wizard` | 可攜 quest engine + Skyrim adapter + 程序化生成 | ✅ 編得過、實機驗證過；**留著**（設計文件已撈上 main）|
-| `feat/custom-weapon`／`feat/magic-toolkit`／`feat/power-shout` | 早期 spike | 後兩者因 CommonLibSSE API 漂移已編不過;原始碼全存進 [`vendor/`](vendor/README.md),分支已刪 |
-| `feat/npc-generator`／`feat/follow-light-ambient` | — | 已併進 `main`／與 main 同一 commit,分支已刪 |
+
+舊 spike（`feat/custom-weapon`／`feat/magic-toolkit`／`feat/power-shout`）的原始碼在 [`vendor/`](vendor/README.md)，後兩者因 CommonLibSSE API 漂移已編不過。
 
 ### 資料夾補充
 

@@ -25,7 +25,7 @@ cmake --preset build-release-msvc; if ($?) { cmake --build build/release-msvc }
 
 兩組都用 MSVC + Ninja + 自定義 triplet `x64-windows-skse`（overlay 在 `cmake/x64-windows-skse.cmake`），靜態連結 MSVC runtime（`/MT` release、`/MTd` debug），所以產出的 `.dll` 不依賴 `vcredist`。
 
-## PowerShell（Windows，目前開發環境）
+## PowerShell（Windows）
 
 Configure + build（Release）：
 
@@ -56,7 +56,7 @@ cmake --preset build-release-msvc
 cmake --build build/release-msvc
 ```
 
-## bash（Git Bash on Windows / MSYS2 / 未來 cross-compile）
+## bash（Git Bash on Windows / MSYS2）
 
 同樣的 cmake 指令，只是 shell 語法不同：
 
@@ -67,7 +67,7 @@ rm -rf build
 
 > 直接在 Manjaro 上跑這些 MSVC preset 不會成功，因為那邊沒有 MSVC。Linux 上要改用已架好的 cross-compile preset `build-release-clang-cl-linux`（clang-cl + lld-link + xwin，toolchain 在 `cmake/toolchain-clang-cl-xwin.cmake`），完整指令見 [FOR_AGENT.md](FOR_AGENT.md)。
 
-## VS Code 工作流（你現在的方式）
+## VS Code 工作流
 
 VS Code 的 CMake Tools 套件開資料夾時會自動跑 `cmake --preset <你選的>` 去產生 `build/<preset>/`，然後 `F7` 或狀態列的 Build 按鈕相當於 `cmake --build build/<preset>`。上面的 CLI 指令是用在：腳本化、CI、或想手動做 clean rebuild 時。
 
@@ -89,7 +89,7 @@ dumpbin /dependents build\release-msvc\DaylightDungeon.dll
 - Release：`build/release-msvc/DaylightDungeon.dll`
 - Debug：`build/debug-msvc/DaylightDungeon.dll` + `DaylightDungeon.pdb`
 
-沒有自動安裝步驟（因為你沒設 `SKYRIM_FOLDER` / `SKYRIM_MODS_FOLDER`）。要丟進 Manjaro 的 MO2，用 `scripts/pack.ps1` 打包：
+沒設 `SKYRIM_FOLDER` / `SKYRIM_MODS_FOLDER` 時不會自動安裝。要丟進 Manjaro 的 MO2，用 `scripts/pack.ps1` 打包：
 
 ```powershell
 scripts\pack.ps1                      # Release，產出 dist\DaylightDungeon-0.0.1.zip

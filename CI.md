@@ -52,23 +52,6 @@ Artifact 保留 90 天（GitHub 預設），之後要自己留一份或重跑 wo
 
 **公開 repo = 完全免費無限分鐘**，Linux / Windows / macOS runner 都無配額。私有 repo 才有每月 2000 Linux-min / 1000 Windows-min 的免費額度（Windows 計 2 倍）。
 
-## 啟用前需要做的事
-
-1. **Repo 要是你自己的**。目前 `origin` 指向 `Monitor221hz/CommonLibSSE-NG-Template-Plugin`（上游 template，不是你的）。你沒有那邊的 write 權限，push 不上去 → CI 不會跑。先換 remote：
-
-   ```powershell
-   # 方案 A：手動在 github.com 建好 repo 後
-   git remote set-url origin https://github.com/<你的帳號>/<repo-name>.git
-   git push -u origin main
-
-   # 方案 B：用 gh CLI
-   gh auth login          # 只需做一次，會開瀏覽器
-   gh repo create --source . --public --push
-   ```
-
-2. 公開 repo 的 Actions 功能**預設啟用**，不用動設定。
-3. 第一次 push 之後看 Actions tab，若 fail 回報 log。
-
 ## Plugin 名稱與發佈契約
 
 Workflow 在 build 後從 `CMakeCache.txt` 讀取 `CMAKE_PROJECT_NAME`，先確認對應 DLL 確實存在，再把精確路徑交給 `dumpbin` 和 artifact upload。名稱不再硬編碼於 workflow。
@@ -78,7 +61,5 @@ Workflow 在 build 後從 `CMakeCache.txt` 讀取 `CMAKE_PROJECT_NAME`，先確�
 ## 未來可加
 
 - **Release workflow**：`git tag v0.0.1 && git push --tags` → 自動把 zip 附到 GitHub Releases
-- **Debug build**：matrix 加 `debug-msvc`，給沒有 Windows 機但想偶爾取 debug DLL 的情境（你目前 debug 走重開機，應該用不到）
+- **Debug build**：matrix 加 `debug-msvc`，給沒有 Windows 機但想偶爾取 debug DLL 的情境
 - **PR check**：clang-format、cppcheck 之類 lint
-
-要做告訴我。

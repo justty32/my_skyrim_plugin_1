@@ -105,8 +105,8 @@ void SetRevertCallback(EventCallback* a_callback) const;
 3. **執行緒**：co-save 三個 callback（Save/Load/Revert）跑在 **SKSE 的序列化執行緒，不是主執行緒**
    —— 這是 `CoSave.h:26-29` 與 `research/PROCGEN_NPC_FORMS.md` §5 反覆強調的鐵律。
    `kSaveGame` 訊息**也不保證在主執行緒**。**`Disable()` / `SetDelete()` 觸碰 live RE:: 狀態，
-   在序列化執行緒上呼叫是危險的**（與 `OnRevert` 不可碰 RE:: 同理，見 `research/REVIEW_FINDINGS.md`
-   C1 的修法）。這把「在哪個窗口刪 actor 才安全」變成本題的核心難點 → §2/§3。
+   在序列化執行緒上呼叫是危險的**（與 `OnRevert` 不可碰 RE:: 同理，見已封存的 Court Wizard
+   整合分支審查報告 C1 的修法）。這把「在哪個窗口刪 actor 才安全」變成本題的核心難點 → §2/§3。
 
 ---
 

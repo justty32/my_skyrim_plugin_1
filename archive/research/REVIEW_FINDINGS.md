@@ -1,3 +1,5 @@
+> 封存 2026-10-26，原因：審查對象是 `feature/court-wizard` 整合樹（HEAD `169f779`），該線未併入 main、專案已停更（見 [court-wizard/README.md](../court-wizard/README.md)）；報告列的 C1／H1／H2／M1–M3 已在該分支修畢（`archive/court-wizard/progress.md` 記錄）。
+
 # 程式碼審查報告 — Court Wizard 整合分支（quest-engine + procgen + co-save）
 
 > 唯讀 QA / Code Review。**只報告，不修改程式碼**。

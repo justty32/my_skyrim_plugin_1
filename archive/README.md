@@ -7,3 +7,4 @@
 | [`court-wizard/`](court-wizard/README.md) | 2026-05-26 | 宮廷大法師 mod 的設計與交接文件，搬自 `feature/court-wizard` 分支（程式碼仍在分支上）。細節見該目錄自己的 README |
 | [`REFERENCE.md`](REFERENCE.md) | 2026-10-24 | 舊版 agent 入門導覽。§1 指的 `CommonLibSSE-NG/` 根目錄已不存在（依賴改由 vcpkg 提供），其餘內容 2026-10-17 已被 [`AGENTS.md`](../AGENTS.md) 與 [`README.md`](../README.md) 吸收 |
 | [`skyrim_mod/session_log.md`](skyrim_mod/session_log.md) | 2026-10-24 | 單行遷移紀錄（2026-04-15）。它講的 `project_analysis/` 與 `pas/` 兩個目錄今天都不存在，前提已作廢；`skyrim_mod/` 的現役入口是 [`skyrim_mod/INDEX.md`](../skyrim_mod/INDEX.md) |
+| [`research/REVIEW_FINDINGS.md`](research/REVIEW_FINDINGS.md) | 2026-10-26 | Court Wizard 整合分支（`169f779`）的程式碼審查報告。審查對象未併入 main、專案已停更，列出的 bug 已在該分支修畢 |

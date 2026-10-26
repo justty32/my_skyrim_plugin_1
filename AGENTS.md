@@ -16,6 +16,18 @@ Guidance for any coding agent (Claude Code, Gemini, Codex, …) working in this 
 | Chinese-language Skyrim modding knowledge base (Q&A / architecture / tutorials / CommonLibSSE-NG details) — this repo's self-contained copy; the master lives in the parent workspace's `analysis/skyrim_engine/` | [skyrim_mod/INDEX.md](skyrim_mod/INDEX.md) |
 | Quest engine design & spec | [QUEST_ENGINE_DESIGN.md](QUEST_ENGINE_DESIGN.md) / [QUEST_ENGINE_SPEC.md](QUEST_ENGINE_SPEC.md) |
 
+## 工作流與鐵律（wf kernel，2026-10-26 非侵入式導入於 `wf/`）
+
+- **要你動手做事** → [WORKFLOWS.md](wf/WORKFLOWS.md) 依意圖派發，再讀該工作流入口檔；進度記 [wf/SESSION-LOG.md](wf/SESSION-LOG.md)，等使用者的記母 repo [WAIT_USER.md](../../WAIT_USER.md)。
+- **想看 `wf/` 結構** → [INDEX.md](wf/INDEX.md)；repo 本體的導航仍是上面的「Where to look」表。
+- 使用者偏好與邊界 → [user.md](wf/workflows/common/user.md)。
+
+鐵律（always-on）：
+1. 重構 / 整理**不改原意**：開發＝行為不變且驗證綠燈（[testing](wf/workflows/testing.md) 的 agent 列）；非開發＝原意不變，照 `Done when:` 驗收。
+2. **不可逆或對外的動作**（push、刪除、對外送出）要有**授權來源**：使用者當場確認，或他親自登記的清單項目。都沒有就先問。
+3. **條列走資料檔、導航留 md**：給 AI 消化的表／清單 >1 KB 存 `.json`／`.csv`（契約 `wf-table/1`，見 [data-files](wf/workflows/common/data-files.md)），用 `wf/tools/tabledb.py` 讀寫；給人點的導航連結留 md。
+4. **具體流程**在各工作流入口檔，不在頂層。
+
 ## Project
 
 **DaylightDungeon** — an SKSE plugin for Skyrim SE/AE (incl. 1.6.1170)/GOG/VR, plus the build infrastructure around it (static-CRT CMake/vcpkg presets, Linux clang-cl cross-compile, MO2 packaging, GitHub Actions CI). It started as a fork of the CommonLibSSE-NG template plugin but is no longer a blank template: `src/` carries real features (NpcGenerator, FollowLight, AmbientBoost, hooks). The repo name `my_skyrim_plugin_1` is historical.
@@ -94,3 +106,5 @@ If a `config/` folder exists at the repo root, its contents are also copied to `
 Attach a debugger only with a legal Skyrim copy whose `.exe` has been stripped with Steamless. MO2 users need `-forcesteamloader` as an SKSE argument so plugins load with the stub removed. A minimal VS Code `launch.json` (`cppvsdbg`, `request: attach`) example is in `README.md`.
 
 Under Proton, attaching is impractical — rely on the trace log instead: `<Proton-prefix>/drive_c/users/steamuser/Documents/My Games/Skyrim Special Edition/SKSE/DaylightDungeon.log` (every level flushes immediately, see `src/log.h`).
+
+<!-- wf-kernel v0.6+368468a (2026-10-26 導入) -->

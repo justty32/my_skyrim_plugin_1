@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for any coding agent (Claude Code, Gemini, Codex, …) working in this repository. `CLAUDE.md` and `GEMINI.md` are pointers to this file.
+Guidance for any coding agent (Claude Code, Gemini, Codex, …) working in this repository. [CLAUDE.md](CLAUDE.md) and [GEMINI.md](GEMINI.md) are pointers to this file.
 
 ## Where to look
 

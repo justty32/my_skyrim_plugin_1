@@ -198,7 +198,6 @@ save-wide `master_seed` 的產生/co-save lifecycle。離線通過不代表 runt
 ### 資料夾補充
 
 - **[`research/`](research/)** — 對照 CommonLibSSE-NG 標頭查證過的可行性分析（navmesh-free 尋路、NPC 行為改造、程序化生成、煉金、hook 手法…）。做新功能前先翻這裡。
-- **[`archive/`](archive/court-wizard/README.md)** — 已停更專案的設計／交接快照，**不是現況**。
 - **[`vendor/`](vendor/README.md)** — 從舊分支撈出的實作，**不參與建置**（沒登記進 `cmake/sourcelist.cmake`）。
 
 ## 文件索引

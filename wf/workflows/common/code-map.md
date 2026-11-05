@@ -6,7 +6,7 @@
 
 ## 領域表
 
-本專案的 code map 本體是下面的「`src/` 逐檔職責」（2026-10-26 自根 [AGENTS.md](../../../AGENTS.md)「Code layout」段移入，原文照搬）；非建置目錄（`research/`、`vendor/`、`archive/`）見根 AGENTS.md「Non-build directories」段。下文的「本表」都指這一段。
+本專案的 code map 本體是下面的「`src/` 逐檔職責」（2026-10-26 自根 [AGENTS.md](../../../AGENTS.md)「Code layout」段移入，原文照搬）；非建置目錄（`research/`、`vendor/`）見根 AGENTS.md「Non-build directories」段。下文的「本表」都指這一段。
 
 ### `src/` 逐檔職責
 

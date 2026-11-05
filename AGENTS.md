@@ -49,7 +49,6 @@ Commands, presets, `dumpbin` checks, clean rebuild, packaging, compiler/CRT/trip
 ## Non-build directories
 
 - `research/` — feasibility analyses, every engine-level claim checked against the CommonLibSSE-NG `RE/` headers. **Read before designing a new feature** — several dead ends (dynamic navmesh generation, runtime native-dialogue injection) are already written up there.
-- [`archive/`](archive/README.md) — dated snapshots of stopped projects and superseded docs. **Not current state**; the index there says what each one is and why it was retired.
 - `vendor/` — implementations lifted off old feature branches, kept as reference. Deliberately **not** in `sourcelist.cmake`, so nothing here compiles. `vendor/README.md` records which ones no longer build against current CommonLibSSE-NG and exactly which APIs moved.
 - `BRANCHES.md` — per-branch inventory: what each contains, whether it actually cross-compiles, and the SHA to recover it. Consult before creating or deleting branches.
 

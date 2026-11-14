@@ -1,0 +1,86 @@
+{
+  "AGENTS.md": {
+    "description": "agent 指引正典（CLAUDE.md、GEMINI.md 都只是指向它）；進 repo 做任何事先讀這份"
+  },
+  "BRANCHES.md": {
+    "description": "分支說明：記這個 repo 保留哪些產品線分支"
+  },
+  "BUILD.md": {
+    "description": "建置說明（TL;DR 與完整步驟）；要編譯 DLL 時進來"
+  },
+  "CI.md": {
+    "description": "GitHub Actions 的 build／打包 workflow 說明，為 CI 契約的唯一正典"
+  },
+  "CLAUDE.md": {
+    "description": "指標檔，指向 AGENTS.md"
+  },
+  "CMakeLists.txt": {
+    "description": "CMake 主檔；專案名與設定夾變數從這裡來"
+  },
+  "CMakePresets.json": {
+    "description": "CMake preset 設定"
+  },
+  "COMMONLIBSSE_INDEX.md": {
+    "description": "CommonLibSSE-NG 可用內容的繁中速查索引（依系統分類）；寫 SKSE 程式找 API 時進來"
+  },
+  "FOR_AGENT.md": {
+    "description": "交叉編譯、打包、驗證 SKSE 插件的標準作業程序"
+  },
+  "GEMINI.md": {
+    "description": "指標檔，指向 AGENTS.md"
+  },
+  "GITHUB_ACTIONS.md": {
+    "description": "GitHub Actions 通用入門；本專案細節以 CI.md 為準"
+  },
+  "MODDING_COOKBOOK.md": {
+    "description": "SKSE mod 實作食譜：已驗證可運作的功能寫法，給 AI 照抄"
+  },
+  "PITFALLS.md": {
+    "description": "SKSE 插件開發的編譯／連結／初始化時機雷區與解法"
+  },
+  "QUEST_ENGINE_DESIGN.md": {
+    "description": "劇情／對話引擎在 C++／SKSE 上的落地設計"
+  },
+  "QUEST_ENGINE_SPEC.md": {
+    "description": "劇情／對話引擎的語言中立可攜規格"
+  },
+  "README.md": {
+    "description": "專案總覽：DaylightDungeon SKSE 插件，以 CommonLibSSE-NG 模板為底並加上靜態 CRT、MO2 打包、CI"
+  },
+  "cmake": {
+    "description": "CMake 輔助檔：來源清單與各 toolchain／triplet 定義"
+  },
+  "config": {
+    "description": "插件執行期設定檔（ini）與其 schema"
+  },
+  "ports": {
+    "description": "vcpkg 自訂 port（CommonLibSSE-NG fork、DirectXTK）"
+  },
+  "research": {
+    "description": "可行性研究與調查筆記；入口為其中的 INDEX.md"
+  },
+  "scripts": {
+    "description": "MO2 打包腳本與打包／劇情引擎測試腳本"
+  },
+  "skyrim_mod": {
+    "description": "Skyrim 改作知識與教學文件；入口為其中的 INDEX.md"
+  },
+  "src": {
+    "description": "插件原始碼（功能模組、hook、log）"
+  },
+  "tools": {
+    "description": "獨立小工具原始碼（劇情 PRF 測試）"
+  },
+  "vcpkg-configuration.json": {
+    "description": "vcpkg registry／baseline 設定"
+  },
+  "vcpkg.json": {
+    "description": "vcpkg 依賴清單"
+  },
+  "vendor": {
+    "description": "內置第三方／附屬功能原始碼；說明見其中的 README.md"
+  },
+  "wf": {
+    "description": "本 repo 的工作流文檔（INDEX、SESSION-LOG、STRUCTURE、WORKFLOWS 與 workflows/）"
+  }
+}
